@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environment
+.env
+.env*.local
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+
+# Bee local working state (not shared)
+*.local.md
+
+# OS / editor
+.DS_Store
+*.log
+npm-debug.log*
+.idea/
+.vscode/
