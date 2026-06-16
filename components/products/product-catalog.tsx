@@ -10,7 +10,17 @@ import { cn } from "@/lib/utils";
  * the page can fetch them on the server (no client XHR for plain display).
  * The /api/products endpoint still exists as the inspectable API surface.
  */
-export function ProductCatalog({ products }: { products: Product[] }) {
+export function ProductCatalog({
+  products,
+  // Seeded-bug switches resolved by the /products page (which has the user) and
+  // passed in as plain booleans. Default off → correct presentation.
+  dropDecimal = false,
+  inStockAtZero = false,
+}: {
+  products: Product[];
+  dropDecimal?: boolean;
+  inStockAtZero?: boolean;
+}) {
   if (products.length === 0) {
     return (
       <p role="status" className="text-sm text-muted-foreground">
@@ -41,9 +51,9 @@ export function ProductCatalog({ products }: { products: Product[] }) {
             )}
             <div className="mt-4 flex items-end justify-between">
               <p className="font-heading text-lg font-bold tabular-nums text-foreground">
-                {formatPrice(product.price)}
+                {formatPrice(product.price, { dropDecimal })}
               </p>
-              <StockPill stock={product.stock} />
+              <StockPill stock={product.stock} inStockAtZero={inStockAtZero} />
             </div>
           </Link>
         </li>
@@ -52,8 +62,16 @@ export function ProductCatalog({ products }: { products: Product[] }) {
   );
 }
 
-function StockPill({ stock }: { stock: number }) {
-  const status = stockStatus(stock);
+function StockPill({
+  stock,
+  inStockAtZero = false,
+}: {
+  stock: number;
+  inStockAtZero?: boolean;
+}) {
+  // FN_INSTOCK_AT_ZERO: when set, a 0-stock item is styled and labelled as if it
+  // were available (the misleading "In stock" claim).
+  const status = inStockAtZero && stock <= 0 ? "in-stock" : stockStatus(stock);
   return (
     <span
       className={cn(
@@ -65,7 +83,7 @@ function StockPill({ stock }: { stock: number }) {
             : "text-muted-foreground",
       )}
     >
-      {stockLabel(stock)}
+      {stockLabel(stock, { inStockAtZero })}
     </span>
   );
 }

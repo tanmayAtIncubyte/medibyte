@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import { readSessionId } from "@/lib/data/session-id";
 import type { CheckoutInput } from "@/lib/orders/checkout";
 import { placeOrder } from "@/lib/orders/place-order";
@@ -29,7 +30,15 @@ export async function POST(request: NextRequest) {
     prescriptions: body.prescriptions ?? {},
   };
 
-  const result = placeOrder(sessionId, user, input);
+  // Resolve seeded-bug flags here (the user lives at this boundary) and pass
+  // plain booleans into the pure order orchestration; admins are never affected.
+  const result = placeOrder(sessionId, user, input, {
+    bugs: {
+      taxFloor: isBugActive("FN_TAX_FLOOR", user),
+      ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
+      skipPostalValidation: isBugActive("FN_POSTAL_UNVALIDATED", user),
+    },
+  });
   if (!result.ok) {
     if (result.reason === "empty-cart") {
       return NextResponse.json({ error: "Your cart is empty." }, { status: 422 });

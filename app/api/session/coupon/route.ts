@@ -1,5 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { sessionUserFromPayload } from "@/lib/auth/accounts";
+import { SESSION_COOKIE } from "@/lib/auth/current-user";
+import { getSessionSecret } from "@/lib/auth/secret";
+import { verifySession } from "@/lib/auth/session";
+import type { GatingUser } from "@/lib/bugs";
+import { isBugActive } from "@/lib/bugs";
 import { getCartView } from "@/lib/cart/cart-service";
 import { validateCoupon } from "@/lib/coupons/coupon";
 import {
@@ -8,6 +14,17 @@ import {
   readSessionId,
 } from "@/lib/data/session-id";
 import { clearCoupon, setCouponCode } from "@/lib/data/session-store";
+
+// Reads the signed session user straight off the NextRequest cookie so bug-flag
+// gating works in both the running app and unit tests. Read-only.
+function userFromRequest(request: NextRequest): GatingUser {
+  const raw = request.cookies.get(SESSION_COOKIE)?.value;
+  const payload = verifySession(raw, getSessionSecret());
+  if (!payload) {
+    return null;
+  }
+  return sessionUserFromPayload(payload);
+}
 
 function withSession(
   request: NextRequest,
@@ -28,9 +45,14 @@ function withSession(
 // and applies no discount.
 export async function POST(request: NextRequest) {
   const { code } = await request.json();
+  // Resolve seeded-bug flags here (the signed user lives at this boundary) and
+  // pass plain booleans into the pure validator; admins are never affected.
+  const ignoreExpiry = isBugActive("FN_EXPIRED_COUPON_OK", userFromRequest(request));
   return withSession(request, (sessionId) => {
     const subtotal = getCartView(sessionId).subtotal;
-    const validation = validateCoupon(String(code ?? ""), subtotal);
+    const validation = validateCoupon(String(code ?? ""), subtotal, new Date(), {
+      ignoreExpiry,
+    });
     if (!validation.ok) {
       return {
         status: 422,
@@ -38,7 +60,7 @@ export async function POST(request: NextRequest) {
       };
     }
     setCouponCode(sessionId, validation.coupon.code);
-    const cart = getCartView(sessionId);
+    const cart = getCartView(sessionId, { ignoreExpiry });
     return {
       status: 200,
       body: {

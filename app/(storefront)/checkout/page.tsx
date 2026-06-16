@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import { getCartView } from "@/lib/cart/cart-service";
 import { rxLines } from "@/lib/orders/checkout";
 import { readSessionIdFromCookies } from "@/lib/data/session-id";
@@ -16,7 +17,12 @@ export const metadata = { title: "Checkout" };
 export default async function CheckoutPage() {
   const user = await getCurrentUser();
   const sessionId = await readSessionIdFromCookies();
-  const cart = getCartView(sessionId ?? "__none__");
+  // Keep the checkout summary consistent with the same money bugs as the cart
+  // (resolved here where the user lives); admins always see clean totals.
+  const cart = getCartView(sessionId ?? "__none__", {
+    taxFloor: isBugActive("FN_TAX_FLOOR", user),
+    ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
+  });
 
   if (cart.lines.length === 0) {
     return (

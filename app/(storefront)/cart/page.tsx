@@ -7,6 +7,8 @@ import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
 import { getCartView } from "@/lib/cart/cart-service";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import { readSessionIdFromCookies } from "@/lib/data/session-id";
 import { formatPrice } from "@/lib/format";
 
@@ -14,7 +16,14 @@ export const metadata = { title: "Your cart" };
 
 export default async function CartPage() {
   const sessionId = await readSessionIdFromCookies();
-  const cart = getCartView(sessionId ?? "__none__");
+  // Resolve seeded-bug flags at the boundary (the user lives here) and pass
+  // plain booleans into the pure cart view; admins always get clean totals.
+  const user = await getCurrentUser();
+  const cart = getCartView(sessionId ?? "__none__", {
+    totalStale: isBugActive("FN_CART_TOTAL_STALE", user),
+    taxFloor: isBugActive("FN_TAX_FLOOR", user),
+    ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
+  });
   const applied = cart.appliedCoupon;
 
   return (
