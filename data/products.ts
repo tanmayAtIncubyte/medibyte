@@ -9,6 +9,10 @@ export type Product = {
   category: string;
   stock: number;
   requiresPrescription: boolean;
+  // When true, the product is surfaced in the "Featured products" rail on the
+  // home page. Optional so most seed entries can omit it (treated as false).
+  // A small, deterministic, hand-picked subset is flagged — see FEATURED_LIMIT.
+  featured?: boolean;
 };
 
 // Deterministic seed catalog. No DB, no runtime RNG. Expanded in Phase 2 to a
@@ -25,6 +29,7 @@ export const products: readonly Product[] = [
     category: "Pain Relief",
     stock: 240,
     requiresPrescription: false,
+    featured: true,
   },
   {
     id: "prod-acetaminophen-500",
@@ -65,6 +70,7 @@ export const products: readonly Product[] = [
     category: "Allergy",
     stock: 95,
     requiresPrescription: false,
+    featured: true,
   },
   {
     id: "prod-loratadine-10",
@@ -95,6 +101,7 @@ export const products: readonly Product[] = [
     category: "Vitamins & Supplements",
     stock: 320,
     requiresPrescription: false,
+    featured: true,
   },
   {
     id: "prod-vitamin-c-1000",
@@ -155,6 +162,7 @@ export const products: readonly Product[] = [
     category: "Digestive Health",
     stock: 80,
     requiresPrescription: false,
+    featured: true,
   },
   {
     id: "prod-loperamide-2",
@@ -185,6 +193,7 @@ export const products: readonly Product[] = [
     category: "Cold & Flu",
     stock: 88,
     requiresPrescription: false,
+    featured: true,
   },
   {
     id: "prod-nighttime-cold",
@@ -265,6 +274,7 @@ export const products: readonly Product[] = [
     category: "Sleep & Wellness",
     stock: 175,
     requiresPrescription: false,
+    featured: true,
   },
   {
     id: "prod-magnesium-glycinate",
@@ -295,6 +305,7 @@ export const products: readonly Product[] = [
     category: "Antibiotics",
     stock: 60,
     requiresPrescription: true,
+    featured: true,
   },
   {
     id: "prod-azithromycin-250",
@@ -325,6 +336,7 @@ export const products: readonly Product[] = [
     category: "Cardiovascular",
     stock: 75,
     requiresPrescription: true,
+    featured: true,
   },
   {
     id: "prod-atorvastatin-20",

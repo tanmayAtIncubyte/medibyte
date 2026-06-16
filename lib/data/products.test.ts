@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { products } from "@/data/products";
-import { findProductById, listProducts } from "@/lib/data/products";
+import {
+  FEATURED_LIMIT,
+  findProductById,
+  listFeaturedProducts,
+  listProducts,
+} from "@/lib/data/products";
 
 // Slice 2 — product accessors.
 // AC 3 (determinism / no runtime randomness), AC 4 (seed lives in plain
@@ -78,6 +83,40 @@ describe("findProductById", () => {
     }
 
     expect(findProductById("prod-ibuprofen-200")?.price).not.toBe(-1);
+  });
+});
+
+// MED-16: featured subset for the home page rail.
+describe("listFeaturedProducts", () => {
+  it("returns a non-empty, deterministic subset", () => {
+    const first = listFeaturedProducts();
+    expect(first.length).toBeGreaterThan(0);
+    expect(first).toEqual(listFeaturedProducts());
+  });
+
+  it("never returns more than FEATURED_LIMIT products", () => {
+    expect(listFeaturedProducts().length).toBeLessThanOrEqual(FEATURED_LIMIT);
+  });
+
+  it("returns only products explicitly flagged featured when any are flagged", () => {
+    const flaggedCount = products.filter((p) => p.featured === true).length;
+    expect(flaggedCount).toBeGreaterThan(0);
+
+    for (const product of listFeaturedProducts()) {
+      expect(product.featured).toBe(true);
+    }
+  });
+
+  it("includes both an OTC and an Rx product for a believable mix", () => {
+    const featured = listFeaturedProducts();
+    expect(featured.some((p) => p.type === "OTC")).toBe(true);
+    expect(featured.some((p) => p.type === "Rx")).toBe(true);
+  });
+
+  it("returns copies so mutating the result does not mutate the seed", () => {
+    const featured = listFeaturedProducts();
+    featured[0].price = -999;
+    expect(listFeaturedProducts()[0].price).not.toBe(-999);
   });
 });
 
