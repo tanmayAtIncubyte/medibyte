@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import {
-  readAccount,
+  readAccountForApi,
   updateAddress,
   updateInsurance,
 } from "@/lib/account/account-service";
@@ -18,7 +19,13 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
-  return NextResponse.json({ account: readAccount(user.id) });
+  // SEC_PHI_OVERFETCH: resolved at the boundary (the user lives here). When on
+  // for a non-admin, the response is padded with PHI the view never needs; clean
+  // / admin gets only the rendered fields.
+  const account = readAccountForApi(user.id, {
+    overfetchPhi: isBugActive("SEC_PHI_OVERFETCH", user),
+  });
+  return NextResponse.json({ account });
 }
 
 export async function PATCH(request: NextRequest) {

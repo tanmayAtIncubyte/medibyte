@@ -29,5 +29,20 @@
   "PERF_PRODUCTS_TTFB": false,
   "PERF_CART_WATERFALL": false,
   "PERF_OVERFETCH_PAYLOAD": false,
-  "PERF_NO_CACHE": false
+  "PERF_NO_CACHE": false,
+  "SEC_IDOR_ORDER": false,
+  "SEC_PHI_OVERFETCH": false,
+  "SEC_MISSING_ADMIN_AUTH": false,
+  "SEC_CREDS_IN_URL": false,
+  "SEC_TOKEN_LOCALSTORAGE": false,
+  "SEC_PRICE_TAMPER": false,
+  "UI_DESTRUCTIVE_NO_CONFIRM": false,
+  "UI_NO_SUBMIT_FEEDBACK": false,
+  "UI_MISLEADING_ICON": false,
+  "UI_FORM_CLEARS_ON_ERROR": false,
+  "UX_VAGUE_ERROR": false,
+  "UX_NO_ORDER_CONFIRM": false,
+  "UX_SURPRISE_TAX": false,
+  "UX_LOST_CHECKOUT_PROGRESS": false,
+  "UX_NO_PAGE_TOTAL": false
 }

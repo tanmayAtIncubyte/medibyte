@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { requireUser } from "@/lib/auth/guards";
+import { isBugActive } from "@/lib/bugs";
 import { getOrderForViewer } from "@/lib/data/orders";
 import { formatPrice } from "@/lib/format";
 
@@ -22,15 +23,23 @@ export default async function OrderDetailPage({
   const { id } = await params;
   const { placed } = await searchParams;
 
-  // Ownership enforced: a customer only sees their own order; anyone else's id
-  // (or an unknown id) resolves to null -> styled 404. The IDOR bug that drops
-  // this check is a Phase-4 toggle and is intentionally NOT built here.
-  const order = getOrderForViewer(id, { id: user.id, role: user.role });
+  // Ownership enforced by default: a customer only sees their own order; anyone
+  // else's id (or an unknown id) resolves to null -> styled 404. SEC_IDOR_ORDER:
+  // when on for a non-admin, the ownership check is dropped at this boundary so
+  // any order id resolves (leaking another customer's PII/PHI). Admins are never
+  // affected.
+  const order = getOrderForViewer(
+    id,
+    { id: user.id, role: user.role },
+    { dropOwnershipCheck: isBugActive("SEC_IDOR_ORDER", user) },
+  );
   if (!order) {
     notFound();
   }
 
-  const justPlaced = placed === "1";
+  // UX_NO_ORDER_CONFIRM: when on for a non-admin, suppress the post-checkout
+  // success banner so a freshly-placed order shows no clear "order placed" cue.
+  const justPlaced = placed === "1" && !isBugActive("UX_NO_ORDER_CONFIRM", user);
 
   return (
     <PageContainer>

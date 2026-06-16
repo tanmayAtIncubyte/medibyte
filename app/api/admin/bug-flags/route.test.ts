@@ -1,4 +1,11 @@
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -13,14 +20,15 @@ import type { SessionUser } from "@/lib/auth/accounts";
 // {reset:true} resets, {key,enabled} for a known key writes, unknown key → 400,
 // malformed body → 400.
 //
-// getAdminOrNull is mocked (we test the route, not auth internals). Its contract
-// is "return the admin user, or null when access should be denied", so a denied
-// caller (customer / logged-out) is modelled by resolving null — that is exactly
-// what the real guard does for a non-admin. The flag
-// writers run for real against a temp-dir flag file: process.cwd() is stubbed
-// before the route module is imported (vi.resetModules in beforeEach) so writes
-// land in the temp dir, never the repo's data/bug-flags.json. Each test asserts
-// the file state directly to prove "no write on denial".
+// getCurrentUser is mocked (we test the route, not auth internals). The route's
+// admin guard now resolves the current user itself and admits an admin (the
+// SEC_MISSING_ADMIN_AUTH bypass is always false for an admin and, with all flags
+// off, false for everyone). A denied caller (customer / logged-out) is modelled
+// by resolving a customer / null respectively. The flag writers run for real
+// against a temp-dir flag file: process.cwd() is stubbed before the route module
+// is imported (vi.resetModules in beforeEach) so writes land in the temp dir,
+// never the repo's data/bug-flags.json. Each test asserts the file state
+// directly to prove "no write on denial".
 
 const admin: SessionUser = {
   id: "user-admin",
@@ -29,11 +37,20 @@ const admin: SessionUser = {
   role: "admin",
 };
 
+const customer: SessionUser = {
+  id: "user-customer-dana",
+  name: "Dana",
+  email: "dana@example.test",
+  role: "customer",
+};
+
 const PROBE = "PROBE_NOOP";
 
-const getAdminOrNullMock = vi.fn<() => Promise<SessionUser | null>>();
-vi.mock("@/lib/auth/guards", () => ({
-  getAdminOrNull: () => getAdminOrNullMock(),
+// Stand-in for "denied": the route resolves the current user via getCurrentUser
+// and only an admin (or the SEC bypass, off here) passes the guard.
+const getCurrentUserMock = vi.fn<() => Promise<SessionUser | null>>();
+vi.mock("@/lib/auth/current-user", () => ({
+  getCurrentUser: () => getCurrentUserMock(),
 }));
 
 let tempRoot: string;
@@ -73,7 +90,7 @@ function malformedPostRequest(): Request {
 
 beforeEach(() => {
   vi.resetModules();
-  getAdminOrNullMock.mockReset();
+  getCurrentUserMock.mockReset();
   tempRoot = mkdtempSync(path.join(tmpdir(), "medibyte-route-"));
   mkdirSync(path.join(tempRoot, "data"), { recursive: true });
   cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(tempRoot);
@@ -87,7 +104,7 @@ afterEach(() => {
 
 describe("GET /api/admin/bug-flags — guard", () => {
   it("returns 200 with the current flag map for an admin", async () => {
-    getAdminOrNullMock.mockResolvedValue(admin);
+    getCurrentUserMock.mockResolvedValue(admin);
     const { GET } = await loadRoute();
 
     const response = await GET();
@@ -97,7 +114,7 @@ describe("GET /api/admin/bug-flags — guard", () => {
   });
 
   it("returns 403 for a logged-out visitor", async () => {
-    getAdminOrNullMock.mockResolvedValue(null);
+    getCurrentUserMock.mockResolvedValue(null);
     const { GET } = await loadRoute();
 
     expect((await GET()).status).toBe(403);
@@ -105,9 +122,10 @@ describe("GET /api/admin/bug-flags — guard", () => {
 });
 
 describe("POST /api/admin/bug-flags — guard denies non-admins with no write", () => {
-  // The guard returns null for a customer; the route must deny and not write.
+  // A signed-in customer is not an admin; with SEC_MISSING_ADMIN_AUTH off the
+  // route must deny and not write.
   it("returns 403 for a customer and does not create the flag file", async () => {
-    getAdminOrNullMock.mockResolvedValue(null);
+    getCurrentUserMock.mockResolvedValue(customer);
     const { POST } = await loadRoute();
 
     const response = await POST(postRequest({ key: PROBE, enabled: true }));
@@ -117,7 +135,7 @@ describe("POST /api/admin/bug-flags — guard denies non-admins with no write", 
   });
 
   it("returns 403 for a logged-out visitor and does not create the flag file", async () => {
-    getAdminOrNullMock.mockResolvedValue(null);
+    getCurrentUserMock.mockResolvedValue(null);
     const { POST } = await loadRoute();
 
     const response = await POST(postRequest({ key: PROBE, enabled: true }));
@@ -127,7 +145,7 @@ describe("POST /api/admin/bug-flags — guard denies non-admins with no write", 
   });
 
   it("does not let a denied caller reset the flags either", async () => {
-    getAdminOrNullMock.mockResolvedValue(null);
+    getCurrentUserMock.mockResolvedValue(null);
     const { POST } = await loadRoute();
 
     const response = await POST(postRequest({ reset: true }));
@@ -139,7 +157,7 @@ describe("POST /api/admin/bug-flags — guard denies non-admins with no write", 
 
 describe("POST /api/admin/bug-flags — admin actions", () => {
   it("writes a single flag and persists it for a {key,enabled} request", async () => {
-    getAdminOrNullMock.mockResolvedValue(admin);
+    getCurrentUserMock.mockResolvedValue(admin);
     const { POST } = await loadRoute();
 
     const response = await POST(postRequest({ key: PROBE, enabled: true }));
@@ -150,7 +168,7 @@ describe("POST /api/admin/bug-flags — admin actions", () => {
   });
 
   it("resets all flags to disabled for a {reset:true} request", async () => {
-    getAdminOrNullMock.mockResolvedValue(admin);
+    getCurrentUserMock.mockResolvedValue(admin);
     const { POST } = await loadRoute();
 
     await POST(postRequest({ key: PROBE, enabled: true }));
@@ -161,7 +179,7 @@ describe("POST /api/admin/bug-flags — admin actions", () => {
   });
 
   it("returns 400 for an unknown bug key and does not write it", async () => {
-    getAdminOrNullMock.mockResolvedValue(admin);
+    getCurrentUserMock.mockResolvedValue(admin);
     const { POST } = await loadRoute();
 
     const response = await POST(postRequest({ key: "NOT_A_REAL_BUG", enabled: true }));
@@ -172,16 +190,56 @@ describe("POST /api/admin/bug-flags — admin actions", () => {
   });
 
   it("returns 400 for a malformed request body", async () => {
-    getAdminOrNullMock.mockResolvedValue(admin);
+    getCurrentUserMock.mockResolvedValue(admin);
     const { POST } = await loadRoute();
 
     expect((await POST(malformedPostRequest())).status).toBe(400);
   });
 
   it("returns 400 when the body has neither reset nor a key/enabled pair", async () => {
-    getAdminOrNullMock.mockResolvedValue(admin);
+    getCurrentUserMock.mockResolvedValue(admin);
     const { POST } = await loadRoute();
 
     expect((await POST(postRequest({ foo: "bar" }))).status).toBe(400);
+  });
+});
+
+// SEC_MISSING_ADMIN_AUTH toggle. With the flag off (default), a customer /
+// logged-out caller is denied (covered above). With the flag ON, the guard is
+// dropped for non-admins so a customer can read and toggle flags — but an admin
+// is never affected and the panel still works (the bypass is inert for admins).
+describe("SEC_MISSING_ADMIN_AUTH toggle", () => {
+  function enableMissingAdminAuth(): void {
+    writeFileSync(flagFilePath(), JSON.stringify({ SEC_MISSING_ADMIN_AUTH: true }), "utf8");
+  }
+
+  it("flag on → a customer can GET the flags (guard dropped)", async () => {
+    getCurrentUserMock.mockResolvedValue(customer);
+    enableMissingAdminAuth();
+    const { GET } = await loadRoute();
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toHaveProperty(PROBE);
+  });
+
+  it("flag on → a customer can toggle a flag (guard dropped)", async () => {
+    getCurrentUserMock.mockResolvedValue(customer);
+    enableMissingAdminAuth();
+    const { POST } = await loadRoute();
+
+    const response = await POST(postRequest({ key: PROBE, enabled: true }));
+
+    expect(response.status).toBe(200);
+    expect(readFlagFile()[PROBE]).toBe(true);
+  });
+
+  it("flag on → a logged-out visitor can GET the flags (guard dropped)", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    enableMissingAdminAuth();
+    const { GET } = await loadRoute();
+
+    expect((await GET()).status).toBe(200);
   });
 });

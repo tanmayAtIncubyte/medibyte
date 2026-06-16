@@ -284,4 +284,58 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - How to spot it: DevTools Network — the `/api/products` response carries `Cache-Control: no-store`; the same request repeats (never served "from cache") on each navigation.
 
 <!-- BATCH 5: Security / Transport (HIPAA) -->
+
+> **Batch-5 defects are security/transport bugs.** Each toggles OFF a correct
+> protection that exists in the clean baseline; the admin always gets the
+> secure path (the bypass is inert for admins). Default OFF. The IDOR + PHI
+> over-fetch pair is a CHAIN (see notes).
+
+### SEC_IDOR_ORDER — Order detail drops the ownership check (IDOR) 🔗
+- Security / Difficult / HIPAA: **yes**
+- Location: `app/(storefront)/orders/[id]/page.tsx` resolves the flag and passes `dropOwnershipCheck` into `getOrderForViewer` (`lib/data/orders.ts` → `findOrderForViewer` in `lib/orders/order.ts`).
+- Trigger: As customer Dana, open one of your own orders to learn the order-id format (`MB-YYYYMMDD-NNNN`), then change the id in the URL to another customer's order (e.g. one of Omar's seeded orders).
+- Expected (correct / admin): a foreign (or unknown) order id resolves to `null` → the styled 404. A customer only ever sees their own orders; admins may see any.
+- Actual (buggy / customer): the ownership check is bypassed, so ANY existing order id renders in full — including that customer's shipping address (PII) and prescription block (PHI: patient name, DOB, prescribing doctor, Rx number).
+- How to spot it: change the order id in the URL to one you don't own and confirm someone else's order (and PHI) loads instead of a 404. This is a classic IDOR; the leaked order id is also the **chain source** for SEC_PHI_OVERFETCH.
+
+### SEC_PHI_OVERFETCH — Account API over-fetches PHI the view never needs 🔗
+- Security / Difficult / HIPAA: **yes**
+- Location: `app/api/account/route.ts` (GET) resolves the flag and passes `overfetchPhi` into `readAccountForApi` (`lib/account/account-service.ts`).
+- Trigger: As a customer, open `/account` (which calls `GET /api/account`) and inspect the JSON response in DevTools Network.
+- Expected (correct / admin): the response carries only the fields the view renders — addresses plus the three insurance fields (`provider`, `memberId`, `groupNumber`).
+- Actual (buggy / customer): the `insurance` object is padded with sensitive PHI the UI never displays — `subscriberSsn`, `dateOfBirth`, `diagnosisCodes[]`, `medicationHistory[]` — i.e. the API over-fetches/over-returns PHI that should stay server-side.
+- How to spot it: DevTools Network — the `/api/account` response body contains PHI fields with no on-screen counterpart. **Chain:** an attacker who used SEC_IDOR_ORDER to enumerate/confirm a victim then leans on this over-fetch to pull PHI the screens never show.
+
+### SEC_MISSING_ADMIN_AUTH — Admin bug-flags API drops its admin guard
+- Security / Difficult / HIPAA: no
+- Location: `app/api/admin/bug-flags/route.ts` — the guard (`adminGuardPasses`) resolves the current user and the flag at the route boundary. The bypass is inert for admins, so the admin panel never breaks.
+- Trigger: As a signed-in customer (or logged out), call `GET`/`POST /api/admin/bug-flags` directly (e.g. via DevTools/curl).
+- Expected (correct / admin): non-admins get **403** for both read and toggle; only an admin can read or change flags.
+- Actual (buggy / customer): the admin guard is dropped for non-admins, so a customer can read the full flag map AND toggle any flag (`{key,enabled}` / `{reset:true}`) — a privilege-escalation hole that lets a customer turn other bugs on/off.
+- How to spot it: as a non-admin, hit the endpoint and observe a 200 + flag map instead of 403; toggling a flag actually persists.
+
+### SEC_CREDS_IN_URL — Login sends credentials in the URL query string
+- Security / Moderate / HIPAA: no
+- Location: `components/auth/credentials-form.tsx` (`credentialsInUrl` prop, resolved on `app/login/page.tsx`); companion GET handler added to `app/api/auth/login/route.ts` so the buggy flow works end-to-end.
+- Trigger: As a customer, sign in at `/login` and watch the request in DevTools Network / the URL bar.
+- Expected (correct / admin): credentials travel in the **POST body** only (`POST /api/auth/login`); they never appear in the URL.
+- Actual (buggy / customer): the form submits a **GET** with `?email=…&password=…`, so the email and password are exposed in the URL bar, browser history, referrer headers, and server access logs.
+- How to spot it: DevTools Network — the login request is a GET whose query string contains the plaintext password; also visible in the address bar / history.
+
+### SEC_TOKEN_LOCALSTORAGE — Client copies the session identity into localStorage
+- Security / Moderate / HIPAA: no
+- Location: `components/auth/credentials-form.tsx` (`persistIdentityToLocalStorage` prop, resolved on `app/login/page.tsx`).
+- Trigger: As a customer, sign in at `/login`, then check `localStorage` in DevTools (Application → Local Storage).
+- Expected (correct / admin): the session lives only in the **httpOnly** `mb_session` cookie (not JS-readable); nothing is written to `localStorage`.
+- Actual (buggy / customer): on a successful login the identity (`user` object) is also written to `localStorage` under `mb_identity`, where any XSS can read/exfiltrate it.
+- How to spot it: DevTools Application tab — an `mb_identity` entry appears in Local Storage after login (it should not exist); a quick `localStorage.getItem("mb_identity")` in the console returns the identity.
+
+### SEC_PRICE_TAMPER — Checkout trusts a client-supplied total
+- Security / Difficult / HIPAA: no
+- Location: `app/api/checkout/route.ts` reads an optional `clientTotal` from the body and passes `trustClientTotal` into `placeOrder` (`lib/orders/place-order.ts`).
+- Trigger: As a customer, intercept/replay `POST /api/checkout` with a `clientTotal` field set to an arbitrary low value (e.g. `0.01`).
+- Expected (correct / admin): the server **recomputes** the order total from the cart and ignores any client-supplied `clientTotal`; the order is always priced server-side.
+- Actual (buggy / customer): the server trusts the client `clientTotal` and snapshots it onto the order, so a tampered request underpays while still placing the order.
+- How to spot it: tamper with the checkout request body (add `clientTotal`) and confirm the resulting order's total reflects the tampered value instead of the recomputed cart total. (The clean baseline never sends `clientTotal`, so normal checkout is unaffected.)
+
 <!-- BATCH 6: UI antipattern + UX -->

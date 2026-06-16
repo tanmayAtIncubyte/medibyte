@@ -83,23 +83,37 @@ export function sortOrdersNewestFirst(orders: readonly Order[]): Order[] {
 }
 
 /**
- * Resolves a single order for a viewer with OWNERSHIP ENFORCED. An order is
- * returned only when it belongs to the requesting customer; another customer's
- * id resolves to null (the page renders 404). Admins may view any order.
- *
- * This is the CLEAN baseline. The IDOR vulnerability that drops the ownership
- * check is a Phase-4 toggle and is intentionally NOT built here.
+ * SEC_IDOR_ORDER: when `dropOwnershipCheck` is set, the customer ownership check
+ * is skipped, so ANY existing order id (incl. another customer's) resolves —
+ * leaking that order's PII/PHI. The page (which has the user) resolves the flag
+ * and passes the boolean in; admins always get the enforced path.
+ */
+export type FindOrderBugs = {
+  dropOwnershipCheck?: boolean;
+};
+
+/**
+ * Resolves a single order for a viewer with OWNERSHIP ENFORCED (clean default).
+ * An order is returned only when it belongs to the requesting customer; another
+ * customer's id resolves to null (the page renders 404). Admins may view any
+ * order. When the IDOR bug is on (`dropOwnershipCheck`), the ownership check is
+ * bypassed for the (non-admin) caller.
  */
 export function findOrderForViewer(
   orders: readonly Order[],
   orderId: string,
   viewer: { id: string; role: "admin" | "customer" },
+  bugs: FindOrderBugs = {},
 ): Order | null {
   const order = orders.find((candidate) => candidate.id === orderId);
   if (!order) {
     return null;
   }
   if (viewer.role === "admin") {
+    return order;
+  }
+  // IDOR: ownership check dropped — return any order regardless of owner.
+  if (bugs.dropOwnershipCheck) {
     return order;
   }
   return order.userId === viewer.id ? order : null;

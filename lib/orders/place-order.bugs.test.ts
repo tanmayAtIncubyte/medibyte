@@ -194,3 +194,57 @@ describe("FN_PARTIAL_CHECKOUT toggle", () => {
     expect(getCart("adm")).toEqual([]); // admin cart cleared (clean)
   });
 });
+
+// ---- SEC_PRICE_TAMPER -----------------------------------------------------
+
+async function placeWithPriceTamper(
+  flagsValue: BugFlags,
+  user: { id: string; role: "admin" | "customer" },
+  sessionId: string,
+  clientTotal: number,
+) {
+  return placeOrder(
+    sessionId,
+    user,
+    { shipping, prescriptions: {} },
+    {
+      now,
+      clientTotal,
+      bugs: {
+        trustClientTotal: isBugActiveWith(flagsValue, "SEC_PRICE_TAMPER", user),
+      },
+    },
+  );
+}
+
+describe("SEC_PRICE_TAMPER toggle", () => {
+  const ON = flags({ SEC_PRICE_TAMPER: true });
+  const OFF = flags({ SEC_PRICE_TAMPER: false });
+  // ibuprofen is 6.99; 2 of them => subtotal 13.98 + 8% tax 1.12 => 15.10.
+  const SERVER_TOTAL = 15.1;
+  const TAMPERED = 0.01;
+
+  it("flag off → the server-recomputed total is used, client total ignored, for everyone", async () => {
+    addToCart("cust", "prod-ibuprofen-200", 2);
+    const customer = await placeWithPriceTamper(OFF, CUSTOMER, "cust", TAMPERED);
+    expect(customer.ok).toBe(true);
+    if (customer.ok) expect(customer.order.totals.total).toBeCloseTo(SERVER_TOTAL, 2);
+
+    addToCart("adm", "prod-ibuprofen-200", 2);
+    const admin = await placeWithPriceTamper(OFF, ADMIN, "adm", TAMPERED);
+    expect(admin.ok).toBe(true);
+    if (admin.ok) expect(admin.order.totals.total).toBeCloseTo(SERVER_TOTAL, 2);
+  });
+
+  it("flag on → a customer's tampered total is trusted; admin always recomputes", async () => {
+    addToCart("cust", "prod-ibuprofen-200", 2);
+    const customer = await placeWithPriceTamper(ON, CUSTOMER, "cust", TAMPERED);
+    expect(customer.ok).toBe(true);
+    if (customer.ok) expect(customer.order.totals.total).toBe(TAMPERED); // underpaid
+
+    addToCart("adm", "prod-ibuprofen-200", 2);
+    const admin = await placeWithPriceTamper(ON, ADMIN, "adm", TAMPERED);
+    expect(admin.ok).toBe(true);
+    if (admin.ok) expect(admin.order.totals.total).toBeCloseTo(SERVER_TOTAL, 2); // clean
+  });
+});

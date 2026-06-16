@@ -49,7 +49,12 @@ export type PlaceOrderDeps = {
     // FN_PARTIAL_CHECKOUT: create the order but DON'T clear the cart, leaving an
     // inconsistent post-checkout state.
     partialCheckout?: boolean;
+    // SEC_PRICE_TAMPER: trust a client-supplied total instead of the
+    // server-recomputed cart total, so a tampered request underpays.
+    trustClientTotal?: boolean;
   };
+  // Client-supplied total (only honored when bugs.trustClientTotal is set).
+  clientTotal?: number;
 };
 
 export async function placeOrder(
@@ -96,9 +101,18 @@ export async function placeOrder(
     };
   }
 
+  // SEC_PRICE_TAMPER: the clean path ALWAYS prices the order from the
+  // server-recomputed cart. When the bug is on and the client sent a total,
+  // trust that client value instead — so a tampered request can underpay while
+  // still receiving the goods. Admins / flag-off always recompute server-side.
+  const pricedCart =
+    bugs.trustClientTotal && typeof deps.clientTotal === "number"
+      ? { ...cart, total: deps.clientTotal }
+      : cart;
+
   const order = createOrder({
     userId: user.id,
-    cart,
+    cart: pricedCart,
     shipping: validation.shipping,
     prescriptions: validation.prescriptions,
     placedAt: deps.now ?? new Date(),
