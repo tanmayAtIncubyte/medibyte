@@ -7,6 +7,7 @@ import { verifySession } from "@/lib/auth/session";
 import type { GatingUser } from "@/lib/bugs";
 import { isBugActive } from "@/lib/bugs";
 import { findProductById } from "@/lib/data/products";
+import { getAvailableStock } from "@/lib/data/stock-store";
 import {
   addToCart,
   getCart,
@@ -64,7 +65,13 @@ export async function POST(request: NextRequest) {
   // boundary (the signed user lives here) and never active for admin.
   const oosAddable = isBugActive("FN_OOS_ADDABLE", user);
   const product = findProductById(String(productId ?? ""));
-  if (!oosAddable && product && stockStatus(product.stock) === "out-of-stock") {
+  // Available stock = seed stock minus what's already reserved by placed orders,
+  // so a product that has sold out (via the order flow) is no longer addable.
+  if (
+    !oosAddable &&
+    product &&
+    stockStatus(getAvailableStock(product.id)) === "out-of-stock"
+  ) {
     return NextResponse.json(
       { error: "This item is out of stock." },
       { status: 409 },

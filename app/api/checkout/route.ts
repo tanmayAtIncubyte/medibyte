@@ -32,16 +32,31 @@ export async function POST(request: NextRequest) {
 
   // Resolve seeded-bug flags here (the user lives at this boundary) and pass
   // plain booleans into the pure order orchestration; admins are never affected.
-  const result = placeOrder(sessionId, user, input, {
+  const result = await placeOrder(sessionId, user, input, {
     bugs: {
       taxFloor: isBugActive("FN_TAX_FLOOR", user),
       ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
       skipPostalValidation: isBugActive("FN_POSTAL_UNVALIDATED", user),
+      taxBeforeDiscount: isBugActive("FN_TAX_BEFORE_DISCOUNT", user),
+      couponNegative: isBugActive("FN_COUPON_NEGATIVE", user),
+      roundingEdge: isBugActive("FN_TOTAL_ROUNDING_EDGE", user),
+      oversell: isBugActive("FN_OVERSELL", user),
+      concurrentDoubleSpend: isBugActive("FN_CONCURRENT_DOUBLESPEND", user),
+      partialCheckout: isBugActive("FN_PARTIAL_CHECKOUT", user),
     },
   });
   if (!result.ok) {
     if (result.reason === "empty-cart") {
       return NextResponse.json({ error: "Your cart is empty." }, { status: 422 });
+    }
+    if (result.reason === "out-of-stock") {
+      return NextResponse.json(
+        {
+          error: "Some items are no longer available in the requested quantity.",
+          shortages: result.shortages,
+        },
+        { status: 409 },
+      );
     }
     return NextResponse.json(
       { error: "Please fix the highlighted fields.", errors: result.errors },
