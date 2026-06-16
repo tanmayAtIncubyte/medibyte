@@ -48,7 +48,7 @@ Establishes the canonical "deterministic mock data, real HTTP, in-memory writes"
 
 ---
 
-### Slice 3: Bug-toggle infrastructure (the core idea)
+### Slice 3: Bug-toggle infrastructure (the core idea) [x]
 The registry, the flag file, and `isBugActive` — built before any feature so every later feature gates its buggy path through one helper. No real bugs yet; verified with a throwaway test/probe key.
 
 - [ ] `lib/bug-registry.ts` exports a canonical list where each entry has at minimum: `key`, `title`, `category`, `difficulty`, `location`, and `hipaa` (boolean)
