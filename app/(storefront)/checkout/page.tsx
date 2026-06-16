@@ -58,6 +58,14 @@ export default async function CheckoutPage() {
 
   const applied = cart.appliedCoupon;
 
+  // UI antipattern / UX seeded-bug switches resolved at the boundary (the user
+  // lives here) and passed into the (otherwise clean) checkout form; admins
+  // always get the correct behavior.
+  const noSubmitFeedback = isBugActive("UI_NO_SUBMIT_FEEDBACK", user);
+  const clearFieldsOnError = isBugActive("UI_FORM_CLEARS_ON_ERROR", user);
+  const vagueError = isBugActive("UX_VAGUE_ERROR", user);
+  const loseProgressOnBack = isBugActive("UX_LOST_CHECKOUT_PROGRESS", user);
+
   return (
     <PageContainer>
       <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
@@ -74,6 +82,10 @@ export default async function CheckoutPage() {
           <CheckoutForm
             rxItems={rx}
             defaultFullName={user?.name ?? ""}
+            noSubmitFeedback={noSubmitFeedback}
+            clearFieldsOnError={clearFieldsOnError}
+            vagueError={vagueError}
+            loseProgressOnBack={loseProgressOnBack}
           />
         </div>
 
