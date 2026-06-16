@@ -81,9 +81,20 @@ export function couponDiscount(coupon: Coupon, subtotal: number): number {
   if (subtotal <= 0) {
     return 0;
   }
-  const raw =
-    coupon.type === "percent"
-      ? subtotal * (coupon.value / 100)
-      : coupon.value;
-  return roundMoney(Math.min(Math.max(0, raw), subtotal));
+  return roundMoney(Math.min(Math.max(0, rawCouponDiscount(coupon, subtotal)), subtotal));
+}
+
+/**
+ * The UNROUNDED, UNCLAMPED dollar discount for a coupon at a given subtotal.
+ * Percentage coupons keep full floating precision (needed by the
+ * FN_TOTAL_ROUNDING_EDGE rounding-order edge); fixed coupons return their face
+ * value even when it exceeds the subtotal (needed by FN_COUPON_NEGATIVE). The
+ * clean `couponDiscount` above rounds and clamps this; only the gated buggy
+ * paths consume the raw value. Callers resolve the flags at the boundary.
+ */
+export function rawCouponDiscount(coupon: Coupon, subtotal: number): number {
+  if (subtotal <= 0) {
+    return 0;
+  }
+  return coupon.type === "percent" ? subtotal * (coupon.value / 100) : coupon.value;
 }

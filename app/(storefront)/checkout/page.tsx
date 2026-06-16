@@ -22,6 +22,9 @@ export default async function CheckoutPage() {
   const cart = getCartView(sessionId ?? "__none__", {
     taxFloor: isBugActive("FN_TAX_FLOOR", user),
     ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
+    taxBeforeDiscount: isBugActive("FN_TAX_BEFORE_DISCOUNT", user),
+    couponNegative: isBugActive("FN_COUPON_NEGATIVE", user),
+    roundingEdge: isBugActive("FN_TOTAL_ROUNDING_EDGE", user),
   });
 
   if (cart.lines.length === 0) {

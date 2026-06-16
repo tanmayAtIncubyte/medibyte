@@ -23,6 +23,9 @@ export default async function CartPage() {
     totalStale: isBugActive("FN_CART_TOTAL_STALE", user),
     taxFloor: isBugActive("FN_TAX_FLOOR", user),
     ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
+    taxBeforeDiscount: isBugActive("FN_TAX_BEFORE_DISCOUNT", user),
+    couponNegative: isBugActive("FN_COUPON_NEGATIVE", user),
+    roundingEdge: isBugActive("FN_TOTAL_ROUNDING_EDGE", user),
   });
   const applied = cart.appliedCoupon;
 

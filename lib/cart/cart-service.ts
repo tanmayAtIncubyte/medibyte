@@ -6,7 +6,12 @@ import {
   type CartLine,
   type CartTotals,
 } from "@/lib/cart/totals";
-import { couponDiscount, findCoupon, validateCoupon } from "@/lib/coupons/coupon";
+import {
+  couponDiscount,
+  findCoupon,
+  rawCouponDiscount,
+  validateCoupon,
+} from "@/lib/coupons/coupon";
 import { findProductById } from "@/lib/data/products";
 import { getCart, getCouponCode } from "@/lib/data/session-store";
 
@@ -32,6 +37,10 @@ export type CartViewBugs = {
   taxFloor?: boolean;
   ignoreExpiry?: boolean;
   totalStale?: boolean;
+  // Batch-2 totals bugs, plumbed through to computeCartTotals.
+  taxBeforeDiscount?: boolean; // FN_TAX_BEFORE_DISCOUNT
+  couponNegative?: boolean; // FN_COUPON_NEGATIVE
+  roundingEdge?: boolean; // FN_TOTAL_ROUNDING_EDGE
 };
 
 /**
@@ -55,8 +64,24 @@ export function getCartView(sessionId: string, bugs: CartViewBugs = {}): CartVie
   // lines that caps the first line at quantity 1, so the displayed total does
   // not move when that line's quantity changes (subtotal/lines still update).
   const totalsLines = bugs.totalStale ? staleLines(lines) : lines;
-  const totals = computeCartTotals(totalsLines, applied?.discount ?? 0, {
+
+  // FN_COUPON_NEGATIVE: feed the UNCLAMPED raw coupon discount so totals (with
+  // its clamp disabled) can go negative. FN_TOTAL_ROUNDING_EDGE: pass the
+  // UNROUNDED raw discount so totals can build the taxed base from it. Both fall
+  // back to the clean rounded+clamped discount when their flags are off.
+  const rawDiscount = applied
+    ? rawCouponDiscount(applied.coupon, subtotal)
+    : 0;
+  const discountForTotals = bugs.couponNegative
+    ? rawDiscount
+    : applied?.discount ?? 0;
+
+  const totals = computeCartTotals(totalsLines, discountForTotals, {
     taxFloor: bugs.taxFloor,
+    taxBeforeDiscount: bugs.taxBeforeDiscount,
+    couponNegative: bugs.couponNegative,
+    roundingEdge: bugs.roundingEdge,
+    rawDiscount,
   });
 
   return {
