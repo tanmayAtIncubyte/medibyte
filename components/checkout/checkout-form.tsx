@@ -6,6 +6,8 @@ import { CreditCard, FileText, Truck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { validatePrescription, validateShipping } from "@/lib/orders/checkout";
+import { validatePayment } from "@/lib/payments/payment";
 
 type RxItem = { productId: string; productName: string };
 
@@ -56,6 +58,33 @@ export function CheckoutForm({
         prescriptionNumber: str(form, `prescription.${item.productId}.prescriptionNumber`),
         notes: str(form, `prescription.${item.productId}.notes`),
       };
+    }
+
+    const payment = {
+      cardName: str(form, "mock.cardName"),
+      cardNumber: str(form, "mock.cardNumber"),
+      expiry: str(form, "mock.expiry"),
+      cvc: str(form, "mock.cvc"),
+    };
+
+    // Validate everything on the client before placing the order. Card data is
+    // never sent to the server (no card data is stored); shipping + PHI are
+    // re-validated server-side as well. No order is created unless all pass.
+    const clientErrors: FieldErrors = {
+      ...validateShipping(shipping),
+      ...validatePayment(payment, new Date()),
+    };
+    for (const item of rxItems) {
+      Object.assign(
+        clientErrors,
+        validatePrescription(item.productId, prescriptions[item.productId]),
+      );
+    }
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors);
+      setFormError("Please fix the highlighted fields.");
+      setSubmitting(false);
+      return;
     }
 
     try {
@@ -199,37 +228,24 @@ export function CheckoutForm({
         description="This is a demo store — no real payment is processed and no card data is stored."
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label htmlFor="mock.cardName" className="block text-sm font-medium text-foreground">
-              Name on card
-            </label>
-            <Input id="mock.cardName" name="mock.cardName" className="mt-1.5" autoComplete="off" />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="mock.cardNumber" className="block text-sm font-medium text-foreground">
-              Card number
-            </label>
-            <Input
-              id="mock.cardNumber"
-              name="mock.cardNumber"
-              inputMode="numeric"
-              placeholder="4242 4242 4242 4242"
-              className="mt-1.5"
-              autoComplete="off"
-            />
-          </div>
-          <div>
-            <label htmlFor="mock.expiry" className="block text-sm font-medium text-foreground">
-              Expiry
-            </label>
-            <Input id="mock.expiry" name="mock.expiry" placeholder="MM/YY" className="mt-1.5" />
-          </div>
-          <div>
-            <label htmlFor="mock.cvc" className="block text-sm font-medium text-foreground">
-              CVC
-            </label>
-            <Input id="mock.cvc" name="mock.cvc" placeholder="123" className="mt-1.5" />
-          </div>
+          <Field
+            name="mock.cardName"
+            label="Name on card"
+            errors={errors}
+            autoComplete="off"
+            className="sm:col-span-2"
+          />
+          <Field
+            name="mock.cardNumber"
+            label="Card number"
+            errors={errors}
+            inputMode="numeric"
+            placeholder="4242 4242 4242 4242"
+            autoComplete="off"
+            className="sm:col-span-2"
+          />
+          <Field name="mock.expiry" label="Expiry" errors={errors} placeholder="MM/YY" />
+          <Field name="mock.cvc" label="CVC" errors={errors} inputMode="numeric" placeholder="123" />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           Mock payment — clicking “Place order” will not charge anything.
@@ -273,6 +289,8 @@ function Field({
   type = "text",
   defaultValue,
   autoComplete,
+  placeholder,
+  inputMode,
   className,
 }: {
   name: string;
@@ -281,6 +299,8 @@ function Field({
   type?: string;
   defaultValue?: string;
   autoComplete?: string;
+  placeholder?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   className?: string;
 }) {
   const error = errors[name];
@@ -296,6 +316,8 @@ function Field({
         type={type}
         defaultValue={defaultValue}
         autoComplete={autoComplete}
+        placeholder={placeholder}
+        inputMode={inputMode}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         className="mt-1.5"
