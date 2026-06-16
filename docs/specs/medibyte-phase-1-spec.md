@@ -64,7 +64,7 @@ The registry, the flag file, and `isBugActive` — built before any feature so e
 
 ---
 
-### Slice 4: Lightweight cookie auth with admin/customer roles
+### Slice 4: Lightweight cookie auth with admin/customer roles [x]
 Custom signed-cookie session keyed off the seed users, exposing the current user (with role) that `isBugActive` and the admin panel depend on.
 
 - [ ] A visitor can log in from `/login` using credentials that match a seed user
