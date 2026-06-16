@@ -245,6 +245,481 @@ All flags are listed below, **grouped by category**. Columns:
 
 ---
 
+## 6. Clean vs buggy reference screenshots
+
+> Annotated clean-vs-buggy screenshots for **every flag**, grouped by category. Each
+> **buggy** shot is the customer view (flag ON) with a **thick orange callout box** drawn
+> around the exact buggy element plus a short label naming what to look at; each **clean**
+> shot is the admin/correct view with a green "correct" callout. Network/header/localStorage/
+> timing-only bugs (`PERF_*`, several `SEC_*`, `FN_QTY_NONPOSITIVE`, `FN_OOS_ADDABLE`,
+> `FN_CONCURRENT_DOUBLESPEND`) have no on-screen difference, so their callout boxes the
+> relevant control/screen and the label says "observe in DevTools" with the captured evidence.
+> Files live in `private/bug-shots/<KEY>-buggy.png` / `-clean.png`.
+
+### 6.1 Functional
+
+#### `FN_PRICE_DECIMALS` — Prices render with one decimal / no cent rounding
+
+Prices show one decimal instead of cents (e.g. $10.5 not $10.49).
+  
+_Where:_ `/products and /products/[id]`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_PRICE_DECIMALS buggy](../private/bug-shots/FN_PRICE_DECIMALS-buggy.png) | ![FN_PRICE_DECIMALS clean](../private/bug-shots/FN_PRICE_DECIMALS-clean.png) |
+
+#### `FN_PRICE_SORT_LEXICAL` — Price sort compares prices as strings (lexical)
+
+Sorting by price orders lexically, so $10 sorts before $3.
+  
+_Where:_ `/products (sort: Price Low→High / High→Low)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_PRICE_SORT_LEXICAL buggy](../private/bug-shots/FN_PRICE_SORT_LEXICAL-buggy.png) | ![FN_PRICE_SORT_LEXICAL clean](../private/bug-shots/FN_PRICE_SORT_LEXICAL-clean.png) |
+
+#### `FN_PAGINATION_OFFBYONE` — Pagination window skips one item at the page boundary
+
+The first product is dropped and each page boundary skips one item.
+  
+_Where:_ `/products (paging across pages)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_PAGINATION_OFFBYONE buggy](../private/bug-shots/FN_PAGINATION_OFFBYONE-buggy.png) | ![FN_PAGINATION_OFFBYONE clean](../private/bug-shots/FN_PAGINATION_OFFBYONE-clean.png) |
+
+#### `FN_CART_BADGE_LINES` — Header cart badge counts line items, not total quantity
+
+Cart badge counts distinct lines, not total quantity (qty 3 shows 1).
+  
+_Where:_ `Site header (badge) vs /cart Subtotal`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_CART_BADGE_LINES buggy](../private/bug-shots/FN_CART_BADGE_LINES-buggy.png) | ![FN_CART_BADGE_LINES clean](../private/bug-shots/FN_CART_BADGE_LINES-clean.png) |
+
+#### `FN_INSTOCK_AT_ZERO` — Shows 'In stock' when stock is zero
+
+A zero-stock product shows 'In stock' instead of 'Out of stock'.
+  
+_Where:_ `/products + /products/[id] (e.g. Daily Fiber Supplement Powder)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_INSTOCK_AT_ZERO buggy](../private/bug-shots/FN_INSTOCK_AT_ZERO-buggy.png) | ![FN_INSTOCK_AT_ZERO clean](../private/bug-shots/FN_INSTOCK_AT_ZERO-clean.png) |
+
+#### `FN_NORESULTS_BLANK` — No 'no results' message shown on an empty search
+
+An empty search renders a blank area with no guidance or clear-filters link.
+  
+_Where:_ `/products (search a term that matches nothing, e.g. 'zzzzz')`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_NORESULTS_BLANK buggy](../private/bug-shots/FN_NORESULTS_BLANK-buggy.png) | ![FN_NORESULTS_BLANK clean](../private/bug-shots/FN_NORESULTS_BLANK-clean.png) |
+
+#### `FN_ORDER_DATE_RAW` — Order date shown as a raw ISO timestamp
+
+Order date shows a raw ISO string (2026-01-15T09:30:00.000Z) not a friendly date.
+  
+_Where:_ `/orders`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_ORDER_DATE_RAW buggy](../private/bug-shots/FN_ORDER_DATE_RAW-buggy.png) | ![FN_ORDER_DATE_RAW clean](../private/bug-shots/FN_ORDER_DATE_RAW-clean.png) |
+
+#### `FN_TRIPWIRE_COPY` — Product detail copy contradicts the Rx/OTC badge (reading tripwire)
+
+An added sentence contradicts the Rx/OTC badge (Rx item claims no Rx needed, etc.).
+  
+_Where:_ `/products/[id] (description area)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_TRIPWIRE_COPY buggy](../private/bug-shots/FN_TRIPWIRE_COPY-buggy.png) | ![FN_TRIPWIRE_COPY clean](../private/bug-shots/FN_TRIPWIRE_COPY-clean.png) |
+
+#### `FN_QTY_NONPOSITIVE` — Cart quantity stepper accepts zero / negative quantities
+
+PATCH persists a zero/negative quantity instead of removing the line.
+  
+_Where:_ `/cart (drop a line to 0) — PATCH /api/session/cart`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_QTY_NONPOSITIVE buggy](../private/bug-shots/FN_QTY_NONPOSITIVE-buggy.png) | ![FN_QTY_NONPOSITIVE clean](../private/bug-shots/FN_QTY_NONPOSITIVE-clean.png) |
+
+#### `FN_CART_TOTAL_STALE` — Cart total does not recompute after a quantity change
+
+Total ignores the first line's quantity, so it disagrees with the subtotal.
+  
+_Where:_ `/cart (raise the first line's quantity, watch Order summary)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_CART_TOTAL_STALE buggy](../private/bug-shots/FN_CART_TOTAL_STALE-buggy.png) | ![FN_CART_TOTAL_STALE clean](../private/bug-shots/FN_CART_TOTAL_STALE-clean.png) |
+
+#### `FN_TAX_FLOOR` — Tax is floored to cents instead of rounded
+
+Tax is floored down a cent (e.g. $0.80 instead of $0.81).
+  
+_Where:_ `/cart, /checkout (Tax row)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_TAX_FLOOR buggy](../private/bug-shots/FN_TAX_FLOOR-buggy.png) | ![FN_TAX_FLOOR clean](../private/bug-shots/FN_TAX_FLOOR-clean.png) |
+
+#### `FN_EXPIRED_COUPON_OK` — Expired coupon still applies
+
+An expired coupon is accepted and its discount applies.
+  
+_Where:_ `/cart (apply expired code SPRING2023)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_EXPIRED_COUPON_OK buggy](../private/bug-shots/FN_EXPIRED_COUPON_OK-buggy.png) | ![FN_EXPIRED_COUPON_OK clean](../private/bug-shots/FN_EXPIRED_COUPON_OK-clean.png) |
+
+#### `FN_OOS_ADDABLE` — Out-of-stock item can still be added to the cart
+
+Adding a 0-stock item returns 201 and the item lands in the cart (should be 409).
+  
+_Where:_ `/products → add a 0-stock item — POST /api/session/cart`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_OOS_ADDABLE buggy](../private/bug-shots/FN_OOS_ADDABLE-buggy.png) | ![FN_OOS_ADDABLE clean](../private/bug-shots/FN_OOS_ADDABLE-clean.png) |
+
+#### `FN_POSTAL_UNVALIDATED` — Postal code skips required-field validation at checkout
+
+Checkout is accepted with a blank postal code (server skips the required check).
+  
+_Where:_ `/checkout (submit with postal code blank) — POST /api/checkout`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_POSTAL_UNVALIDATED buggy](../private/bug-shots/FN_POSTAL_UNVALIDATED-buggy.png) | ![FN_POSTAL_UNVALIDATED clean](../private/bug-shots/FN_POSTAL_UNVALIDATED-clean.png) |
+
+#### `FN_TAX_BEFORE_DISCOUNT` — Tax computed on the pre-discount subtotal (overcharge)
+
+With a coupon, tax is charged on the pre-discount subtotal, overcharging the customer.
+  
+_Where:_ `/cart, /checkout (apply a coupon, e.g. SAVE10)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_TAX_BEFORE_DISCOUNT buggy](../private/bug-shots/FN_TAX_BEFORE_DISCOUNT-buggy.png) | ![FN_TAX_BEFORE_DISCOUNT clean](../private/bug-shots/FN_TAX_BEFORE_DISCOUNT-clean.png) |
+
+#### `FN_COUPON_NEGATIVE` — Discount not clamped to subtotal → negative total
+
+Discount is not clamped to subtotal, so the total can go negative. Note: needs a coupon worth more than the cart subtotal to actually observe a negative total; default seed coupons won't trigger it without a reviewer-seeded high-value coupon.
+  
+_Where:_ `/cart, /checkout (fixed-dollar coupon > subtotal)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_COUPON_NEGATIVE buggy](../private/bug-shots/FN_COUPON_NEGATIVE-buggy.png) | ![FN_COUPON_NEGATIVE clean](../private/bug-shots/FN_COUPON_NEGATIVE-clean.png) |
+
+#### `FN_FILTER_LOST_ON_PAGE` — Paginating drops the active filter/search
+
+Page links drop q/category/type/sort, so paging lands on the unfiltered catalog.
+  
+_Where:_ `/products (apply a filter, then click Next / page 2)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_FILTER_LOST_ON_PAGE buggy](../private/bug-shots/FN_FILTER_LOST_ON_PAGE-buggy.png) | ![FN_FILTER_LOST_ON_PAGE clean](../private/bug-shots/FN_FILTER_LOST_ON_PAGE-clean.png) |
+
+#### `FN_PAGE_COUNT_UNFILTERED` — Page count / total uses the unfiltered catalog
+
+'Showing N of M' and the pager count the full catalog; later pages render empty.
+  
+_Where:_ `/products (filter to a small result set)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_PAGE_COUNT_UNFILTERED buggy](../private/bug-shots/FN_PAGE_COUNT_UNFILTERED-buggy.png) | ![FN_PAGE_COUNT_UNFILTERED clean](../private/bug-shots/FN_PAGE_COUNT_UNFILTERED-clean.png) |
+
+#### `FN_OVERSELL` — Order can exceed available stock (no stock check)
+
+Stock check is skipped, so an order for more units than exist still succeeds.
+  
+_Where:_ `/checkout (order a quantity above stock) — POST /api/checkout`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_OVERSELL buggy](../private/bug-shots/FN_OVERSELL-buggy.png) | ![FN_OVERSELL clean](../private/bug-shots/FN_OVERSELL-clean.png) |
+
+#### `FN_CONCURRENT_DOUBLESPEND` — Concurrent orders double-spend the same stock (lost atomicity)
+
+Two near-simultaneous orders for the last units both succeed (stock double-spent). A ~300ms real race window between check and commit makes it reproducible by rapidly double-submitting checkout; also catchable by code review.
+  
+_Where:_ `POST /api/checkout (rapid double-submit for the last units)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_CONCURRENT_DOUBLESPEND buggy](../private/bug-shots/FN_CONCURRENT_DOUBLESPEND-buggy.png) | ![FN_CONCURRENT_DOUBLESPEND clean](../private/bug-shots/FN_CONCURRENT_DOUBLESPEND-clean.png) |
+
+#### `FN_TOTAL_ROUNDING_EDGE` — Wrong total only at specific coupon+tax values (rounding-order edge)
+
+Total is off by a cent only at specific subtotal+coupon values; most carts are correct.
+  
+_Where:_ `/cart, /checkout (edge subtotal + percent coupon)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_TOTAL_ROUNDING_EDGE buggy](../private/bug-shots/FN_TOTAL_ROUNDING_EDGE-buggy.png) | ![FN_TOTAL_ROUNDING_EDGE clean](../private/bug-shots/FN_TOTAL_ROUNDING_EDGE-clean.png) |
+
+#### `FN_PARTIAL_CHECKOUT` — Order created but the cart is not cleared (inconsistent state)
+
+After a successful order, the cart is left full (same items linger), inviting a duplicate buy.
+  
+_Where:_ `After checkout: /orders shows it but /cart still holds the items`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![FN_PARTIAL_CHECKOUT buggy](../private/bug-shots/FN_PARTIAL_CHECKOUT-buggy.png) | ![FN_PARTIAL_CHECKOUT clean](../private/bug-shots/FN_PARTIAL_CHECKOUT-clean.png) |
+
+### 6.2 Accessibility
+
+#### `A11Y_INPUT_NO_LABEL` — Coupon code input loses its programmatic label (no accessible name)
+
+Coupon input has no accessible name (label removed, no aria-label) — axe 'label' rule.
+  
+_Where:_ `/cart (Coupon code input in Order summary)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![A11Y_INPUT_NO_LABEL buggy](../private/bug-shots/A11Y_INPUT_NO_LABEL-buggy.png) | ![A11Y_INPUT_NO_LABEL clean](../private/bug-shots/A11Y_INPUT_NO_LABEL-clean.png) |
+
+#### `A11Y_LOW_CONTRAST` — Catalog price text rendered below the WCAG AA contrast threshold
+
+Card price renders in a near-background gray below WCAG AA 4.5:1 — axe 'color-contrast' rule.
+  
+_Where:_ `/products (product card price)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![A11Y_LOW_CONTRAST buggy](../private/bug-shots/A11Y_LOW_CONTRAST-buggy.png) | ![A11Y_LOW_CONTRAST clean](../private/bug-shots/A11Y_LOW_CONTRAST-clean.png) |
+
+#### `A11Y_NO_KEYBOARD_FOCUS` — Cart quantity steppers are not keyboard-operable / have no focus ring
+
+Steppers render as plain spans: skipped in the tab order, no keyboard activation, no focus ring.
+  
+_Where:_ `/cart (Tab to the −/+ quantity steppers)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![A11Y_NO_KEYBOARD_FOCUS buggy](../private/bug-shots/A11Y_NO_KEYBOARD_FOCUS-buggy.png) | ![A11Y_NO_KEYBOARD_FOCUS clean](../private/bug-shots/A11Y_NO_KEYBOARD_FOCUS-clean.png) |
+
+### 6.3 Performance / Latency
+
+#### `PERF_SLOW_CHECKOUT` — Checkout request hangs ~2s with no pending feedback (injected latency)
+
+POST /api/checkout stalls ~2s with no loading feedback; the submit looks unresponsive.
+  
+_Where:_ `/checkout (submit) — POST /api/checkout`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![PERF_SLOW_CHECKOUT buggy](../private/bug-shots/PERF_SLOW_CHECKOUT-buggy.png) | ![PERF_SLOW_CHECKOUT clean](../private/bug-shots/PERF_SLOW_CHECKOUT-clean.png) |
+
+#### `PERF_PRODUCTS_TTFB` — Products page blocks ~1.5s server-side before render, no loading skeleton
+
+The products document blocks ~1.5s TTFB; the tab sits blank with no skeleton.
+  
+_Where:_ `/products (initial navigation)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![PERF_PRODUCTS_TTFB buggy](../private/bug-shots/PERF_PRODUCTS_TTFB-buggy.png) | ![PERF_PRODUCTS_TTFB clean](../private/bug-shots/PERF_PRODUCTS_TTFB-clean.png) |
+
+#### `PERF_CART_WATERFALL` — Cart re-fetches each line's product one-by-one (sequential N+1 waterfall)
+
+Cart fires one GET /api/products/[id] per line sequentially (N+1) for data already present.
+  
+_Where:_ `/cart with several distinct lines`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![PERF_CART_WATERFALL buggy](../private/bug-shots/PERF_CART_WATERFALL-buggy.png) | ![PERF_CART_WATERFALL clean](../private/bug-shots/PERF_CART_WATERFALL-clean.png) |
+
+#### `PERF_OVERFETCH_PAYLOAD` — GET /api/products returns a bloated, duplicated payload the page never uses
+
+Each product is padded with large unused/duplicated fields, bloating the response size.
+  
+_Where:_ `GET /api/products`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![PERF_OVERFETCH_PAYLOAD buggy](../private/bug-shots/PERF_OVERFETCH_PAYLOAD-buggy.png) | ![PERF_OVERFETCH_PAYLOAD clean](../private/bug-shots/PERF_OVERFETCH_PAYLOAD-clean.png) |
+
+#### `PERF_NO_CACHE` — Catalog API forces no-store so every navigation refetches everything
+
+Response carries Cache-Control: no-store, so the catalog refetches on every navigation.
+  
+_Where:_ `GET /api/products (repeat navigations)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![PERF_NO_CACHE buggy](../private/bug-shots/PERF_NO_CACHE-buggy.png) | ![PERF_NO_CACHE clean](../private/bug-shots/PERF_NO_CACHE-clean.png) |
+
+### 6.4 Security / Transport (HIPAA)
+
+#### `SEC_IDOR_ORDER` — Order detail drops the ownership check (IDOR: view another customer's order + PHI)
+
+Ownership check is bypassed, so any order id renders another customer's order + PHI (IDOR).
+  
+_Where:_ `/orders/[id] (change the id to one you don't own)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![SEC_IDOR_ORDER buggy](../private/bug-shots/SEC_IDOR_ORDER-buggy.png) | ![SEC_IDOR_ORDER clean](../private/bug-shots/SEC_IDOR_ORDER-clean.png) |
+
+#### `SEC_PHI_OVERFETCH` — Account API over-fetches PHI the view never needs (chain target of the IDOR)
+
+Account response is padded with PHI the UI never shows (SSN, DOB, diagnoses, med history).
+  
+_Where:_ `/account — GET /api/account (response body)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![SEC_PHI_OVERFETCH buggy](../private/bug-shots/SEC_PHI_OVERFETCH-buggy.png) | ![SEC_PHI_OVERFETCH clean](../private/bug-shots/SEC_PHI_OVERFETCH-clean.png) |
+
+#### `SEC_MISSING_ADMIN_AUTH` — Admin bug-flags API drops its admin guard (a customer can read/toggle flags)
+
+Non-admins can read and toggle flags (200 + flag map instead of 403) — privilege escalation.
+  
+_Where:_ `GET/POST /api/admin/bug-flags as a non-admin`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![SEC_MISSING_ADMIN_AUTH buggy](../private/bug-shots/SEC_MISSING_ADMIN_AUTH-buggy.png) | ![SEC_MISSING_ADMIN_AUTH clean](../private/bug-shots/SEC_MISSING_ADMIN_AUTH-clean.png) |
+
+#### `SEC_CREDS_IN_URL` — Login sends credentials in the URL query string (GET) instead of the POST body
+
+Login submits a GET with ?email=…&password=…, exposing creds in the URL/history/logs.
+  
+_Where:_ `/login (sign in) — GET /api/auth/login`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![SEC_CREDS_IN_URL buggy](../private/bug-shots/SEC_CREDS_IN_URL-buggy.png) | ![SEC_CREDS_IN_URL clean](../private/bug-shots/SEC_CREDS_IN_URL-clean.png) |
+
+#### `SEC_TOKEN_LOCALSTORAGE` — Client copies the session identity into localStorage (XSS-exfiltratable)
+
+On login the identity is also written to localStorage (mb_identity), readable by any XSS.
+  
+_Where:_ `/login then DevTools → Application → Local Storage`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![SEC_TOKEN_LOCALSTORAGE buggy](../private/bug-shots/SEC_TOKEN_LOCALSTORAGE-buggy.png) | ![SEC_TOKEN_LOCALSTORAGE clean](../private/bug-shots/SEC_TOKEN_LOCALSTORAGE-clean.png) |
+
+#### `SEC_PRICE_TAMPER` — Checkout trusts a client-supplied total instead of recomputing server-side
+
+Server trusts a client clientTotal, so a tampered request underpays while still placing the order.
+  
+_Where:_ `POST /api/checkout with a tampered clientTotal field`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![SEC_PRICE_TAMPER buggy](../private/bug-shots/SEC_PRICE_TAMPER-buggy.png) | ![SEC_PRICE_TAMPER clean](../private/bug-shots/SEC_PRICE_TAMPER-clean.png) |
+
+### 6.5 UI antipattern
+
+#### `UI_DESTRUCTIVE_NO_CONFIRM` — Cart remove is instant & destructive with no confirmation
+
+Remove deletes the line instantly with no confirmation — an accidental click is unrecoverable.
+  
+_Where:_ `/cart (click Remove on a line)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UI_DESTRUCTIVE_NO_CONFIRM buggy](../private/bug-shots/UI_DESTRUCTIVE_NO_CONFIRM-buggy.png) | ![UI_DESTRUCTIVE_NO_CONFIRM clean](../private/bug-shots/UI_DESTRUCTIVE_NO_CONFIRM-clean.png) |
+
+#### `UI_NO_SUBMIT_FEEDBACK` — Checkout submit gives no visible feedback (no pending/disabled state)
+
+Place-order button stays enabled with no spinner/label change while submitting (invites double-clicks).
+  
+_Where:_ `/checkout (click Place order)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UI_NO_SUBMIT_FEEDBACK buggy](../private/bug-shots/UI_NO_SUBMIT_FEEDBACK-buggy.png) | ![UI_NO_SUBMIT_FEEDBACK clean](../private/bug-shots/UI_NO_SUBMIT_FEEDBACK-clean.png) |
+
+#### `UI_MISLEADING_ICON` — Cart remove button shows a misleading (non-destructive) icon
+
+The destructive Remove button shows a friendly Heart icon instead of a trash can.
+  
+_Where:_ `/cart (Remove control)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UI_MISLEADING_ICON buggy](../private/bug-shots/UI_MISLEADING_ICON-buggy.png) | ![UI_MISLEADING_ICON clean](../private/bug-shots/UI_MISLEADING_ICON-clean.png) |
+
+#### `UI_FORM_CLEARS_ON_ERROR` — A checkout validation error wipes the entered fields
+
+A validation error resets the whole form, wiping every entered field, forcing a full re-type.
+  
+_Where:_ `/checkout (submit with a required field blank)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UI_FORM_CLEARS_ON_ERROR buggy](../private/bug-shots/UI_FORM_CLEARS_ON_ERROR-buggy.png) | ![UI_FORM_CLEARS_ON_ERROR clean](../private/bug-shots/UI_FORM_CLEARS_ON_ERROR-clean.png) |
+
+### 6.6 UX
+
+#### `UX_VAGUE_ERROR` — Checkout error path shows a vague 'Something went wrong' with no next step
+
+Every checkout error collapses to a generic 'Something went wrong.' with no reason or next step.
+  
+_Where:_ `/checkout (force any checkout error)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UX_VAGUE_ERROR buggy](../private/bug-shots/UX_VAGUE_ERROR-buggy.png) | ![UX_VAGUE_ERROR clean](../private/bug-shots/UX_VAGUE_ERROR-clean.png) |
+
+#### `UX_NO_ORDER_CONFIRM` — Order confirmation gives no clear success cue after placing the order
+
+The 'Order placed — thank you!' success banner is suppressed; no clear 'it worked' cue.
+  
+_Where:_ `/orders/[id]?placed=1 (after checkout)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UX_NO_ORDER_CONFIRM buggy](../private/bug-shots/UX_NO_ORDER_CONFIRM-buggy.png) | ![UX_NO_ORDER_CONFIRM clean](../private/bug-shots/UX_NO_ORDER_CONFIRM-clean.png) |
+
+#### `UX_SURPRISE_TAX` — Tax is hidden on the cart and only appears at the final checkout step
+
+Cart hides the tax line and total; tax first appears at checkout — a surprise charge at the end.
+  
+_Where:_ `/cart then /checkout (compare summaries)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UX_SURPRISE_TAX buggy](../private/bug-shots/UX_SURPRISE_TAX-buggy.png) | ![UX_SURPRISE_TAX clean](../private/bug-shots/UX_SURPRISE_TAX-clean.png) |
+
+#### `UX_LOST_CHECKOUT_PROGRESS` — Back navigation from checkout loses entered shipping/payment data
+
+On a bfcache Back restore the checkout form resets, losing everything the customer typed.
+  
+_Where:_ `/checkout (fill, navigate away, press Back)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UX_LOST_CHECKOUT_PROGRESS buggy](../private/bug-shots/UX_LOST_CHECKOUT_PROGRESS-buggy.png) | ![UX_LOST_CHECKOUT_PROGRESS clean](../private/bug-shots/UX_LOST_CHECKOUT_PROGRESS-clean.png) |
+
+#### `UX_NO_PAGE_TOTAL` — Catalog pagination shows no total pages / results indicator
+
+The 'Page X of Y' indicator is removed, leaving bare page links with no sense of total.
+  
+_Where:_ `/products (the pager)`
+
+| Buggy (customer, flag ON) | Clean (admin / correct) |
+|---|---|
+| ![UX_NO_PAGE_TOTAL buggy](../private/bug-shots/UX_NO_PAGE_TOTAL-buggy.png) | ![UX_NO_PAGE_TOTAL clean](../private/bug-shots/UX_NO_PAGE_TOTAL-clean.png) |
+
+---
+
 *Source of truth: `lib/bug-registry.ts` (flags) + `docs/ANSWER-KEY.md` (per-bug repro).
 This runbook covers all ~45 flags; Batch 5 (Security) and Batch 6 (UI/UX) rows are
 marked "per spec — confirm after verification" until their bugs are built and verified.*
