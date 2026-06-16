@@ -55,6 +55,10 @@ export type PlaceOrderDeps = {
   };
   // Client-supplied total (only honored when bugs.trustClientTotal is set).
   clientTotal?: number;
+  // FN_CONCURRENT_DOUBLESPEND race-window width (ms), forwarded to the racy
+  // reservation. Defaults to the store's real HTTP-reproducible window; tests
+  // pass a tiny value to keep the suite fast while still exercising the race.
+  raceWindowMs?: number;
 };
 
 export async function placeOrder(
@@ -91,7 +95,7 @@ export async function placeOrder(
   const reservation = bugs.oversell
     ? reserveStockUnchecked(requestLines) // FN_OVERSELL: no stock check
     : bugs.concurrentDoubleSpend
-      ? await reserveStockRacy(requestLines) // FN_CONCURRENT_DOUBLESPEND: racy
+      ? await reserveStockRacy(requestLines, deps.raceWindowMs) // FN_CONCURRENT_DOUBLESPEND: racy
       : reserveStock(requestLines); // clean: atomic, all-or-nothing
   if (!reservation.ok) {
     return {

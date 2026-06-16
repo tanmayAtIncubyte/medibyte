@@ -272,8 +272,8 @@ export const bugRegistry: readonly BugDefinition[] = [
     location: "lib/orders/place-order.ts (reserveStockRacy) via /api/checkout",
     hipaa: false,
     effect:
-      "Two concurrent orders for the last units both succeed (stock double-spent). Note: a race — observable only via two parallel checkout requests or code review, not a single action.",
-    where: "POST /api/checkout (two parallel requests for the last units)",
+      "Two near-simultaneous orders for the last units both succeed (stock double-spent). A ~300ms real race window between check and commit makes it reproducible by rapidly double-submitting checkout; also catchable by code review.",
+    where: "POST /api/checkout (rapid double-submit for the last units)",
     howToSpot: "code review",
   },
   {

@@ -91,16 +91,26 @@ export function reserveStockUnchecked(lines: readonly StockRequestLine[]): Reser
   return { ok: true };
 }
 
+// Default check-then-act race window (ms). Wide enough that two near-
+// simultaneous HTTP POST /api/checkout requests both land inside the window —
+// each reads availability, then both wait out the delay before either commits —
+// so a candidate can reproduce the double-spend with a rapid double-submit, not
+// just at the microtask level. Tests override this with a tiny delay to stay fast.
+export const RACE_WINDOW_MS = 300;
+
 /**
  * Reserves stock with a check-then-act RACE WINDOW: it snapshots availability,
- * yields the event loop (await), then commits the decrement using that stale
- * snapshot. Two near-simultaneous callers can therefore both pass the check
- * before either commits, double-spending the same units. Used ONLY by the gated
- * FN_CONCURRENT_DOUBLESPEND buggy path; the clean synchronous `reserveStock`
- * (no yield between check and commit) remains the default and is race-free.
+ * waits a real delay (`delayMs`), then commits the decrement using that stale
+ * snapshot. Because the wait is a genuine timer rather than a microtask yield,
+ * two near-simultaneous callers — including two separate HTTP requests — both
+ * pass the check before either commits, double-spending the same units. Used
+ * ONLY by the gated FN_CONCURRENT_DOUBLESPEND buggy path; the clean synchronous
+ * `reserveStock` (no yield between check and commit) remains the default and is
+ * race-free.
  */
 export async function reserveStockRacy(
   lines: readonly StockRequestLine[],
+  delayMs: number = RACE_WINDOW_MS,
 ): Promise<ReserveResult> {
   const shortages: { productId: string; requested: number; available: number }[] = [];
   for (const line of lines) {
@@ -110,9 +120,11 @@ export async function reserveStockRacy(
       shortages.push({ productId: line.productId, requested, available });
     }
   }
-  // Yield the event loop AFTER deciding but BEFORE committing — this is the race
-  // window the clean atomic path does not have.
-  await Promise.resolve();
+  // Wait a real interval AFTER deciding but BEFORE committing — this is the race
+  // window the clean atomic path does not have. A genuine timer (not a microtask)
+  // keeps the window open long enough for a second HTTP request to also pass the
+  // check before this one commits.
+  await new Promise((resolve) => setTimeout(resolve, Math.max(0, delayMs)));
   if (shortages.length > 0) {
     return { ok: false, shortages };
   }

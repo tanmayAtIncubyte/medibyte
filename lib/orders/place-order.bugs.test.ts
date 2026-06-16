@@ -93,6 +93,10 @@ async function placeWithDoubleSpend(
     { shipping, prescriptions: {} },
     {
       now,
+      // Tiny race window keeps the unit suite fast while still exercising the
+      // real-timer check-then-act window. In production the window defaults to
+      // RACE_WINDOW_MS (~300ms) so a rapid HTTP double-submit reproduces it.
+      raceWindowMs: 10,
       bugs: {
         concurrentDoubleSpend: isBugActiveWith(
           flagsValue,

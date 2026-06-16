@@ -189,10 +189,10 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 ### FN_CONCURRENT_DOUBLESPEND — Concurrent orders double-spend the same stock
 - Functional / Expert / HIPAA: no
 - Location: `lib/orders/place-order.ts` (uses `reserveStockRacy` instead of the atomic `reserveStock`) via `/api/checkout`.
-- Trigger: As a customer (two near-simultaneous checkout POSTs, e.g. fire two `/api/checkout` requests for the last units of `prod-decongestant` at the same time).
+- Trigger: As a customer, fire two checkout requests in quick succession for the last units of a low-stock product (e.g. double-submit `POST /api/checkout`, or click "Place order" twice rapidly). The buggy branch now waits a real ~300ms window (`RACE_WINDOW_MS` in `lib/data/stock-store.ts`) between the stock check and the commit, so two rapid requests both land inside the window.
 - Expected (correct / admin): the reservation is atomic and run-to-completion; exactly one of two concurrent orders for the last N units succeeds, the other 409s — never oversold.
-- Actual (buggy / customer): the racy path snapshots availability, **yields the event loop, then commits** using the stale snapshot, so both concurrent orders pass the check and both succeed — the stock is double-spent.
-- How to spot it: edge input / concurrency — fire two checkout requests in parallel for the last units and observe both succeed (reserved > stock). Observable in the unit test via `Promise.all` of two `reserveStockRacy`/`placeOrder` calls. Made reproducible by the deliberate `await Promise.resolve()` race window between check and commit.
+- Actual (buggy / customer): the racy path snapshots availability, **waits out the real race window, then commits** using the stale snapshot, so both concurrent orders pass the check and both succeed — the stock is double-spent (reserved > stock).
+- How to spot it: concurrency / rapid double-submit — fire two checkout POSTs (or double-click Place order) for the last units and observe both succeed, then reserved > seed stock. Also catchable by code review (a `setTimeout` between check and commit in `reserveStockRacy`). The window was widened from a microtask yield to a real ~300ms timer in Phase-4 cleanup specifically so an HTTP double-submit reproduces it; the clean atomic `reserveStock` has no window. Still exercised in the unit test via `Promise.all` of two `reserveStockRacy`/`placeOrder` calls (with a shrunk window for speed).
 
 ### FN_TOTAL_ROUNDING_EDGE — Wrong total only at specific coupon+tax values (rounding-order edge)
 - Functional / Expert / HIPAA: no

@@ -80,14 +80,28 @@ describe("stock bug paths", () => {
 
   it("reserveStockRacy lets two concurrent callers double-spend the same units", async () => {
     // Both snapshot SEED available, both decide the order fits, then both commit
-    // — the check-then-act race the atomic path does not have.
+    // — the check-then-act race the atomic path does not have. The window is now
+    // a real timer (here shrunk to 10ms for speed; defaults to ~300ms in prod so
+    // a rapid HTTP double-submit lands two requests inside the same window).
     const [a, b] = await Promise.all([
-      reserveStockRacy([{ productId: PRODUCT, quantity: SEED }]),
-      reserveStockRacy([{ productId: PRODUCT, quantity: SEED }]),
+      reserveStockRacy([{ productId: PRODUCT, quantity: SEED }], 10),
+      reserveStockRacy([{ productId: PRODUCT, quantity: SEED }], 10),
     ]);
     expect(a.ok).toBe(true);
     expect(b.ok).toBe(true);
     // 2 x SEED reserved against only SEED in stock — double-spent.
+    expect(getReservedStock(PRODUCT)).toBe(SEED * 2);
+  });
+
+  it("reserveStockRacy with the default real window still double-spends (HTTP-reproducible)", async () => {
+    // No explicit delay → uses the production RACE_WINDOW_MS window. Two near-
+    // simultaneous callers (as two quick HTTP checkouts would be) both pass the
+    // check before either commits.
+    const [a, b] = await Promise.all([
+      reserveStockRacy([{ productId: PRODUCT, quantity: SEED }]),
+      reserveStockRacy([{ productId: PRODUCT, quantity: SEED }]),
+    ]);
+    expect(a.ok && b.ok).toBe(true);
     expect(getReservedStock(PRODUCT)).toBe(SEED * 2);
   });
 });
