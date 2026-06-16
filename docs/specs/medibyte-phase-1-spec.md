@@ -21,16 +21,16 @@ Ordering is outside-in within slices, but slices themselves follow a dependency 
 
 ---
 
-### Slice 1: App scaffold & running shell
+### Slice 1: App scaffold & running shell [x]
 The walking skeleton: a Next.js app you can run and load, with the design system wired in.
 
-- [ ] Running `npm run dev` starts the app and the home page loads in a browser with no console errors
-- [ ] The home page renders branded MediByte content (name/logo/tagline), not the framework default starter page
-- [ ] Tailwind utility classes applied in a component visibly affect rendered styling
-- [ ] At least one shadcn/ui component (e.g. Button) renders and is interactive on a page
-- [ ] A shared app layout (header with MediByte branding + a page container) wraps every route
-- [ ] Navigating to an unknown route shows a styled 404/not-found page, not an unstyled crash
-- [ ] `npm run build` completes without TypeScript or build errors
+- [x] Running `npm run dev` starts the app and the home page loads in a browser with no console errors
+- [x] The home page renders branded MediByte content (name/logo/tagline), not the framework default starter page
+- [x] Tailwind utility classes applied in a component visibly affect rendered styling
+- [x] At least one shadcn/ui component (e.g. Button) renders and is interactive on a page
+- [x] A shared app layout (header with MediByte branding + a page container) wraps every route
+- [x] Navigating to an unknown route shows a styled 404/not-found page, not an unstyled crash
+- [x] `npm run build` completes without TypeScript or build errors
 
 ---
 
