@@ -41,6 +41,14 @@ export default async function CartPage() {
   const cartWaterfall = isBugActive("PERF_CART_WATERFALL", user);
   const lineProductIds = cart.lines.map((line) => line.product.id);
 
+  // UI antipattern / UX seeded-bug switches resolved at the boundary and passed
+  // into the (otherwise clean) cart UI as plain booleans; admins get clean.
+  const removeWithoutConfirm = isBugActive("UI_DESTRUCTIVE_NO_CONFIRM", user);
+  const misleadingRemoveIcon = isBugActive("UI_MISLEADING_ICON", user);
+  // UX_SURPRISE_TAX: when on, hide the tax line on the cart so tax only surfaces
+  // at the final checkout step (a surprise at the end). Clean shows it here.
+  const hideTaxOnCart = isBugActive("UX_SURPRISE_TAX", user);
+
   return (
     <PageContainer>
       <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
@@ -81,6 +89,8 @@ export default async function CartPage() {
                     productName={line.product.name}
                     quantity={line.quantity}
                     noKeyboardFocus={qtyNoKeyboardFocus}
+                    removeWithoutConfirm={removeWithoutConfirm}
+                    misleadingRemoveIcon={misleadingRemoveIcon}
                   />
                 </div>
               </li>
@@ -104,11 +114,13 @@ export default async function CartPage() {
                     discount
                   />
                 )}
-                <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
+                {!hideTaxOnCart && (
+                  <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
+                )}
                 <div className="border-t border-border pt-3">
                   <SummaryRow
-                    label="Total"
-                    value={formatPrice(cart.total)}
+                    label={hideTaxOnCart ? "Subtotal" : "Total"}
+                    value={formatPrice(hideTaxOnCart ? cart.subtotal - cart.discount : cart.total)}
                     emphasized
                   />
                 </div>

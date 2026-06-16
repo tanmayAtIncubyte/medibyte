@@ -12,17 +12,23 @@ import { cn } from "@/lib/utils";
  * from an EMPTY base query, so navigating to another page discards the active
  * search/category/type/sort. The page resolves the flag (it has the user) and
  * passes the boolean in, keeping this component clean for admins.
+ *
+ * UX_NO_PAGE_TOTAL: when `hidePageTotal` is set, the "Page X of Y" indicator is
+ * dropped, so a customer paging through the catalog has no sense of how many
+ * pages/results exist. Clean default shows it; the page resolves the flag.
  */
 export function CatalogPagination({
   query,
   page,
   totalPages,
   dropFilters = false,
+  hidePageTotal = false,
 }: {
   query: CatalogQuery;
   page: number;
   totalPages: number;
   dropFilters?: boolean;
+  hidePageTotal?: boolean;
 }) {
   if (totalPages <= 1) {
     return null;
@@ -36,10 +42,16 @@ export function CatalogPagination({
   const hasNext = page < totalPages;
 
   return (
-    <nav
-      className="mt-8 flex items-center justify-center gap-1"
-      aria-label="Pagination"
-    >
+    <>
+      {!hidePageTotal && (
+        <p className="mt-8 text-center text-sm text-muted-foreground" role="status">
+          Page {page} of {totalPages}
+        </p>
+      )}
+      <nav
+        className={hidePageTotal ? "mt-8 flex items-center justify-center gap-1" : "mt-3 flex items-center justify-center gap-1"}
+        aria-label="Pagination"
+      >
       <PageLink
         href={buildCatalogHref(linkBase, { page: page - 1 })}
         disabled={!hasPrev}
@@ -72,7 +84,8 @@ export function CatalogPagination({
       >
         Next
       </PageLink>
-    </nav>
+      </nav>
+    </>
   );
 }
 

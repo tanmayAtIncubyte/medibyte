@@ -284,4 +284,135 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - How to spot it: DevTools Network — the `/api/products` response carries `Cache-Control: no-store`; the same request repeats (never served "from cache") on each navigation.
 
 <!-- BATCH 5: Security / Transport (HIPAA) -->
+
+> **Batch-5 defects are security/transport bugs.** Each toggles OFF a correct
+> protection that exists in the clean baseline; the admin always gets the
+> secure path (the bypass is inert for admins). Default OFF. The IDOR + PHI
+> over-fetch pair is a CHAIN (see notes).
+
+### SEC_IDOR_ORDER — Order detail drops the ownership check (IDOR) 🔗
+- Security / Difficult / HIPAA: **yes**
+- Location: `app/(storefront)/orders/[id]/page.tsx` resolves the flag and passes `dropOwnershipCheck` into `getOrderForViewer` (`lib/data/orders.ts` → `findOrderForViewer` in `lib/orders/order.ts`).
+- Trigger: As customer Dana, open one of your own orders to learn the order-id format (`MB-YYYYMMDD-NNNN`), then change the id in the URL to another customer's order (e.g. one of Omar's seeded orders).
+- Expected (correct / admin): a foreign (or unknown) order id resolves to `null` → the styled 404. A customer only ever sees their own orders; admins may see any.
+- Actual (buggy / customer): the ownership check is bypassed, so ANY existing order id renders in full — including that customer's shipping address (PII) and prescription block (PHI: patient name, DOB, prescribing doctor, Rx number).
+- How to spot it: change the order id in the URL to one you don't own and confirm someone else's order (and PHI) loads instead of a 404. This is a classic IDOR; the leaked order id is also the **chain source** for SEC_PHI_OVERFETCH.
+
+### SEC_PHI_OVERFETCH — Account API over-fetches PHI the view never needs 🔗
+- Security / Difficult / HIPAA: **yes**
+- Location: `app/api/account/route.ts` (GET) resolves the flag and passes `overfetchPhi` into `readAccountForApi` (`lib/account/account-service.ts`).
+- Trigger: As a customer, open `/account` (which calls `GET /api/account`) and inspect the JSON response in DevTools Network.
+- Expected (correct / admin): the response carries only the fields the view renders — addresses plus the three insurance fields (`provider`, `memberId`, `groupNumber`).
+- Actual (buggy / customer): the `insurance` object is padded with sensitive PHI the UI never displays — `subscriberSsn`, `dateOfBirth`, `diagnosisCodes[]`, `medicationHistory[]` — i.e. the API over-fetches/over-returns PHI that should stay server-side.
+- How to spot it: DevTools Network — the `/api/account` response body contains PHI fields with no on-screen counterpart. **Chain:** an attacker who used SEC_IDOR_ORDER to enumerate/confirm a victim then leans on this over-fetch to pull PHI the screens never show.
+
+### SEC_MISSING_ADMIN_AUTH — Admin bug-flags API drops its admin guard
+- Security / Difficult / HIPAA: no
+- Location: `app/api/admin/bug-flags/route.ts` — the guard (`adminGuardPasses`) resolves the current user and the flag at the route boundary. The bypass is inert for admins, so the admin panel never breaks.
+- Trigger: As a signed-in customer (or logged out), call `GET`/`POST /api/admin/bug-flags` directly (e.g. via DevTools/curl).
+- Expected (correct / admin): non-admins get **403** for both read and toggle; only an admin can read or change flags.
+- Actual (buggy / customer): the admin guard is dropped for non-admins, so a customer can read the full flag map AND toggle any flag (`{key,enabled}` / `{reset:true}`) — a privilege-escalation hole that lets a customer turn other bugs on/off.
+- How to spot it: as a non-admin, hit the endpoint and observe a 200 + flag map instead of 403; toggling a flag actually persists.
+
+### SEC_CREDS_IN_URL — Login sends credentials in the URL query string
+- Security / Moderate / HIPAA: no
+- Location: `components/auth/credentials-form.tsx` (`credentialsInUrl` prop, resolved on `app/login/page.tsx`); companion GET handler added to `app/api/auth/login/route.ts` so the buggy flow works end-to-end.
+- Trigger: As a customer, sign in at `/login` and watch the request in DevTools Network / the URL bar.
+- Expected (correct / admin): credentials travel in the **POST body** only (`POST /api/auth/login`); they never appear in the URL.
+- Actual (buggy / customer): the form submits a **GET** with `?email=…&password=…`, so the email and password are exposed in the URL bar, browser history, referrer headers, and server access logs.
+- How to spot it: DevTools Network — the login request is a GET whose query string contains the plaintext password; also visible in the address bar / history.
+
+### SEC_TOKEN_LOCALSTORAGE — Client copies the session identity into localStorage
+- Security / Moderate / HIPAA: no
+- Location: `components/auth/credentials-form.tsx` (`persistIdentityToLocalStorage` prop, resolved on `app/login/page.tsx`).
+- Trigger: As a customer, sign in at `/login`, then check `localStorage` in DevTools (Application → Local Storage).
+- Expected (correct / admin): the session lives only in the **httpOnly** `mb_session` cookie (not JS-readable); nothing is written to `localStorage`.
+- Actual (buggy / customer): on a successful login the identity (`user` object) is also written to `localStorage` under `mb_identity`, where any XSS can read/exfiltrate it.
+- How to spot it: DevTools Application tab — an `mb_identity` entry appears in Local Storage after login (it should not exist); a quick `localStorage.getItem("mb_identity")` in the console returns the identity.
+
+### SEC_PRICE_TAMPER — Checkout trusts a client-supplied total
+- Security / Difficult / HIPAA: no
+- Location: `app/api/checkout/route.ts` reads an optional `clientTotal` from the body and passes `trustClientTotal` into `placeOrder` (`lib/orders/place-order.ts`).
+- Trigger: As a customer, intercept/replay `POST /api/checkout` with a `clientTotal` field set to an arbitrary low value (e.g. `0.01`).
+- Expected (correct / admin): the server **recomputes** the order total from the cart and ignores any client-supplied `clientTotal`; the order is always priced server-side.
+- Actual (buggy / customer): the server trusts the client `clientTotal` and snapshots it onto the order, so a tampered request underpays while still placing the order.
+- How to spot it: tamper with the checkout request body (add `clientTotal`) and confirm the resulting order's total reflects the tampered value instead of the recomputed cart total. (The clean baseline never sends `clientTotal`, so normal checkout is unaffected.)
+
 <!-- BATCH 6: UI antipattern + UX -->
+
+> **Batch-6 defects are UI-antipattern / UX bugs.** Each toggles OFF a usability
+> safeguard that exists in the clean baseline; admins always get the good
+> experience (the bug branch is inert for admins). Default OFF. Spotting them is
+> a manual/interaction task (click, submit, navigate, read the screen).
+
+### UI_DESTRUCTIVE_NO_CONFIRM — Cart remove is instant & destructive, no confirmation
+- UI antipattern / Easy / HIPAA: no
+- Location: `components/cart/cart-line-controls.tsx` (`removeWithoutConfirm` prop, resolved on `app/(storefront)/cart/page.tsx`).
+- Trigger: As a customer, open `/cart` with an item and click the Remove (trash) button.
+- Expected (correct / admin): Remove asks for confirmation (`window.confirm("Remove … from your cart?")`) before deleting; cancelling keeps the line.
+- Actual (buggy / customer): Remove deletes the line immediately with no confirmation — a destructive action with no undo or guard.
+- How to spot it: click Remove and notice the item vanishes instantly with no "are you sure?"; an accidental click is unrecoverable.
+
+### UI_NO_SUBMIT_FEEDBACK — Checkout submit gives no visible feedback
+- UI antipattern / Easy / HIPAA: no
+- Location: `components/checkout/checkout-form.tsx` (`noSubmitFeedback` prop, resolved on `app/(storefront)/checkout/page.tsx`).
+- Trigger: As a customer, fill `/checkout` and click "Place order".
+- Expected (correct / admin): the button disables and switches to "Placing order…" while the request is in flight.
+- Actual (buggy / customer): the button stays enabled and keeps its "Place order" label — no pending/disabled state — so the submit looks like nothing happened (and invites double-clicks).
+- How to spot it: submit and watch the button; with the bug there is no spinner/label change/disable while the order is being placed (most visible alongside a slow request).
+
+### UI_MISLEADING_ICON — Cart remove button shows a misleading icon
+- UI antipattern / Easy / HIPAA: no
+- Location: `components/cart/cart-line-controls.tsx` (`misleadingRemoveIcon` prop, resolved on `app/(storefront)/cart/page.tsx`).
+- Trigger: As a customer, open `/cart` and look at the Remove control.
+- Expected (correct / admin): the destructive Remove action uses a trash-can icon (`Trash2`).
+- Actual (buggy / customer): the Remove button shows a friendly **Heart** icon that doesn't match its destructive action (the `aria-label` stays "Remove …", so the icon and meaning conflict).
+- How to spot it: eyeball the Remove control — a heart on a delete button; clicking it still deletes the line.
+
+### UI_FORM_CLEARS_ON_ERROR — A validation error wipes the entered fields
+- UI antipattern / Moderate / HIPAA: no
+- Location: `components/checkout/checkout-form.tsx` (`clearFieldsOnError` prop, resolved on `app/(storefront)/checkout/page.tsx`).
+- Trigger: As a customer, fill out most of `/checkout` but leave a required field blank, then submit so validation fails.
+- Expected (correct / admin): the error highlights the offending fields and **retains** everything else typed — the customer just fixes the one field.
+- Actual (buggy / customer): the validation error resets the whole form, wiping every entered shipping/payment/PHI field, forcing a full re-type.
+- How to spot it: trigger a validation error and notice all your input disappears instead of only the bad field being flagged.
+
+### UX_VAGUE_ERROR — Checkout error is a vague "Something went wrong"
+- UX / Easy / HIPAA: no
+- Location: `components/checkout/checkout-form.tsx` (`vagueError` prop, resolved on `app/(storefront)/checkout/page.tsx`).
+- Trigger: As a customer, cause any checkout error (validation, server rejection, or a network failure).
+- Expected (correct / admin): a specific, actionable message — "Please fix the highlighted fields.", the server's reason, or "Could not reach the server. Please check your connection and try again."
+- Actual (buggy / customer): every error path collapses to a generic "Something went wrong." with no reason and no next step.
+- How to spot it: force an error and read the message — it tells the customer nothing about what failed or how to recover.
+
+### UX_NO_ORDER_CONFIRM — No clear success cue after placing an order
+- UX / Easy / HIPAA: no
+- Location: `app/(storefront)/orders/[id]/page.tsx` (flag resolved on the page; suppresses the `?placed=1` success banner).
+- Trigger: As a customer, complete a checkout — you land on `/orders/<id>?placed=1`.
+- Expected (correct / admin): a prominent "Order placed — thank you!" confirmation banner (role="status") tops the order page.
+- Actual (buggy / customer): the success banner is suppressed, so after placing the order there is no clear "it worked" cue — the customer can't tell the order succeeded.
+- How to spot it: place an order and notice the absence of any success confirmation on the landing order page. (Behavior + toggle test live with the Batch-5 commit, where the order page was already being edited; entry recorded here as a Batch-6 bug.)
+
+### UX_SURPRISE_TAX — Tax hidden until the final checkout step
+- UX / Moderate / HIPAA: no
+- Location: `app/(storefront)/cart/page.tsx` (`hideTaxOnCart`, flag resolved on the page).
+- Trigger: As a customer, view `/cart`, then proceed to `/checkout`.
+- Expected (correct / admin): the cart summary shows the "Tax (8%)" line and a tax-inclusive Total, so the customer sees tax before checkout.
+- Actual (buggy / customer): the cart hides the tax line and shows only a "Subtotal" total; tax first appears at the final checkout step — a surprise charge at the end.
+- How to spot it: compare the cart summary (no tax) with the checkout summary (tax added) — the total jumps at the last step.
+
+### UX_LOST_CHECKOUT_PROGRESS — Back navigation loses entered checkout data
+- UX / Moderate / HIPAA: no
+- Location: `components/checkout/checkout-form.tsx` (`loseProgressOnBack` prop, resolved on `app/(storefront)/checkout/page.tsx`).
+- Trigger: As a customer, fill `/checkout`, navigate away (e.g. back to `/cart`), then use the browser Back button to return.
+- Expected (correct / admin): the browser's bfcache restores the form with the entered values intact.
+- Actual (buggy / customer): on a bfcache restore (`pageshow` with `persisted`), the form resets itself, so coming Back loses everything the customer typed.
+- How to spot it: fill the form, go Back-and-forward, and notice the fields are blank instead of restored.
+
+### UX_NO_PAGE_TOTAL — Catalog pagination shows no total pages/results indicator
+- UX / Easy / HIPAA: no
+- Location: `components/products/catalog-pagination.tsx` (`hidePageTotal` prop, resolved on `app/(storefront)/products/page.tsx`).
+- Trigger: As a customer, open `/products` with enough items to paginate and look at the pager.
+- Expected (correct / admin): a "Page X of Y" indicator sits above the page links so the customer knows how far the catalog goes.
+- Actual (buggy / customer): the "Page X of Y" indicator is removed, leaving bare page links with no sense of total pages/results.
+- How to spot it: look at the pager — there's no "Page X of Y" / total to orient by (the top-of-list "Showing N of M" count is a separate element and unaffected).

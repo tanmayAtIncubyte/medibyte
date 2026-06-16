@@ -25,11 +25,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Your cart is empty." }, { status: 422 });
   }
 
-  const body = (await request.json()) as Partial<CheckoutInput>;
+  const body = (await request.json()) as Partial<CheckoutInput> & {
+    clientTotal?: unknown;
+  };
   const input: CheckoutInput = {
     shipping: body.shipping ?? {},
     prescriptions: body.prescriptions ?? {},
   };
+  // Client-supplied total — IGNORED by the clean path (the server recomputes).
+  // Only honored when SEC_PRICE_TAMPER is on for this (non-admin) user.
+  const clientTotal = typeof body.clientTotal === "number" ? body.clientTotal : undefined;
 
   // PERF_SLOW_CHECKOUT (simulated): when on, stall the checkout request ~2s
   // before doing any work and with no extra pending feedback, so the customer
@@ -51,7 +56,9 @@ export async function POST(request: NextRequest) {
       oversell: isBugActive("FN_OVERSELL", user),
       concurrentDoubleSpend: isBugActive("FN_CONCURRENT_DOUBLESPEND", user),
       partialCheckout: isBugActive("FN_PARTIAL_CHECKOUT", user),
+      trustClientTotal: isBugActive("SEC_PRICE_TAMPER", user),
     },
+    clientTotal,
   });
   if (!result.ok) {
     if (result.reason === "empty-cart") {

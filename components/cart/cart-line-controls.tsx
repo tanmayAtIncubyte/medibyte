@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Heart, Minus, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -16,17 +16,28 @@ import { Button } from "@/components/ui/button";
  * not in the tab order, cannot be triggered by keyboard, and show no focus ring.
  * The cart page resolves the flag (it has the user) and passes the boolean in,
  * keeping this component keyboard-operable for admins.
+ *
+ * UI_DESTRUCTIVE_NO_CONFIRM: when `removeWithoutConfirm` is set, clicking Remove
+ * deletes the line immediately with no confirmation prompt. Clean default asks
+ * for confirmation first. UI_MISLEADING_ICON: when `misleadingRemoveIcon` is
+ * set, the destructive Remove button shows a friendly Heart icon (mismatched to
+ * the action) instead of the trash can. Both flags are resolved on the cart
+ * page (which has the user) and passed in, keeping admins on the correct path.
  */
 export function CartLineControls({
   productId,
   productName,
   quantity,
   noKeyboardFocus = false,
+  removeWithoutConfirm = false,
+  misleadingRemoveIcon = false,
 }: {
   productId: string;
   productName: string;
   quantity: number;
   noKeyboardFocus?: boolean;
+  removeWithoutConfirm?: boolean;
+  misleadingRemoveIcon?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -40,13 +51,24 @@ export function CartLineControls({
     startTransition(() => router.refresh());
   }
 
-  async function remove() {
+  async function doRemove() {
     await fetch("/api/session/cart", {
       method: "DELETE",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ productId }),
     });
     startTransition(() => router.refresh());
+  }
+
+  async function remove() {
+    // UI_DESTRUCTIVE_NO_CONFIRM: skip the confirmation guard when the bug is on.
+    if (removeWithoutConfirm) {
+      await doRemove();
+      return;
+    }
+    if (window.confirm(`Remove ${productName} from your cart?`)) {
+      await doRemove();
+    }
   }
 
   return (
@@ -111,7 +133,8 @@ export function CartLineControls({
         disabled={pending}
         aria-label={`Remove ${productName} from cart`}
       >
-        <Trash2 aria-hidden />
+        {/* UI_MISLEADING_ICON: a Heart icon on a destructive Remove action. */}
+        {misleadingRemoveIcon ? <Heart aria-hidden /> : <Trash2 aria-hidden />}
       </Button>
     </div>
   );

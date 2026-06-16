@@ -46,6 +46,9 @@ export default async function ProductsPage({
   // search/filter/sort and only change the page.
   const dropFiltersOnPage = isBugActive("FN_FILTER_LOST_ON_PAGE", user);
 
+  // UX_NO_PAGE_TOTAL: when on, the pager hides its "Page X of Y" indicator.
+  const hidePageTotal = isBugActive("UX_NO_PAGE_TOTAL", user);
+
   const hasFilters = Boolean(
     query.search || query.category || query.type,
   );
@@ -108,6 +111,7 @@ export default async function ProductsPage({
         page={result.page}
         totalPages={result.totalPages}
         dropFilters={dropFiltersOnPage}
+        hidePageTotal={hidePageTotal}
       />
     </PageContainer>
   );

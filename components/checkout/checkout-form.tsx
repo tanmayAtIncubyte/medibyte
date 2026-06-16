@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CreditCard, FileText, Truck } from "lucide-react";
 
@@ -23,14 +23,48 @@ type FieldErrors = Record<string, string>;
 export function CheckoutForm({
   rxItems,
   defaultFullName,
+  noSubmitFeedback = false,
+  clearFieldsOnError = false,
+  vagueError = false,
+  loseProgressOnBack = false,
 }: {
   rxItems: RxItem[];
   defaultFullName: string;
+  // UI_NO_SUBMIT_FEEDBACK: when on, the submit button shows no pending/disabled
+  // state while the order is being placed (no visible feedback). Default off.
+  noSubmitFeedback?: boolean;
+  // UI_FORM_CLEARS_ON_ERROR: when on, a validation error resets the form, wiping
+  // everything the customer typed. Default off (fields retained).
+  clearFieldsOnError?: boolean;
+  // UX_VAGUE_ERROR: when on, the error path shows a generic "Something went
+  // wrong" with no next step instead of the specific message. Default off.
+  vagueError?: boolean;
+  // UX_LOST_CHECKOUT_PROGRESS: when on, the form opts out of bfcache restore on
+  // back-navigation by clearing itself on pageshow, so going Back loses the
+  // entered data. Default off (the browser restores the fields).
+  loseProgressOnBack?: boolean;
 }) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // UX_LOST_CHECKOUT_PROGRESS: on a back/forward bfcache restore, wipe the form
+  // so returning to checkout loses the customer's progress. Clean leaves the
+  // browser-restored values intact.
+  useEffect(() => {
+    if (!loseProgressOnBack) {
+      return;
+    }
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        formRef.current?.reset();
+      }
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [loseProgressOnBack]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,6 +73,7 @@ export function CheckoutForm({
     setErrors({});
 
     const form = new FormData(event.currentTarget);
+    const formEl = event.currentTarget;
 
     const shipping = {
       fullName: str(form, "shipping.fullName"),
@@ -82,7 +117,17 @@ export function CheckoutForm({
     }
     if (Object.keys(clientErrors).length > 0) {
       setErrors(clientErrors);
-      setFormError("Please fix the highlighted fields.");
+      setFormError(
+        vagueError
+          ? "Something went wrong."
+          : "Please fix the highlighted fields.",
+      );
+      // UI_FORM_CLEARS_ON_ERROR: wipe everything the customer entered on a
+      // validation error. Clean keeps the fields so they can just fix the
+      // highlighted ones.
+      if (clearFieldsOnError) {
+        formEl.reset();
+      }
       setSubmitting(false);
       return;
     }
@@ -105,16 +150,27 @@ export function CheckoutForm({
         errors?: FieldErrors;
       };
       setErrors(data.errors ?? {});
-      setFormError(data.error ?? "Something went wrong. Please try again.");
+      setFormError(
+        vagueError
+          ? "Something went wrong."
+          : data.error ?? "We couldn't place your order. Please review your details and try again.",
+      );
+      if (clearFieldsOnError) {
+        formEl.reset();
+      }
       setSubmitting(false);
     } catch {
-      setFormError("Could not reach the server. Please try again.");
+      setFormError(
+        vagueError
+          ? "Something went wrong."
+          : "Could not reach the server. Please check your connection and try again.",
+      );
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-8">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-8">
       {formError && (
         <p
           role="alert"
@@ -252,8 +308,15 @@ export function CheckoutForm({
         </p>
       </Section>
 
-      <Button type="submit" size="lg" disabled={submitting} className="w-full sm:w-auto">
-        {submitting ? "Placing order…" : "Place order"}
+      {/* UI_NO_SUBMIT_FEEDBACK: when on, the button never shows the pending /
+          disabled state, so a slow submit looks like nothing happened. */}
+      <Button
+        type="submit"
+        size="lg"
+        disabled={noSubmitFeedback ? false : submitting}
+        className="w-full sm:w-auto"
+      >
+        {noSubmitFeedback ? "Place order" : submitting ? "Placing order…" : "Place order"}
       </Button>
     </form>
   );
