@@ -87,6 +87,26 @@ export function removeFromCart(sessionId: string, productId: string): CartItem[]
   return setCartItemQuantity(sessionId, productId, 0);
 }
 
+// Sets an item's quantity WITHOUT the "<= 0 removes the line" guard, persisting
+// a raw (possibly zero/negative) integer quantity. Used only by the gated
+// FN_QTY_NONPOSITIVE buggy path so the endpoint "accepts" non-positive
+// quantities; the clean setCartItemQuantity remains the default.
+export function setCartItemQuantityRaw(
+  sessionId: string,
+  productId: string,
+  quantity: number,
+): CartItem[] {
+  const amount = Number.isFinite(quantity) ? Math.floor(quantity) : 0;
+  const session = getOrCreateSession(sessionId);
+  const existingItem = session.cart.find((item) => item.productId === productId);
+  if (existingItem) {
+    existingItem.quantity = amount;
+  } else {
+    session.cart.push({ productId, quantity: amount });
+  }
+  return getCart(sessionId);
+}
+
 // Empties the cart and clears any applied coupon. Used after a successful
 // checkout so the session starts a fresh cart.
 export function clearCart(sessionId: string): void {

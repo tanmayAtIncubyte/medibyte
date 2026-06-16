@@ -34,10 +34,18 @@ export function isExpired(coupon: Coupon, now: Date = new Date()): boolean {
  * Validates a code against the catalog for a given cart subtotal and clock.
  * Returns a discriminated result with a customer-facing message on rejection.
  */
+export type CouponBugs = {
+  // FN_EXPIRED_COUPON_OK: skip the expiry check so an expired coupon still
+  // applies. The caller (cart-service, which has the user) resolves the flag and
+  // passes the boolean in, keeping this validator pure.
+  ignoreExpiry?: boolean;
+};
+
 export function validateCoupon(
   code: string,
   subtotal: number,
   now: Date = new Date(),
+  bugs: CouponBugs = {},
 ): CouponValidation {
   const coupon = findCoupon(code);
   if (!coupon) {
@@ -47,7 +55,7 @@ export function validateCoupon(
       message: "That code isn't valid. Check it and try again.",
     };
   }
-  if (isExpired(coupon, now)) {
+  if (!bugs.ignoreExpiry && isExpired(coupon, now)) {
     return {
       ok: false,
       reason: "expired",

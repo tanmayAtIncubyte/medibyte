@@ -32,6 +32,18 @@ export type CatalogResult = {
   pageSize: number;
 };
 
+/**
+ * Seeded-bug switches for the catalog. The buggy branch is taken only when the
+ * caller (the server-rendered /products page, which has the user) resolves the
+ * flag and passes `true` in — this keeps queryCatalog pure and admin-clean.
+ *   - priceSortLexical (FN_PRICE_SORT_LEXICAL): sort price as strings.
+ *   - paginationOffByOne (FN_PAGINATION_OFFBYONE): page boundary skips one item.
+ */
+export type CatalogBugs = {
+  priceSortLexical?: boolean;
+  paginationOffByOne?: boolean;
+};
+
 /** Distinct categories present in the dataset, sorted alphabetically. */
 export function listCategories(products: readonly Product[]): string[] {
   return Array.from(new Set(products.map((p) => p.category))).sort((a, b) =>
@@ -62,13 +74,25 @@ function matchesType(product: Product, type: ProductType | undefined): boolean {
   return product.type === type;
 }
 
-function sortProducts(products: Product[], sort: SortOption): Product[] {
+function sortProducts(
+  products: Product[],
+  sort: SortOption,
+  bugs: CatalogBugs = {},
+): Product[] {
   const sorted = [...products];
+  // FN_PRICE_SORT_LEXICAL: compare prices as strings, so e.g. "10" < "6". Caller
+  // resolves the flag and passes the boolean in, keeping this pure.
+  const priceAsc = bugs.priceSortLexical
+    ? (a: Product, b: Product) => String(a.price).localeCompare(String(b.price))
+    : (a: Product, b: Product) => a.price - b.price || a.name.localeCompare(b.name);
+  const priceDesc = bugs.priceSortLexical
+    ? (a: Product, b: Product) => String(b.price).localeCompare(String(a.price))
+    : (a: Product, b: Product) => b.price - a.price || a.name.localeCompare(b.name);
   switch (sort) {
     case "price-asc":
-      return sorted.sort((a, b) => a.price - b.price || a.name.localeCompare(b.name));
+      return sorted.sort(priceAsc);
     case "price-desc":
-      return sorted.sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
+      return sorted.sort(priceDesc);
     case "name-asc":
       return sorted.sort((a, b) => a.name.localeCompare(b.name));
     case "name-desc":
@@ -94,6 +118,7 @@ function clampPage(page: number | undefined, totalPages: number): number {
 export function queryCatalog(
   products: readonly Product[],
   query: CatalogQuery = {},
+  bugs: CatalogBugs = {},
 ): CatalogResult {
   const pageSize =
     query.pageSize && query.pageSize > 0
@@ -107,12 +132,14 @@ export function queryCatalog(
       matchesType(product, query.type),
   );
 
-  const sorted = sortProducts(filtered, query.sort ?? "relevance");
+  const sorted = sortProducts(filtered, query.sort ?? "relevance", bugs);
 
   const totalItems = sorted.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const page = clampPage(query.page, totalPages);
-  const start = (page - 1) * pageSize;
+  // FN_PAGINATION_OFFBYONE: shift the window start by one so each page boundary
+  // skips the first item (and on page 1 drops the very first product).
+  const start = (page - 1) * pageSize + (bugs.paginationOffByOne ? 1 : 0);
 
   return {
     items: sorted.slice(start, start + pageSize).map((p) => ({ ...p })),

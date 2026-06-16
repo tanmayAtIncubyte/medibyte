@@ -23,10 +23,24 @@ function isBlank(value: string | undefined): boolean {
   return !value || value.trim().length === 0;
 }
 
+export type ShippingBugs = {
+  // FN_POSTAL_UNVALIDATED: skip the required-field check on the postal code, so
+  // a blank postal code passes validation. The caller (checkout route, which
+  // has the user) resolves the flag and passes the boolean in, keeping this
+  // validator pure.
+  skipPostalValidation?: boolean;
+};
+
 /** Validates the shipping address; every field is required. */
-export function validateShipping(input: ShippingInput): FieldErrors {
+export function validateShipping(
+  input: ShippingInput,
+  bugs: ShippingBugs = {},
+): FieldErrors {
   const errors: FieldErrors = {};
   for (const { key, label } of SHIPPING_FIELDS) {
+    if (bugs.skipPostalValidation && key === "postalCode") {
+      continue;
+    }
     if (isBlank(input[key])) {
       errors[`shipping.${key}`] = `${label} is required.`;
     }
@@ -130,8 +144,9 @@ export type CheckoutValidation = {
 export function validateCheckout(
   lines: readonly CartLine[],
   input: CheckoutInput,
+  shippingBugs: ShippingBugs = {},
 ): CheckoutValidation {
-  const errors: FieldErrors = { ...validateShipping(input.shipping) };
+  const errors: FieldErrors = { ...validateShipping(input.shipping, shippingBugs) };
 
   const prescriptions: PrescriptionInfo[] = [];
   for (const line of rxLines(lines)) {

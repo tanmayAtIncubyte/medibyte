@@ -16,6 +16,14 @@ export type PlaceOrderResult =
 
 export type PlaceOrderDeps = {
   now?: Date;
+  // Seeded-bug switches resolved at the route boundary (which has the user) and
+  // passed in as plain booleans, so this orchestration stays pure of the gating
+  // engine and admins are never affected.
+  bugs?: {
+    taxFloor?: boolean;
+    ignoreExpiry?: boolean;
+    skipPostalValidation?: boolean;
+  };
 };
 
 export function placeOrder(
@@ -24,12 +32,18 @@ export function placeOrder(
   input: CheckoutInput,
   deps: PlaceOrderDeps = {},
 ): PlaceOrderResult {
-  const cart = getCartView(sessionId);
+  const bugs = deps.bugs ?? {};
+  const cart = getCartView(sessionId, {
+    taxFloor: bugs.taxFloor,
+    ignoreExpiry: bugs.ignoreExpiry,
+  });
   if (cart.lines.length === 0) {
     return { ok: false, reason: "empty-cart" };
   }
 
-  const validation = validateCheckout(cart.lines, input);
+  const validation = validateCheckout(cart.lines, input, {
+    skipPostalValidation: bugs.skipPostalValidation,
+  });
   if (!validation.ok) {
     return { ok: false, reason: "validation", errors: validation.errors };
   }

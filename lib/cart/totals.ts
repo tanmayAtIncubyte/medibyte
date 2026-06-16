@@ -57,16 +57,26 @@ export function buildCartLines(
  * Computes the cart totals breakdown. The discount is clamped to the subtotal
  * (never negative totals) and tax is charged on the post-discount subtotal.
  */
+export type TotalsBugs = {
+  // FN_TAX_FLOOR: floor the computed tax to whole cents instead of rounding, so
+  // e.g. $0.567 tax becomes $0.56. The caller (cart-service, which has the user)
+  // resolves the flag and passes the boolean in, keeping this function pure.
+  taxFloor?: boolean;
+};
+
 export function computeCartTotals(
   lines: readonly CartLine[],
   discount = 0,
+  bugs: TotalsBugs = {},
 ): CartTotals {
   const subtotal = roundMoney(lines.reduce((sum, line) => sum + line.lineTotal, 0));
   const itemCount = lines.reduce((count, line) => count + line.quantity, 0);
 
   const appliedDiscount = roundMoney(Math.min(Math.max(0, discount), subtotal));
   const taxedBase = roundMoney(subtotal - appliedDiscount);
-  const tax = roundMoney(taxedBase * TAX_RATE);
+  const tax = bugs.taxFloor
+    ? Math.floor(taxedBase * TAX_RATE * 100) / 100
+    : roundMoney(taxedBase * TAX_RATE);
   const total = roundMoney(taxedBase + tax);
 
   return {
