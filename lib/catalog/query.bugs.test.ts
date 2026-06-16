@@ -71,3 +71,33 @@ describe("FN_PAGINATION_OFFBYONE toggle", () => {
     expect(firstPageIds(PAGE_ON, ADMIN)).toEqual(["a", "b"]);
   });
 });
+
+// FN_PAGE_COUNT_UNFILTERED: totals reflect the UNFILTERED catalog while the page
+// shows the filtered slice. The buggy path counts against the imported seed
+// catalog, not the (filtered) products passed in. Here we filter the local
+// 3-item catalog down to 1 match and check the reported total.
+const COUNT_ON: BugFlags = { FN_PAGE_COUNT_UNFILTERED: true };
+const COUNT_OFF: BugFlags = { FN_PAGE_COUNT_UNFILTERED: false };
+
+function countResult(flags: BugFlags, user: { role: "admin" | "customer" } | null) {
+  // Search "b" matches only product "b" (names equal the ids); pageSize 1.
+  return queryCatalog(catalog, { search: "b", pageSize: 1 }, {
+    pageCountUnfiltered: isBugActiveWith(flags, "FN_PAGE_COUNT_UNFILTERED", user),
+  });
+}
+
+describe("FN_PAGE_COUNT_UNFILTERED toggle", () => {
+  it("flag off → totals reflect the filtered set for everyone", () => {
+    expect(countResult(COUNT_OFF, CUSTOMER).totalItems).toBe(1);
+    expect(countResult(COUNT_OFF, CUSTOMER).totalPages).toBe(1);
+    expect(countResult(COUNT_OFF, ADMIN).totalItems).toBe(1);
+  });
+
+  it("flag on → totals reflect the full catalog for a customer, filtered for admin", () => {
+    const customer = countResult(COUNT_ON, CUSTOMER);
+    // Counted against the full seed catalog, far larger than the single match.
+    expect(customer.totalItems).toBeGreaterThan(1);
+    expect(customer.items).toHaveLength(1); // page still shows the one match
+    expect(countResult(COUNT_ON, ADMIN).totalItems).toBe(1);
+  });
+});

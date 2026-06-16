@@ -42,6 +42,11 @@ export type CatalogResult = {
 export type CatalogBugs = {
   priceSortLexical?: boolean;
   paginationOffByOne?: boolean;
+  // FN_PAGE_COUNT_UNFILTERED: report totalItems/totalPages from the UNFILTERED
+  // catalog while the page still shows the filtered slice, so the count and
+  // pager overstate the results (e.g. "Showing 3 of 39" with empty trailing
+  // pages). Caller resolves the flag and passes the boolean in.
+  pageCountUnfiltered?: boolean;
 };
 
 /** Distinct categories present in the dataset, sorted alphabetically. */
@@ -134,7 +139,9 @@ export function queryCatalog(
 
   const sorted = sortProducts(filtered, query.sort ?? "relevance", bugs);
 
-  const totalItems = sorted.length;
+  // FN_PAGE_COUNT_UNFILTERED: count against the full catalog instead of the
+  // filtered set, so the totals/pager don't match the items actually shown.
+  const totalItems = bugs.pageCountUnfiltered ? products.length : sorted.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const page = clampPage(query.page, totalPages);
   // FN_PAGINATION_OFFBYONE: shift the window start by one so each page boundary

@@ -30,7 +30,12 @@ export default async function ProductsPage({
   const result = queryCatalog(products, query, {
     priceSortLexical: isBugActive("FN_PRICE_SORT_LEXICAL", user),
     paginationOffByOne: isBugActive("FN_PAGINATION_OFFBYONE", user),
+    pageCountUnfiltered: isBugActive("FN_PAGE_COUNT_UNFILTERED", user),
   });
+
+  // FN_FILTER_LOST_ON_PAGE: when on, the pager links drop the active
+  // search/filter/sort and only change the page.
+  const dropFiltersOnPage = isBugActive("FN_FILTER_LOST_ON_PAGE", user);
 
   const hasFilters = Boolean(
     query.search || query.category || query.type,
@@ -92,6 +97,7 @@ export default async function ProductsPage({
         query={query}
         page={result.page}
         totalPages={result.totalPages}
+        dropFilters={dropFiltersOnPage}
       />
     </PageContainer>
   );

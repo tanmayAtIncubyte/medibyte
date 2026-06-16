@@ -134,6 +134,82 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - How to spot it: edge input — leave postal code blank and submit; the server accepts it. (The client form may still pre-flag it; the bug is the server letting it through.)
 
 <!-- BATCH 2: Functional Difficult + Expert -->
+
+> **Stock baseline (clean default, no flag).** Batch 2 adds the previously-missing
+> correct stock behavior so the two stock bugs have something to toggle off.
+> `lib/data/stock-store.ts` is a globalThis-anchored ledger seeded from each
+> product's `stock`; `getAvailableStock(id)` = seed − reserved. On a successful
+> order, `lib/orders/place-order.ts` reserves stock **atomically and
+> all-or-nothing** (rejects with a 409 "Some items are no longer available…" if
+> any line exceeds availability, otherwise decrements). The add-to-cart OOS check
+> (`/api/session/cart` POST) now uses `getAvailableStock`. The ledger resets on
+> server restart. This baseline is behind NO flag; `FN_OVERSELL` and
+> `FN_CONCURRENT_DOUBLESPEND` toggle it off.
+
+### FN_TAX_BEFORE_DISCOUNT — Tax computed on the pre-discount subtotal (overcharge)
+- Functional / Difficult / HIPAA: no
+- Location: `lib/cart/totals.ts` (`computeCartTotals`), resolved at `/cart`, `/checkout`, `/api/checkout`.
+- Trigger: As a customer, build a cart and apply a coupon (e.g. `SAVE10` on a $100 cart → $10 off). Look at the Tax row.
+- Expected (correct / admin): tax = 8% of the **post-discount** base ($90 → $7.20); total $97.20.
+- Actual (buggy / customer): tax = 8% of the **pre-discount** subtotal ($100 → $8.00); total $98.00 — the customer is overcharged the tax on the discounted amount.
+- How to spot it: arithmetic — Tax ÷ (Subtotal − Discount) ≠ 8%; tax is 8% of the subtotal instead. Only visible when a coupon is applied.
+
+### FN_COUPON_NEGATIVE — Discount not clamped to subtotal → negative total
+- Functional / Difficult / HIPAA: no
+- Location: `lib/cart/totals.ts` (`computeCartTotals`), resolved at `/cart`, `/checkout`, `/api/checkout`. The unclamped raw discount is sourced in `lib/cart/cart-service.ts`.
+- Trigger: As a customer, apply a fixed-dollar coupon worth more than the cart subtotal (clean data clamps it; the bug removes the clamp). Reproducible cleanly at the pure-function level (discount $30 on a $20 cart → total −$10.80).
+- Expected (correct / admin): discount clamped to the subtotal; total floors at $0, never negative.
+- Actual (buggy / customer): the discount is applied unclamped, so the total goes **negative**.
+- How to spot it: arithmetic / edge input — a discount larger than the subtotal yields a negative Total. (Debatable: with the current seed coupons, no single coupon exceeds its own min-subtotal cart, so the in-browser repro needs the reviewer to pick/seed a coupon worth more than the cart; the defect itself is the missing clamp.)
+
+### FN_FILTER_LOST_ON_PAGE — Paginating drops the active filter/search
+- Functional / Difficult / HIPAA: no
+- Location: `components/products/catalog-pagination.tsx` (flag resolved on the `/products` page and passed in as `dropFilters`).
+- Trigger: As a customer, on `/products` apply a search/category/sort (e.g. search "vitamin"), then click Next / a page number.
+- Expected (correct / admin): the page links preserve `q`/`category`/`type`/`sort` and only change `page`.
+- Actual (buggy / customer): the page links are built from an empty base, so navigating to another page **drops the filter/search** — you land on the unfiltered catalog page N.
+- How to spot it: cross-screen — click page 2 with a filter active and the filter vanishes from the URL/results.
+
+### FN_PAGE_COUNT_UNFILTERED — Page count / total uses the unfiltered set
+- Functional / Difficult / HIPAA: no
+- Location: `lib/catalog/query.ts` (`queryCatalog`), resolved at `/products`.
+- Trigger: As a customer, filter/search `/products` so the result set is smaller than the full catalog (e.g. a category with 3 items).
+- Expected (correct / admin): "Showing 3 of 3" and a single page that matches the filtered set.
+- Actual (buggy / customer): the totals/pager count the **full catalog** (e.g. "Showing 3 of 41" with extra empty trailing pages) while the grid shows only the filtered slice.
+- How to spot it: cross-screen — the "of N" count and the number of pager buttons disagree with the items actually shown; later pages render empty.
+
+### FN_OVERSELL — Order can exceed available stock (no stock check)
+- Functional / Difficult / HIPAA: no
+- Location: `lib/orders/place-order.ts` (toggles off the atomic stock check) via `/api/checkout`.
+- Trigger: As a customer, add more units of a low-stock item than exist (e.g. `prod-decongestant`, stock 8 → add 20) and check out.
+- Expected (correct / admin): 409 "Some items are no longer available in the requested quantity." — order rejected, nothing reserved.
+- Actual (buggy / customer): the stock check is skipped; the order is placed for 20 against 8 in stock, driving availability negative.
+- How to spot it: edge input / DevTools Network — order a quantity above stock; the clean app 409s, the buggy app 201s. Cross-check available stock afterward.
+
+### FN_CONCURRENT_DOUBLESPEND — Concurrent orders double-spend the same stock
+- Functional / Expert / HIPAA: no
+- Location: `lib/orders/place-order.ts` (uses `reserveStockRacy` instead of the atomic `reserveStock`) via `/api/checkout`.
+- Trigger: As a customer (two near-simultaneous checkout POSTs, e.g. fire two `/api/checkout` requests for the last units of `prod-decongestant` at the same time).
+- Expected (correct / admin): the reservation is atomic and run-to-completion; exactly one of two concurrent orders for the last N units succeeds, the other 409s — never oversold.
+- Actual (buggy / customer): the racy path snapshots availability, **yields the event loop, then commits** using the stale snapshot, so both concurrent orders pass the check and both succeed — the stock is double-spent.
+- How to spot it: edge input / concurrency — fire two checkout requests in parallel for the last units and observe both succeed (reserved > stock). Observable in the unit test via `Promise.all` of two `reserveStockRacy`/`placeOrder` calls. Made reproducible by the deliberate `await Promise.resolve()` race window between check and commit.
+
+### FN_TOTAL_ROUNDING_EDGE — Wrong total only at specific coupon+tax values (rounding-order edge)
+- Functional / Expert / HIPAA: no
+- Location: `lib/cart/totals.ts` (`computeCartTotals`), resolved at `/cart`, `/checkout`, `/api/checkout`. The unrounded raw discount is sourced in `lib/cart/cart-service.ts`.
+- Trigger: As a customer, hit a cart+percent-coupon whose discount rounds in a way that flips a cent (e.g. subtotal $1.05 with a 10% coupon — most carts are correct). The bug builds the taxed base from the **unrounded** discount instead of the rounded one.
+- Expected (correct / admin): taxed base uses the rounded discount; total $1.02 at the edge value (and correct everywhere).
+- Actual (buggy / customer): taxed base uses the unrounded discount, so at the edge value the total is $1.03 — off by a cent. **Most other carts compute correctly**, which is what makes it hard to spot.
+- How to spot it: arithmetic — recompute (subtotal − rounded discount) + rounded tax and compare; only specific subtotal+coupon combinations are off by a cent. Easy to miss because the common cases are right.
+
+### FN_PARTIAL_CHECKOUT — Order created but the cart is not cleared (inconsistent state)
+- Functional / Expert / HIPAA: no
+- Location: `lib/orders/place-order.ts` (skips `clearCart` after persisting the order) via `/api/checkout`.
+- Trigger: As a customer, complete a checkout successfully, then return to `/cart` (or check the header badge).
+- Expected (correct / admin): the order appears in `/orders` and the cart is emptied (coupon cleared too).
+- Actual (buggy / customer): the order is created and persisted, but the **cart is left full** — the same items linger, inviting a duplicate purchase and an inconsistent post-checkout state.
+- How to spot it: cross-screen — after a successful order, `/orders` shows it but `/cart` still holds the items and the header badge is non-zero.
+
 <!-- BATCH 3: Accessibility -->
 <!-- BATCH 4: Performance / Latency -->
 <!-- BATCH 5: Security / Transport (HIPAA) -->

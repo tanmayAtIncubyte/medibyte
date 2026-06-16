@@ -149,6 +149,74 @@ export const bugRegistry: readonly BugDefinition[] = [
     location: "lib/orders/checkout.ts (validateShipping) via /api/checkout",
     hipaa: false,
   },
+
+  // --- Batch 2: Functional — Difficult (5) ---
+  {
+    key: "FN_TAX_BEFORE_DISCOUNT",
+    title: "Tax computed on the pre-discount subtotal (overcharge)",
+    category: "functional",
+    difficulty: "difficult",
+    location: "lib/cart/totals.ts (computeCartTotals) via /cart, /checkout, /api/checkout",
+    hipaa: false,
+  },
+  {
+    key: "FN_COUPON_NEGATIVE",
+    title: "Discount not clamped to subtotal → negative total",
+    category: "functional",
+    difficulty: "difficult",
+    location: "lib/cart/totals.ts (computeCartTotals) via /cart, /checkout, /api/checkout",
+    hipaa: false,
+  },
+  {
+    key: "FN_FILTER_LOST_ON_PAGE",
+    title: "Paginating drops the active filter/search",
+    category: "functional",
+    difficulty: "difficult",
+    location: "components/products/catalog-pagination.tsx via /products",
+    hipaa: false,
+  },
+  {
+    key: "FN_PAGE_COUNT_UNFILTERED",
+    title: "Page count / total uses the unfiltered catalog",
+    category: "functional",
+    difficulty: "difficult",
+    location: "lib/catalog/query.ts (queryCatalog) via /products",
+    hipaa: false,
+  },
+  {
+    key: "FN_OVERSELL",
+    title: "Order can exceed available stock (no stock check)",
+    category: "functional",
+    difficulty: "difficult",
+    location: "lib/orders/place-order.ts via /api/checkout",
+    hipaa: false,
+  },
+
+  // --- Batch 2: Functional — Expert (3) ---
+  {
+    key: "FN_CONCURRENT_DOUBLESPEND",
+    title: "Concurrent orders double-spend the same stock (lost atomicity)",
+    category: "functional",
+    difficulty: "expert",
+    location: "lib/orders/place-order.ts (reserveStockRacy) via /api/checkout",
+    hipaa: false,
+  },
+  {
+    key: "FN_TOTAL_ROUNDING_EDGE",
+    title: "Wrong total only at specific coupon+tax values (rounding-order edge)",
+    category: "functional",
+    difficulty: "expert",
+    location: "lib/cart/totals.ts (computeCartTotals) via /cart, /checkout, /api/checkout",
+    hipaa: false,
+  },
+  {
+    key: "FN_PARTIAL_CHECKOUT",
+    title: "Order created but the cart is not cleared (inconsistent state)",
+    category: "functional",
+    difficulty: "expert",
+    location: "lib/orders/place-order.ts via /api/checkout",
+    hipaa: false,
+  },
 ] as const;
 
 // Type-safe key union derived from the registry, so callers get autocomplete

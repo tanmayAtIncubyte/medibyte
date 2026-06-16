@@ -7,19 +7,29 @@ import { cn } from "@/lib/utils";
 /**
  * Server-rendered, URL-driven pagination. Each control is a <Link> that
  * preserves the active search/filter/sort and only changes the page.
+ *
+ * FN_FILTER_LOST_ON_PAGE: when `dropFilters` is set, the page links are built
+ * from an EMPTY base query, so navigating to another page discards the active
+ * search/category/type/sort. The page resolves the flag (it has the user) and
+ * passes the boolean in, keeping this component clean for admins.
  */
 export function CatalogPagination({
   query,
   page,
   totalPages,
+  dropFilters = false,
 }: {
   query: CatalogQuery;
   page: number;
   totalPages: number;
+  dropFilters?: boolean;
 }) {
   if (totalPages <= 1) {
     return null;
   }
+
+  // The base query each page link preserves. Dropping it loses the filters.
+  const linkBase: CatalogQuery = dropFilters ? {} : query;
 
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
   const hasPrev = page > 1;
@@ -31,7 +41,7 @@ export function CatalogPagination({
       aria-label="Pagination"
     >
       <PageLink
-        href={buildCatalogHref(query, { page: page - 1 })}
+        href={buildCatalogHref(linkBase, { page: page - 1 })}
         disabled={!hasPrev}
         label="Previous page"
       >
@@ -41,7 +51,7 @@ export function CatalogPagination({
       {pages.map((p) => (
         <Link
           key={p}
-          href={buildCatalogHref(query, { page: p })}
+          href={buildCatalogHref(linkBase, { page: p })}
           aria-label={`Page ${p}`}
           aria-current={p === page ? "page" : undefined}
           className={cn(
@@ -56,7 +66,7 @@ export function CatalogPagination({
       ))}
 
       <PageLink
-        href={buildCatalogHref(query, { page: page + 1 })}
+        href={buildCatalogHref(linkBase, { page: page + 1 })}
         disabled={!hasNext}
         label="Next page"
       >
