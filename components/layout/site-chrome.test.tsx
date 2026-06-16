@@ -126,6 +126,24 @@ describe("SiteHeader auth state", () => {
     expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
   });
 
+  it("links a logged-in user to their orders and account", async () => {
+    getCurrentUserMock.mockResolvedValue(customer);
+
+    await renderHeader();
+
+    expect(screen.getByRole("link", { name: "Orders" })).toHaveAttribute("href", "/orders");
+    expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute("href", "/account");
+  });
+
+  it("does not show Orders/Account links when logged out", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+
+    await renderHeader();
+
+    expect(screen.queryByRole("link", { name: "Orders" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
+  });
+
   it("shows the Admin link plus name and Sign out for an admin", async () => {
     getCurrentUserMock.mockResolvedValue(admin);
 

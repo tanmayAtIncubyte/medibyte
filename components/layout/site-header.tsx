@@ -37,6 +37,12 @@ export async function SiteHeader() {
           </Button>
           {user ? (
             <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/orders">Orders</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/account">Account</Link>
+              </Button>
               {user.role === "admin" && (
                 <Button variant="ghost" size="sm" asChild>
                   <Link href="/admin">Admin</Link>
