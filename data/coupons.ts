@@ -47,4 +47,17 @@ export const coupons: readonly Coupon[] = [
     expiresOn: "2023-05-31",
     minSubtotal: 0,
   },
+  {
+    // High-value fixed coupon with no minimum. On a small cart its $50 face
+    // value exceeds the subtotal, which is what makes FN_COUPON_NEGATIVE
+    // observable end-to-end: with that flag ON the missing clamp lets the
+    // discount outrun the subtotal and the total goes negative; with it OFF the
+    // discount clamps to the subtotal and the total floors at $0.
+    code: "MEGA50",
+    description: "$50 off your order",
+    type: "fixed",
+    value: 50,
+    expiresOn: "2099-12-31",
+    minSubtotal: 0,
+  },
 ];

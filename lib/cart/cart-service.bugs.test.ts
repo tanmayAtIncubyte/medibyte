@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { BugFlags } from "@/lib/bug-flags";
 import { isBugActiveWith } from "@/lib/bugs";
 import { getCartView } from "@/lib/cart/cart-service";
-import { addToCart, resetAllSessions } from "@/lib/data/session-store";
+import {
+  addToCart,
+  resetAllSessions,
+  setCouponCode,
+} from "@/lib/data/session-store";
 
 // Toggle test for FN_CART_TOTAL_STALE. getCartView is pure of the gating engine
 // (it takes a CartViewBugs of booleans); we resolve `totalStale` through
@@ -49,5 +53,48 @@ describe("FN_CART_TOTAL_STALE toggle", () => {
 
     const clean = totalFor(ON, ADMIN);
     expect(clean.total).toBe(22.65);
+  });
+});
+
+// FN_COUPON_NEGATIVE end-to-end through getCartView, made observable by the
+// MEGA50 seed coupon ($50 off, no minimum). One $6.99 ibuprofen is a ~$7 cart,
+// so MEGA50's $50 face value exceeds the subtotal. Clean: discount clamps to the
+// $6.99 subtotal so the total floors at $0. Buggy: the missing clamp leaves a
+// $50 discount, pushing the total well below zero.
+describe("FN_COUPON_NEGATIVE — MEGA50 on a small cart goes negative (MED-9)", () => {
+  const SID_CN = "sess-coupon-negative";
+  const CN_ON: BugFlags = { FN_COUPON_NEGATIVE: true };
+  const CN_OFF: BugFlags = { FN_COUPON_NEGATIVE: false };
+
+  beforeEach(() => {
+    resetAllSessions();
+    addToCart(SID_CN, "prod-ibuprofen-200", 1); // $6.99 subtotal
+    setCouponCode(SID_CN, "MEGA50");
+  });
+
+  afterEach(() => resetAllSessions());
+
+  function viewFor(flags: BugFlags, user: { role: "admin" | "customer" } | null) {
+    return getCartView(SID_CN, {
+      couponNegative: isBugActiveWith(flags, "FN_COUPON_NEGATIVE", user),
+    });
+  }
+
+  it("flag off → discount clamps to the subtotal so the total floors at $0", () => {
+    for (const view of [viewFor(CN_OFF, CUSTOMER), viewFor(CN_OFF, ADMIN)]) {
+      expect(view.subtotal).toBe(6.99);
+      expect(view.discount).toBe(6.99);
+      expect(view.total).toBe(0);
+    }
+  });
+
+  it("flag on → unclamped MEGA50 discount drives the total negative for a customer, clean for admin", () => {
+    const buggy = viewFor(CN_ON, CUSTOMER);
+    expect(buggy.subtotal).toBe(6.99);
+    expect(buggy.discount).toBe(50); // full face value, not clamped to $6.99
+    expect(buggy.total).toBeLessThan(0);
+
+    // Admin always sees the clean clamped total.
+    expect(viewFor(CN_ON, ADMIN).total).toBe(0);
   });
 });

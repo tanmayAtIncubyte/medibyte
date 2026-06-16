@@ -157,10 +157,10 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 ### FN_COUPON_NEGATIVE — Discount not clamped to subtotal → negative total
 - Functional / Difficult / HIPAA: no
 - Location: `lib/cart/totals.ts` (`computeCartTotals`), resolved at `/cart`, `/checkout`, `/api/checkout`. The unclamped raw discount is sourced in `lib/cart/cart-service.ts`.
-- Trigger: As a customer, apply a fixed-dollar coupon worth more than the cart subtotal (clean data clamps it; the bug removes the clamp). Reproducible cleanly at the pure-function level (discount $30 on a $20 cart → total −$10.80).
-- Expected (correct / admin): discount clamped to the subtotal; total floors at $0, never negative.
-- Actual (buggy / customer): the discount is applied unclamped, so the total goes **negative**.
-- How to spot it: arithmetic / edge input — a discount larger than the subtotal yields a negative Total. (Debatable: with the current seed coupons, no single coupon exceeds its own min-subtotal cart, so the in-browser repro needs the reviewer to pick/seed a coupon worth more than the cart; the defect itself is the missing clamp.)
+- Trigger: As a customer, add a single low-priced item so the cart subtotal is ~$7 (e.g. one Ibuprofen 200 at $6.99) and apply the **`MEGA50`** coupon ($50 off, no minimum). Its $50 face value exceeds the subtotal, so the clean clamp matters. Also reproducible at the pure-function level (discount $30 on a $20 cart → total −$10.80).
+- Expected (correct / admin): discount clamped to the subtotal; total floors at $0, never negative (MEGA50 on a $6.99 cart → discount $6.99, total $0).
+- Actual (buggy / customer): the discount is applied unclamped, so the total goes **negative** (MEGA50 on a $6.99 cart → discount $50, total well below $0).
+- How to spot it: arithmetic / edge input — apply `MEGA50` to a ~$7 cart and the Total goes negative. (The `MEGA50` seed coupon was added in Phase-4 cleanup specifically to make this observable in the browser; previously no seed coupon exceeded its own min-subtotal cart.)
 
 ### FN_FILTER_LOST_ON_PAGE — Paginating drops the active filter/search
 - Functional / Difficult / HIPAA: no
