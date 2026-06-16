@@ -1,16 +1,26 @@
+import { globalSingleton } from "@/lib/data/global-store";
 import type { Order } from "@/lib/orders/types";
 
-// In-memory per-process order store for orders created at checkout. Consistent
-// with the cart store pattern: writes survive for the lifetime of the running
-// server process and are wiped on restart, returning every customer to the
-// seed-only baseline. No DB. Orders carry their own userId so they are stored
-// globally and filtered by owner on read (ownership is enforced in lib/orders).
+// In-memory per-process order store for orders created at checkout. Anchored on
+// globalThis (globalSingleton) so the same store is shared across Next's separate
+// API-route and server-component bundles — otherwise a checkout written via the
+// /api/checkout route would be invisible to the /orders page render. Writes
+// survive for the running server process and are wiped on restart, returning
+// every customer to the seed-only baseline. No DB. Orders carry their own userId
+// so they are stored globally and filtered by owner on read (ownership enforced
+// in lib/orders).
 
-const createdOrders: Order[] = [];
+const createdOrders = globalSingleton(
+  "orders-store/createdOrders",
+  () => [] as Order[],
+);
 
 // Per-user monotonic sequence used to derive stable, readable order ids without
 // RNG. Resets with the store on restart.
-const userSequences = new Map<string, number>();
+const userSequences = globalSingleton(
+  "orders-store/userSequences",
+  () => new Map<string, number>(),
+);
 
 /** Next 1-based sequence number for a user's session-created orders. */
 export function nextOrderSequence(userId: string): number {

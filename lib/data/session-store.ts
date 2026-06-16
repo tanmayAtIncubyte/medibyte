@@ -1,3 +1,5 @@
+import { globalSingleton } from "@/lib/data/global-store";
+
 export type CartItem = {
   productId: string;
   quantity: number;
@@ -8,11 +10,14 @@ type SessionState = {
   couponCode: string | null;
 };
 
-// Module-level store: writes survive for the lifetime of the running server
-// process and are wiped when the process restarts, returning every session to
-// the seed baseline (an empty cart). This is the canonical in-memory write
-// pattern that cart/order/registration features build on in later phases.
-const sessions = new Map<string, SessionState>();
+// Process-wide store (anchored on globalThis via globalSingleton) so the same
+// Map is shared across Next's separate API-route and server-component bundles.
+// Writes survive for the lifetime of the running server process and are wiped on
+// restart, returning every session to the seed baseline (an empty cart).
+const sessions = globalSingleton(
+  "session-store/sessions",
+  () => new Map<string, SessionState>(),
+);
 
 function getOrCreateSession(sessionId: string): SessionState {
   const existing = sessions.get(sessionId);
