@@ -131,4 +131,34 @@ describe("POST /api/auth/register", () => {
     expect(response.status).toBe(400);
     expect(sessionCookie(response)).toBeUndefined();
   });
+
+  it("returns 400 with field errors and no session for a malformed email", async () => {
+    const response = await register(
+      jsonRequest("http://localhost/api/auth/register", {
+        name: "Bad Email",
+        email: "notanemail",
+        password: "pw123456",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(sessionCookie(response)).toBeUndefined();
+    const body = (await response.json()) as { errors?: Record<string, string> };
+    expect(body.errors?.email).toBeDefined();
+  });
+
+  it("returns 400 with field errors and no session for a too-short password", async () => {
+    const response = await register(
+      jsonRequest("http://localhost/api/auth/register", {
+        name: "Weak Password",
+        email: "weak@example.test",
+        password: "x",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(sessionCookie(response)).toBeUndefined();
+    const body = (await response.json()) as { errors?: Record<string, string> };
+    expect(body.errors?.password).toBeDefined();
+  });
 });

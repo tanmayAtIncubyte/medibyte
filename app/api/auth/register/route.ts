@@ -2,11 +2,16 @@ import { NextResponse } from "next/server";
 
 import { DuplicateEmailError, registerCustomer } from "@/lib/auth/accounts";
 import { setSessionCookie } from "@/lib/auth/current-user";
+import { validateRegistration } from "@/lib/auth/registration";
 
 export async function POST(request: Request) {
   const { name, email, password } = await readRegistration(request);
-  if (!name || !email || !password) {
-    return NextResponse.json({ error: "Name, email, and password are required" }, { status: 400 });
+  const errors = validateRegistration({ name, email, password });
+  if (Object.keys(errors).length > 0) {
+    return NextResponse.json(
+      { error: "Please fix the highlighted fields.", errors },
+      { status: 400 },
+    );
   }
   try {
     const user = registerCustomer(name, email, password);

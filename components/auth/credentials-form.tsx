@@ -25,15 +25,19 @@ const COPY = {
   },
 } as const;
 
+type FieldErrorMap = Record<string, string>;
+
 export function CredentialsForm({ mode }: CredentialsFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
   const [pending, setPending] = useState(false);
   const copy = COPY[mode];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
     setPending(true);
 
     const formData = new FormData(event.currentTarget);
@@ -45,22 +49,41 @@ export function CredentialsForm({ mode }: CredentialsFormProps) {
       return;
     }
 
-    const message = await readError(response, copy.fallbackError);
-    setError(message);
+    const { message, errors } = await readError(response, copy.fallbackError);
+    // Field-level errors are surfaced inline; the summary covers everything else
+    // (e.g. duplicate email, bad credentials) so a reason is always shown.
+    if (errors && Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+    } else {
+      setError(message);
+    }
     setPending(false);
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       {mode === "register" && (
-        <Field label="Full name" name="name" type="text" autoComplete="name" />
+        <Field
+          label="Full name"
+          name="name"
+          type="text"
+          autoComplete="name"
+          error={fieldErrors.name}
+        />
       )}
-      <Field label="Email" name="email" type="email" autoComplete="email" />
+      <Field
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        error={fieldErrors.email}
+      />
       <Field
         label="Password"
         name="password"
         type="password"
         autoComplete={mode === "login" ? "current-password" : "new-password"}
+        error={fieldErrors.password}
       />
       {error && (
         <p role="alert" className="text-sm text-destructive">
@@ -79,13 +102,27 @@ type FieldProps = {
   name: string;
   type: string;
   autoComplete: string;
+  error?: string;
 };
 
-function Field({ label, name, type, autoComplete }: FieldProps) {
+function Field({ label, name, type, autoComplete, error }: FieldProps) {
+  const errorId = error ? `${name}-error` : undefined;
   return (
     <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
       {label}
-      <Input name={name} type={type} autoComplete={autoComplete} required />
+      <Input
+        name={name}
+        type={type}
+        autoComplete={autoComplete}
+        required
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errorId}
+      />
+      {error && (
+        <span id={errorId} role="alert" className="text-sm font-normal text-destructive">
+          {error}
+        </span>
+      )}
     </label>
   );
 }
@@ -109,7 +146,12 @@ async function submitCredentials(
   });
 }
 
-async function readError(response: Response, fallback: string): Promise<string> {
-  const body = (await response.json().catch(() => null)) as { error?: string } | null;
-  return body?.error ?? fallback;
+async function readError(
+  response: Response,
+  fallback: string,
+): Promise<{ message: string; errors?: FieldErrorMap }> {
+  const body = (await response.json().catch(() => null)) as
+    | { error?: string; errors?: FieldErrorMap }
+    | null;
+  return { message: body?.error ?? fallback, errors: body?.errors };
 }
