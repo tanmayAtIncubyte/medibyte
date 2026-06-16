@@ -80,19 +80,19 @@ Custom signed-cookie session keyed off the seed users, exposing the current user
 
 ---
 
-### Slice 5: Admin bug-flag control panel
+### Slice 5: Admin bug-flag control panel [x]
 The admin-only screen that lists every registry bug and writes toggles to `bug-flags.json`, closing the loop so toggles take effect for customers.
 
-- [ ] An admin visiting `/admin` sees a bug-control panel listing every bug from the registry
-- [ ] Each listed bug shows its title, category, and difficulty, and a current on/off state
-- [ ] The panel's displayed on/off state for each bug matches the value in `data/bug-flags.json`
-- [ ] An admin can toggle an individual bug on or off from the panel
-- [ ] Toggling a bug writes the new state to `data/bug-flags.json` and the change persists across a page reload
-- [ ] The change persists across a server restart (the flag file, not in-memory state, is the source of truth)
-- [ ] After a flag is toggled, a subsequent `isBugActive(key, customer)` call reflects the new state (the panel actually drives behavior)
-- [ ] A non-admin (customer or logged-out) cannot view the panel and cannot toggle flags via the toggle API (request is denied)
-- [ ] The panel can filter or group bugs by category and/or difficulty so a reviewer can configure an assessment quickly
-- [ ] A "reset to defaults" or bulk all-off action exists so the reviewer can return to a known clean baseline
+- [x] An admin visiting `/admin` sees a bug-control panel listing every bug from the registry
+- [x] Each listed bug shows its title, category, and difficulty, and a current on/off state
+- [x] The panel's displayed on/off state for each bug matches the value in `data/bug-flags.json`
+- [x] An admin can toggle an individual bug on or off from the panel
+- [x] Toggling a bug writes the new state to `data/bug-flags.json` and the change persists across a page reload
+- [x] The change persists across a server restart (the flag file, not in-memory state, is the source of truth)
+- [x] After a flag is toggled, a subsequent `isBugActive(key, customer)` call reflects the new state (the panel actually drives behavior)
+- [x] A non-admin (customer or logged-out) cannot view the panel and cannot toggle flags via the toggle API (request is denied)
+- [x] The panel can filter or group bugs by category and/or difficulty so a reviewer can configure an assessment quickly
+- [x] A "reset to defaults" or bulk all-off action exists so the reviewer can return to a known clean baseline
 
 ---
 
