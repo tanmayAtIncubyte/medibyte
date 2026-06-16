@@ -44,7 +44,8 @@ const customer: SessionUser = {
   role: "customer",
 };
 
-const PROBE = "PROBE_NOOP";
+// A real registered key used as the sample flag toggled in these route tests.
+const PROBE = "FN_PRICE_DECIMALS";
 
 // Stand-in for "denied": the route resolves the current user via getCurrentUser
 // and only an admin (or the SEC bypass, off here) passes the guard.

@@ -8,10 +8,10 @@ import type { BugFlags } from "@/lib/bug-flags";
 import { BugFlagPanel } from "@/components/admin/bug-flag-panel";
 
 // Slice 5 — the admin panel rendering + interaction (AC 1,2,3,4,9,10). We pass an
-// explicit `bugs` fixture (the registry only ships PROBE_NOOP in Phase 1, so a
-// synthetic spread of categories/difficulties is needed to exercise filtering and
-// grouping meaningfully). Tests are behavior-focused: rendered text/state and the
-// POST body the panel sends — not internal calls.
+// explicit synthetic `bugs` fixture spanning categories/difficulties to exercise
+// filtering and grouping deterministically, independent of the real registry.
+// Tests are behavior-focused: rendered text/state and the POST body the panel
+// sends — not internal calls.
 //
 // useRouter and fetch are mocked so toggling never hits a real server. We assert
 // the panel POSTs the expected body and reflects the passed flags.
@@ -321,28 +321,28 @@ describe("preview control — per row + opens the modal (MED-29)", () => {
   });
 });
 
-// MED-29 — the panel is fed the assessment-only list; PROBE_NOOP / internal
-// entries are excluded so only the 45 real bugs ever show.
-describe("assessment-bug filtering — excludes PROBE_NOOP / internal (MED-29)", () => {
-  it("listAssessmentBugs drops the internal PROBE_NOOP probe", () => {
+// MED-9 — after Phase-4 cleanup the registry holds exactly the 45 real
+// assessment bugs with no internal/probe entries; listAssessmentBugs still
+// filters internal entries (defensively) so the panel only ever shows real bugs.
+describe("assessment-bug filtering — exactly 45 real bugs, no internal entries (MED-9)", () => {
+  it("contains no internal entries and never surfaces the removed PROBE_NOOP probe", () => {
     const keys = listAssessmentBugs().map((bug) => bug.key);
 
     expect(keys).not.toContain("PROBE_NOOP");
     expect(listAssessmentBugs().every((bug) => bug.internal !== true)).toBe(true);
+    expect(listBugs().some((bug) => bug.internal === true)).toBe(false);
   });
 
-  it("the assessment list is exactly the 45 real bugs (no internal entries)", () => {
+  it("the assessment list is exactly the 45 real bugs (registry == assessment)", () => {
     const all = listBugs();
     const assessment = listAssessmentBugs();
-    const internalCount = all.filter((bug) => bug.internal === true).length;
 
-    expect(internalCount).toBeGreaterThanOrEqual(1); // PROBE_NOOP
-    expect(assessment).toHaveLength(all.length - internalCount);
+    expect(all).toHaveLength(45);
     expect(assessment).toHaveLength(45);
+    expect(assessment).toHaveLength(all.length);
   });
 
-  it("does not render a row for a key that was filtered out upstream", () => {
-    // The panel renders exactly what it is given; PROBE_NOOP is never passed in.
+  it("does not render a row for the removed Phase-1 probe", () => {
     render(<BugFlagPanel bugs={listAssessmentBugs()} initialFlags={{}} />);
 
     expect(screen.queryByText(/Phase-1 engine probe/i)).not.toBeInTheDocument();

@@ -1,9 +1,8 @@
 // The canonical list of every bug in MediByte. This file IS the answer key:
 // each entry describes one deliberately-seeded defect and where it lives.
 // `data/bug-flags.json` is seeded from these keys and `lib/bugs.ts` gates every
-// buggy code path through them. No real bugs are seeded in Phase 1 — the single
-// PROBE_NOOP entry exists only to prove the toggle engine end-to-end and is
-// removed (or replaced by real bugs) in Phase 4.
+// buggy code path through them. The registry holds exactly the 45 seeded
+// assessment bugs (the Phase-1 PROBE_NOOP engine probe was removed in Phase 4).
 
 export type BugCategory =
   | "functional"
@@ -41,23 +40,13 @@ export type BugDefinition = {
   effect?: string;
   where?: string;
   howToSpot?: BugHowToSpot;
-  // Internal/non-assessment entries (e.g. the PROBE_NOOP engine probe) are not
-  // real seeded bugs. The admin panel filters these out so only the 45 real
-  // assessment bugs are shown. Removed entirely in Phase-4 cleanup.
+  // Internal/non-assessment marker. No entries currently use it (the Phase-1
+  // PROBE_NOOP probe that did was removed in Phase 4), but listAssessmentBugs
+  // still honors it so any future scaffolding can be hidden from the panel.
   internal?: boolean;
 };
 
 export const bugRegistry: readonly BugDefinition[] = [
-  {
-    key: "PROBE_NOOP",
-    title: "Phase-1 engine probe (no-op, not a real bug)",
-    category: "functional",
-    difficulty: "easy",
-    location: "lib/bugs.ts (describeProbe demo)",
-    hipaa: false,
-    internal: true,
-  },
-
   // --- Batch 1: Functional — Easy (8) ---
   {
     key: "FN_PRICE_DECIMALS",
@@ -581,9 +570,9 @@ export function listBugs(): BugDefinition[] {
   return bugRegistry.map((bug) => ({ ...bug }));
 }
 
-// The 45 real assessment bugs only — excludes internal/no-op probe entries
-// (e.g. PROBE_NOOP). The admin panel uses this so reviewers only see togglable
-// assessment defects, never engine scaffolding.
+// The 45 real assessment bugs only — excludes any internal/no-op scaffolding
+// entries (marked internal: true). The admin panel uses this so reviewers only
+// see togglable assessment defects, never engine scaffolding.
 export function listAssessmentBugs(): BugDefinition[] {
   return bugRegistry.filter((bug) => bug.internal !== true).map((bug) => ({ ...bug }));
 }

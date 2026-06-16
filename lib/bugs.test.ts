@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { describeProbe, isBugActive, isBugActiveWith, type GatingUser } from "@/lib/bugs";
+import { isBugActive, isBugActiveWith, type GatingUser } from "@/lib/bugs";
 import type { BugFlags } from "@/lib/bug-flags";
 
 // Slice 3 — the safety-critical core. A leak here (an admin seeing a bug, or a
@@ -12,7 +12,10 @@ const ADMIN: GatingUser = { role: "admin" };
 const CUSTOMER: GatingUser = { role: "customer" };
 const NO_USER: GatingUser = null;
 
-const KNOWN_KEY = "PROBE_NOOP";
+// A real registered assessment bug key, used purely to exercise the gating
+// engine (the engine is bug-agnostic — it only checks registry membership +
+// flag state + role).
+const KNOWN_KEY = "FN_PRICE_DECIMALS";
 const UNKNOWN_KEY = "NOT_A_REAL_BUG";
 
 const enabled: BugFlags = { [KNOWN_KEY]: true };
@@ -87,34 +90,21 @@ describe("isBugActiveWith — unknown key", () => {
 });
 
 // AC 10 (wrapper): isBugActive reads the real committed all-disabled baseline,
-// so PROBE_NOOP is inactive for everyone in Phase 1.
+// so every bug is inactive for everyone (default flags are OFF).
 describe("isBugActive — file-loading wrapper over the all-disabled baseline", () => {
   it.each([
     ["a customer", CUSTOMER],
     ["an admin", ADMIN],
     ["a null user", NO_USER],
-  ])("returns false for PROBE_NOOP with %s (baseline is clean)", (_label, user) => {
-    expect(isBugActive("PROBE_NOOP", user)).toBe(false);
-  });
-});
-
-// AC 10: the documented pattern — correct path is the default, buggy path is the
-// gated branch. describeProbe proves the engine actually switches behavior.
-describe("describeProbe — demonstrates the gating pattern", () => {
-  it.each([
-    ["a customer", CUSTOMER],
-    ["an admin", ADMIN],
-    ["a null user", NO_USER],
-  ])("returns the correct (default) path for %s under the clean baseline", (_label, user) => {
-    expect(describeProbe(user)).toBe("MediByte engine OK");
+  ])("returns false for a real bug key with %s (baseline is clean)", (_label, user) => {
+    expect(isBugActive(KNOWN_KEY, user)).toBe(false);
   });
 });
 
 // AC 10: the gating pattern must actually switch behavior — the buggy branch is
 // reachable, but ONLY when the flag is enabled for a non-admin. We exercise the
 // documented "isBugActiveWith(...) ? buggy() : correct()" shape directly with
-// injected flags (no filesystem) to prove the switch flips, since describeProbe
-// is hardwired to the real all-disabled file.
+// injected flags (no filesystem) to prove the switch flips.
 describe("the documented gating pattern switches behavior", () => {
   const correct = () => "correct";
   const buggy = () => "buggy";

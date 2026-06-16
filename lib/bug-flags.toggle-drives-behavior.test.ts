@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GatingUser } from "@/lib/bugs";
 
 // Slice 5, AC 7 — the panel's write must actually drive behavior. After
-// setBugFlag(PROBE_NOOP, true) writes the flag file, a subsequent
-// isBugActive('PROBE_NOOP', customer) must read that file fresh and return true,
+// setBugFlag(SAMPLE_KEY, true) writes the flag file, a subsequent
+// isBugActive(SAMPLE_KEY, customer) must read that file fresh and return true,
 // while an admin still gets the clean app (false). This closes the loop end to
 // end: write → file → gate, against a REAL temp file (no fs mocking).
 //
@@ -18,6 +18,9 @@ import type { GatingUser } from "@/lib/bugs";
 
 const CUSTOMER: GatingUser = { role: "customer" };
 const ADMIN: GatingUser = { role: "admin" };
+
+// A real registered key used to drive the engine end-to-end.
+const SAMPLE_KEY = "FN_PRICE_DECIMALS";
 
 let tempRoot: string;
 let cwdSpy: ReturnType<typeof vi.spyOn>;
@@ -45,25 +48,25 @@ describe("toggle drives isBugActive (AC 7)", () => {
   it("activates the bug for a customer after the flag is enabled", async () => {
     const { flagsModule, bugsModule } = await loadModulesInTempDir();
 
-    expect(bugsModule.isBugActive("PROBE_NOOP", CUSTOMER)).toBe(false);
+    expect(bugsModule.isBugActive(SAMPLE_KEY, CUSTOMER)).toBe(false);
 
-    flagsModule.setBugFlag("PROBE_NOOP", true);
+    flagsModule.setBugFlag(SAMPLE_KEY, true);
 
-    expect(bugsModule.isBugActive("PROBE_NOOP", CUSTOMER)).toBe(true);
+    expect(bugsModule.isBugActive(SAMPLE_KEY, CUSTOMER)).toBe(true);
   });
 
   it("still returns false for an admin even after the flag is enabled (admin safety)", async () => {
     const { flagsModule, bugsModule } = await loadModulesInTempDir();
-    flagsModule.setBugFlag("PROBE_NOOP", true);
+    flagsModule.setBugFlag(SAMPLE_KEY, true);
 
-    expect(bugsModule.isBugActive("PROBE_NOOP", ADMIN)).toBe(false);
+    expect(bugsModule.isBugActive(SAMPLE_KEY, ADMIN)).toBe(false);
   });
 
   it("deactivates the bug again after the flag is turned back off", async () => {
     const { flagsModule, bugsModule } = await loadModulesInTempDir();
-    flagsModule.setBugFlag("PROBE_NOOP", true);
-    flagsModule.setBugFlag("PROBE_NOOP", false);
+    flagsModule.setBugFlag(SAMPLE_KEY, true);
+    flagsModule.setBugFlag(SAMPLE_KEY, false);
 
-    expect(bugsModule.isBugActive("PROBE_NOOP", CUSTOMER)).toBe(false);
+    expect(bugsModule.isBugActive(SAMPLE_KEY, CUSTOMER)).toBe(false);
   });
 });

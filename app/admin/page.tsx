@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const admin = await requireAdmin();
-  // Only the 45 real assessment bugs — never the internal PROBE_NOOP probe.
+  // Only the 45 real assessment bugs — any internal/scaffolding entries are filtered out.
   const bugs = listAssessmentBugs();
   const flags = loadBugFlags();
 

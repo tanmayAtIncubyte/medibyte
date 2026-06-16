@@ -101,10 +101,10 @@ describe("listBugs", () => {
 // AC 1 (lookup) — registry is queryable by key for both hits and misses.
 describe("findBugByKey", () => {
   it("returns the matching definition for a known key", () => {
-    const bug = findBugByKey("PROBE_NOOP");
+    const bug = findBugByKey("FN_PRICE_DECIMALS");
 
     expect(bug).not.toBeNull();
-    expect(bug?.key).toBe("PROBE_NOOP");
+    expect(bug?.key).toBe("FN_PRICE_DECIMALS");
   });
 
   it("returns null for a key not in the registry", () => {
@@ -116,16 +116,16 @@ describe("findBugByKey", () => {
   });
 
   it("matches keys case-sensitively (does not match a different case)", () => {
-    expect(findBugByKey("probe_noop")).toBeNull();
+    expect(findBugByKey("fn_price_decimals")).toBeNull();
   });
 
   it("returns a copy so mutating the result does not mutate the registry", () => {
-    const bug = findBugByKey("PROBE_NOOP");
+    const bug = findBugByKey("FN_PRICE_DECIMALS");
     if (bug) {
       bug.title = "tampered";
     }
 
-    expect(findBugByKey("PROBE_NOOP")?.title).not.toBe("tampered");
+    expect(findBugByKey("FN_PRICE_DECIMALS")?.title).not.toBe("tampered");
   });
 });
 

@@ -5,6 +5,9 @@ import { bugRegistry } from "@/lib/bug-registry";
 
 const registryKeys = bugRegistry.map((bug) => bug.key);
 
+// A real registered key used as the sample flag in these tests.
+const SAMPLE_KEY = "FN_PRICE_DECIMALS";
+
 // Slice 3 — normalizeFlags rebuilds the flag map from the registry (the source of
 // truth). Anything missing, malformed, or non-boolean must default to disabled
 // (false) and must never throw. This is the fail-safe that keeps a corrupt or
@@ -13,7 +16,7 @@ const registryKeys = bugRegistry.map((bug) => bug.key);
 // AC 3: every registry key is present in the normalized result.
 describe("normalizeFlags — registry coverage", () => {
   it("includes every registry key in the result", () => {
-    const flags = normalizeFlags({ PROBE_NOOP: true });
+    const flags = normalizeFlags({ [SAMPLE_KEY]: true });
 
     for (const key of registryKeys) {
       expect(flags).toHaveProperty(key);
@@ -21,17 +24,17 @@ describe("normalizeFlags — registry coverage", () => {
   });
 
   it("includes no keys beyond the registry (registry is source of truth)", () => {
-    const flags = normalizeFlags({ PROBE_NOOP: true, UNKNOWN_KEY: true });
+    const flags = normalizeFlags({ [SAMPLE_KEY]: true, UNKNOWN_KEY: true });
 
     expect(Object.keys(flags).sort()).toEqual([...registryKeys].sort());
   });
 
   it("passes a genuine enabled flag through as true", () => {
-    expect(normalizeFlags({ PROBE_NOOP: true }).PROBE_NOOP).toBe(true);
+    expect(normalizeFlags({ [SAMPLE_KEY]: true })[SAMPLE_KEY]).toBe(true);
   });
 
   it("passes a genuine disabled flag through as false", () => {
-    expect(normalizeFlags({ PROBE_NOOP: false }).PROBE_NOOP).toBe(false);
+    expect(normalizeFlags({ [SAMPLE_KEY]: false })[SAMPLE_KEY]).toBe(false);
   });
 });
 
@@ -58,9 +61,9 @@ describe("normalizeFlags — non-boolean values default to disabled", () => {
     ["an object", {}],
     ["an array", []],
   ])("treats %s as disabled", (_label, value) => {
-    const flags = normalizeFlags({ PROBE_NOOP: value });
+    const flags = normalizeFlags({ [SAMPLE_KEY]: value });
 
-    expect(flags.PROBE_NOOP).toBe(false);
+    expect(flags[SAMPLE_KEY]).toBe(false);
   });
 });
 
@@ -95,7 +98,7 @@ describe("loadBugFlags — real flag file", () => {
     expect(Object.keys(flags).sort()).toEqual([...registryKeys].sort());
   });
 
-  it("reports the PROBE_NOOP key disabled in the committed baseline", () => {
-    expect(loadBugFlags().PROBE_NOOP).toBe(false);
+  it("reports a sample key disabled in the committed baseline", () => {
+    expect(loadBugFlags()[SAMPLE_KEY]).toBe(false);
   });
 });
