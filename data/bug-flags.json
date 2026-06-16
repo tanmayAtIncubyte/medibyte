@@ -1,3 +1,17 @@
 {
-  "PROBE_NOOP": false
+  "PROBE_NOOP": false,
+  "FN_PRICE_DECIMALS": false,
+  "FN_PRICE_SORT_LEXICAL": false,
+  "FN_PAGINATION_OFFBYONE": false,
+  "FN_CART_BADGE_LINES": false,
+  "FN_INSTOCK_AT_ZERO": false,
+  "FN_NORESULTS_BLANK": false,
+  "FN_ORDER_DATE_RAW": false,
+  "FN_TRIPWIRE_COPY": false,
+  "FN_QTY_NONPOSITIVE": false,
+  "FN_CART_TOTAL_STALE": false,
+  "FN_TAX_FLOOR": false,
+  "FN_EXPIRED_COUPON_OK": false,
+  "FN_OOS_ADDABLE": false,
+  "FN_POSTAL_UNVALIDATED": false
 }
