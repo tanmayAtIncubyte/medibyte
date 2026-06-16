@@ -29,6 +29,11 @@ export default async function CartPage() {
   });
   const applied = cart.appliedCoupon;
 
+  // Accessibility seeded-bug switches resolved at the boundary and passed into
+  // the (otherwise clean) cart components as plain booleans; admins get clean.
+  const couponNoLabel = isBugActive("A11Y_INPUT_NO_LABEL", user);
+  const qtyNoKeyboardFocus = isBugActive("A11Y_NO_KEYBOARD_FOCUS", user);
+
   return (
     <PageContainer>
       <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
@@ -67,6 +72,7 @@ export default async function CartPage() {
                     productId={line.product.id}
                     productName={line.product.name}
                     quantity={line.quantity}
+                    noKeyboardFocus={qtyNoKeyboardFocus}
                   />
                 </div>
               </li>
@@ -110,6 +116,7 @@ export default async function CartPage() {
                         }
                       : null
                   }
+                  noLabel={couponNoLabel}
                 />
               </div>
 

@@ -217,6 +217,32 @@ export const bugRegistry: readonly BugDefinition[] = [
     location: "lib/orders/place-order.ts via /api/checkout",
     hipaa: false,
   },
+
+  // --- Batch 3: Accessibility (3) ---
+  {
+    key: "A11Y_INPUT_NO_LABEL",
+    title: "Coupon code input loses its programmatic label (no accessible name)",
+    category: "accessibility",
+    difficulty: "easy",
+    location: "components/cart/coupon-form.tsx via /cart (flag resolved on the cart page)",
+    hipaa: false,
+  },
+  {
+    key: "A11Y_LOW_CONTRAST",
+    title: "Catalog price text rendered below the WCAG AA contrast threshold",
+    category: "accessibility",
+    difficulty: "easy",
+    location: "components/products/product-catalog.tsx via /products (flag resolved on the products page)",
+    hipaa: false,
+  },
+  {
+    key: "A11Y_NO_KEYBOARD_FOCUS",
+    title: "Cart quantity steppers are not keyboard-operable / have no focus ring",
+    category: "accessibility",
+    difficulty: "moderate",
+    location: "components/cart/cart-line-controls.tsx via /cart (flag resolved on the cart page)",
+    hipaa: false,
+  },
 ] as const;
 
 // Type-safe key union derived from the registry, so callers get autocomplete

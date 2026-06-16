@@ -211,6 +211,31 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - How to spot it: cross-screen — after a successful order, `/orders` shows it but `/cart` still holds the items and the header badge is non-zero.
 
 <!-- BATCH 3: Accessibility -->
+
+### A11Y_INPUT_NO_LABEL — Coupon code input loses its programmatic label
+- Accessibility / Easy / HIPAA: no
+- Location: `components/cart/coupon-form.tsx` (flag resolved on `app/(storefront)/cart/page.tsx` and passed in as `noLabel`).
+- Trigger: As a customer, open `/cart` with at least one item and find the "Coupon code" input in the Order summary.
+- Expected (correct / admin): the input is associated with a visible `<label htmlFor="coupon-code">Coupon code</label>` → it has an accessible name.
+- Actual (buggy / customer): the `<label>` is removed and no `aria-label` is added, so the input has **no accessible name** (only the placeholder, which doesn't count).
+- How to spot it: a11y tool — axe/Lighthouse flags rule **`label`** ("Form elements must have labels" / "form element has no accessible name"). Also visible to a screen reader (announces just "edit text").
+
+### A11Y_LOW_CONTRAST — Catalog price text below the WCAG AA contrast threshold
+- Accessibility / Easy / HIPAA: no
+- Location: `components/products/product-catalog.tsx` (flag resolved on `app/(storefront)/products/page.tsx` and passed in as `lowContrast`).
+- Trigger: As a customer, open `/products` and look at any product card price.
+- Expected (correct / admin): price uses the accessible `text-foreground` token (high contrast on the card).
+- Actual (buggy / customer): price uses `text-muted-foreground/40` — a near-background gray well below the WCAG AA 4.5:1 ratio for normal text.
+- How to spot it: a11y tool — axe/Lighthouse flags rule **`color-contrast`** ("Elements must meet minimum color contrast ratio thresholds"); eyeballing also shows a barely-legible price.
+
+### A11Y_NO_KEYBOARD_FOCUS — Cart quantity steppers not keyboard-operable / no focus ring
+- Accessibility / Moderate / HIPAA: no
+- Location: `components/cart/cart-line-controls.tsx` (flag resolved on `app/(storefront)/cart/page.tsx` and passed in as `noKeyboardFocus`).
+- Trigger: As a customer, open `/cart` with an item and try to Tab to the `−` / `+` quantity steppers and activate them with Enter/Space.
+- Expected (correct / admin): the steppers are real `<button>`s — in the tab order, operable via keyboard, with a visible `focus-visible` ring.
+- Actual (buggy / customer): the steppers render as plain clickable `<span>`s (`onClick` only, no `role`, no `tabIndex`, `outline:none` with no replacement) → not in the tab order, not triggerable by keyboard, no focus indicator. (The Remove button stays a real button.)
+- How to spot it: keyboard — Tab past the steppers and notice they're skipped and never focus-ringed; axe flags missing interactive semantics. Mouse click still works, masking the defect for sighted/mouse users.
+
 <!-- BATCH 4: Performance / Latency -->
 <!-- BATCH 5: Security / Transport (HIPAA) -->
 <!-- BATCH 6: UI antipattern + UX -->

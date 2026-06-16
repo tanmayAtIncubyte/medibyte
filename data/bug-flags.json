@@ -21,5 +21,8 @@
   "FN_OVERSELL": false,
   "FN_CONCURRENT_DOUBLESPEND": false,
   "FN_TOTAL_ROUNDING_EDGE": false,
-  "FN_PARTIAL_CHECKOUT": false
+  "FN_PARTIAL_CHECKOUT": false,
+  "A11Y_INPUT_NO_LABEL": false,
+  "A11Y_LOW_CONTRAST": false,
+  "A11Y_NO_KEYBOARD_FOCUS": false
 }

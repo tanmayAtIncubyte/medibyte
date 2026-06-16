@@ -16,10 +16,12 @@ export function ProductCatalog({
   // passed in as plain booleans. Default off → correct presentation.
   dropDecimal = false,
   inStockAtZero = false,
+  lowContrast = false,
 }: {
   products: Product[];
   dropDecimal?: boolean;
   inStockAtZero?: boolean;
+  lowContrast?: boolean;
 }) {
   if (products.length === 0) {
     return (
@@ -50,7 +52,16 @@ export function ProductCatalog({
               </p>
             )}
             <div className="mt-4 flex items-end justify-between">
-              <p className="font-heading text-lg font-bold tabular-nums text-foreground">
+              {/* A11Y_LOW_CONTRAST: when set, the price text is rendered in a
+                  near-background gray (well below WCAG AA 4.5:1) instead of the
+                  accessible foreground token. The page resolves the flag and
+                  passes the boolean in, keeping the component clean for admins. */}
+              <p
+                className={cn(
+                  "font-heading text-lg font-bold tabular-nums",
+                  lowContrast ? "text-muted-foreground/40" : "text-foreground",
+                )}
+              >
                 {formatPrice(product.price, { dropDecimal })}
               </p>
               <StockPill stock={product.stock} inStockAtZero={inStockAtZero} />

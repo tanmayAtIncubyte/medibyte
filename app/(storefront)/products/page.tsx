@@ -24,6 +24,7 @@ export default async function ProductsPage({
   const dropDecimal = isBugActive("FN_PRICE_DECIMALS", user);
   const inStockAtZero = isBugActive("FN_INSTOCK_AT_ZERO", user);
   const noResultsBlank = isBugActive("FN_NORESULTS_BLANK", user);
+  const lowContrast = isBugActive("A11Y_LOW_CONTRAST", user);
 
   const products = listProducts();
   const categories = listCategories(products);
@@ -89,6 +90,7 @@ export default async function ProductsPage({
             products={result.items}
             dropDecimal={dropDecimal}
             inStockAtZero={inStockAtZero}
+            lowContrast={lowContrast}
           />
         )}
       </div>
