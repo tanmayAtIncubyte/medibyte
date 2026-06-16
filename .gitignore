@@ -27,3 +27,7 @@ test-results/
 npm-debug.log*
 .idea/
 .vscode/
+
+# Next.js generated / build cache (regenerated automatically)
+next-env.d.ts
+*.tsbuildinfo
