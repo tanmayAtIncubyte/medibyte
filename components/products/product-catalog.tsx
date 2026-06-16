@@ -1,54 +1,15 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
 import type { Product } from "@/data/products";
 
-type LoadState = "loading" | "loaded" | "error";
-
-export function ProductCatalog() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [state, setState] = useState<LoadState>("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch("/api/products")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data: Product[]) => {
-        if (!cancelled) {
-          setProducts(data);
-          setState("loaded");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState("error");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (state === "loading") {
+/**
+ * Presentational, server-rendered catalog grid. Receives products as a prop so
+ * the page can fetch them on the server (no client XHR for plain display).
+ * The /api/products endpoint still exists as the inspectable API surface.
+ */
+export function ProductCatalog({ products }: { products: Product[] }) {
+  if (products.length === 0) {
     return (
       <p role="status" className="text-sm text-muted-foreground">
-        Loading products…
-      </p>
-    );
-  }
-
-  if (state === "error") {
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        We couldn&apos;t load the catalog. Please try again.
+        No products are available right now.
       </p>
     );
   }

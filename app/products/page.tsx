@@ -1,7 +1,10 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { ProductCatalog } from "@/components/products/product-catalog";
+import { listProducts } from "@/lib/data/products";
 
 export default function ProductsPage() {
+  const products = listProducts();
+
   return (
     <PageContainer>
       <header className="mb-8">
@@ -12,7 +15,7 @@ export default function ProductsPage() {
           Over-the-counter essentials and prescription medicines, delivered.
         </p>
       </header>
-      <ProductCatalog />
+      <ProductCatalog products={products} />
     </PageContainer>
   );
 }
