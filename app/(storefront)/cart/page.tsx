@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 
 import { CartLineControls } from "@/components/cart/cart-line-controls";
+import { CartLinePrefetch } from "@/components/cart/cart-line-prefetch";
 import { CouponForm } from "@/components/cart/coupon-form";
 import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
@@ -34,6 +35,12 @@ export default async function CartPage() {
   const couponNoLabel = isBugActive("A11Y_INPUT_NO_LABEL", user);
   const qtyNoKeyboardFocus = isBugActive("A11Y_NO_KEYBOARD_FOCUS", user);
 
+  // PERF_CART_WATERFALL: when on, a client island re-fetches each line's product
+  // sequentially (N+1) even though the data is already on the page; admins /
+  // flag-off make no extra requests and use the rendered data directly.
+  const cartWaterfall = isBugActive("PERF_CART_WATERFALL", user);
+  const lineProductIds = cart.lines.map((line) => line.product.id);
+
   return (
     <PageContainer>
       <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
@@ -44,6 +51,7 @@ export default async function CartPage() {
         <EmptyCart />
       ) : (
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
+          <CartLinePrefetch productIds={lineProductIds} waterfall={cartWaterfall} />
           <ul className="space-y-4 lg:col-span-2">
             {cart.lines.map((line) => (
               <li

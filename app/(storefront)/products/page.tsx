@@ -9,6 +9,7 @@ import { isBugActive } from "@/lib/bugs";
 import { parseCatalogQuery, type RawSearchParams } from "@/lib/catalog/params";
 import { listCategories, queryCatalog } from "@/lib/catalog/query";
 import { listProducts } from "@/lib/data/products";
+import { simulateDelay, PRODUCTS_TTFB_DELAY_MS } from "@/lib/perf/simulated-latency";
 
 export default async function ProductsPage({
   searchParams,
@@ -25,6 +26,13 @@ export default async function ProductsPage({
   const inStockAtZero = isBugActive("FN_INSTOCK_AT_ZERO", user);
   const noResultsBlank = isBugActive("FN_NORESULTS_BLANK", user);
   const lowContrast = isBugActive("A11Y_LOW_CONTRAST", user);
+
+  // PERF_PRODUCTS_TTFB (simulated): when on, block the server render ~1.5s with
+  // no loading skeleton/streaming, so the customer waits on a blank tab (slow
+  // TTFB). Admins / flag-off render immediately.
+  if (isBugActive("PERF_PRODUCTS_TTFB", user)) {
+    await simulateDelay(PRODUCTS_TTFB_DELAY_MS);
+  }
 
   const products = listProducts();
   const categories = listCategories(products);

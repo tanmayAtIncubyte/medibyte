@@ -24,5 +24,10 @@
   "FN_PARTIAL_CHECKOUT": false,
   "A11Y_INPUT_NO_LABEL": false,
   "A11Y_LOW_CONTRAST": false,
-  "A11Y_NO_KEYBOARD_FOCUS": false
+  "A11Y_NO_KEYBOARD_FOCUS": false,
+  "PERF_SLOW_CHECKOUT": false,
+  "PERF_PRODUCTS_TTFB": false,
+  "PERF_CART_WATERFALL": false,
+  "PERF_OVERFETCH_PAYLOAD": false,
+  "PERF_NO_CACHE": false
 }

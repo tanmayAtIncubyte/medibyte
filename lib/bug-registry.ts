@@ -243,6 +243,48 @@ export const bugRegistry: readonly BugDefinition[] = [
     location: "components/cart/cart-line-controls.tsx via /cart (flag resolved on the cart page)",
     hipaa: false,
   },
+
+  // --- Batch 4: Performance / Latency (5, simulated) ---
+  {
+    key: "PERF_SLOW_CHECKOUT",
+    title: "Checkout request hangs ~2s with no pending feedback (injected latency)",
+    category: "performance",
+    difficulty: "moderate",
+    location: "app/api/checkout/route.ts (flag resolved at the route boundary)",
+    hipaa: false,
+  },
+  {
+    key: "PERF_PRODUCTS_TTFB",
+    title: "Products page blocks ~1.5s server-side before render, no loading skeleton",
+    category: "performance",
+    difficulty: "moderate",
+    location: "app/(storefront)/products/page.tsx (flag resolved on the page)",
+    hipaa: false,
+  },
+  {
+    key: "PERF_CART_WATERFALL",
+    title: "Cart re-fetches each line's product one-by-one (sequential N+1 waterfall)",
+    category: "performance",
+    difficulty: "difficult",
+    location: "components/cart/cart-line-prefetch.tsx via /cart (flag resolved on the cart page)",
+    hipaa: false,
+  },
+  {
+    key: "PERF_OVERFETCH_PAYLOAD",
+    title: "GET /api/products returns a bloated, duplicated payload the page never uses",
+    category: "performance",
+    difficulty: "moderate",
+    location: "app/api/products/route.ts (flag resolved at the route boundary)",
+    hipaa: false,
+  },
+  {
+    key: "PERF_NO_CACHE",
+    title: "Catalog API forces no-store so every navigation refetches everything",
+    category: "performance",
+    difficulty: "moderate",
+    location: "app/api/products/route.ts (Cache-Control) (flag resolved at the route boundary)",
+    hipaa: false,
+  },
 ] as const;
 
 // Type-safe key union derived from the registry, so callers get autocomplete

@@ -1,4 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// GET /api/products now resolves the current user at the route boundary (for the
+// Phase-4 performance flags). With all flags off the response is unchanged, but
+// the call still reaches getCurrentUser → next/headers cookies(), which needs a
+// request scope; stub it to "no user" so these baseline tests run standalone.
+vi.mock("@/lib/auth/current-user", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth/current-user")>()),
+  getCurrentUser: () => Promise.resolve(null),
+}));
 
 import { GET as listProductsRoute } from "@/app/api/products/route";
 import { GET as productByIdRoute } from "@/app/api/products/[id]/route";
@@ -15,7 +24,7 @@ function paramsFor(id: string) {
 describe("GET /api/products", () => {
   // AC 2
   it("responds 200 with a JSON array of products", async () => {
-    const response = listProductsRoute();
+    const response = await listProductsRoute();
 
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -24,7 +33,7 @@ describe("GET /api/products", () => {
   });
 
   it("returns products carrying the documented shape (id, name, price, type)", async () => {
-    const body = await listProductsRoute().json();
+    const body = await (await listProductsRoute()).json();
 
     for (const product of body) {
       expect(product).toEqual(
@@ -40,8 +49,8 @@ describe("GET /api/products", () => {
 
   // AC 3
   it("returns identical data on two successive calls (no runtime randomness)", async () => {
-    const first = await listProductsRoute().json();
-    const second = await listProductsRoute().json();
+    const first = await (await listProductsRoute()).json();
+    const second = await (await listProductsRoute()).json();
 
     expect(second).toEqual(first);
   });

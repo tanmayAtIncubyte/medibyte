@@ -5,6 +5,7 @@ import { isBugActive } from "@/lib/bugs";
 import { readSessionId } from "@/lib/data/session-id";
 import type { CheckoutInput } from "@/lib/orders/checkout";
 import { placeOrder } from "@/lib/orders/place-order";
+import { simulateDelay, SLOW_CHECKOUT_DELAY_MS } from "@/lib/perf/simulated-latency";
 
 // Inspectable checkout endpoint (hybrid policy: mutation goes through /api/*).
 // Reads the signed session for the owner, the cart-session cookie for the cart,
@@ -29,6 +30,13 @@ export async function POST(request: NextRequest) {
     shipping: body.shipping ?? {},
     prescriptions: body.prescriptions ?? {},
   };
+
+  // PERF_SLOW_CHECKOUT (simulated): when on, stall the checkout request ~2s
+  // before doing any work and with no extra pending feedback, so the customer
+  // stares at an unresponsive submit. Admins / flag-off skip the delay entirely.
+  if (isBugActive("PERF_SLOW_CHECKOUT", user)) {
+    await simulateDelay(SLOW_CHECKOUT_DELAY_MS);
+  }
 
   // Resolve seeded-bug flags here (the user lives at this boundary) and pass
   // plain booleans into the pure order orchestration; admins are never affected.

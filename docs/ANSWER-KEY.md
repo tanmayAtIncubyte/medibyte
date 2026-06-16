@@ -237,5 +237,51 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - How to spot it: keyboard — Tab past the steppers and notice they're skipped and never focus-ringed; axe flags missing interactive semantics. Mouse click still works, masking the defect for sighted/mouse users.
 
 <!-- BATCH 4: Performance / Latency -->
+
+> **All Batch-4 performance defects are SIMULATED.** They are injected delays /
+> payload-bloat / extra-request patterns gated behind flags; they never touch the
+> real app's correctness. Each is resolved at a route/page boundary, admin always
+> clean, default OFF. Spotting them is a DevTools Network/Performance task.
+
+### PERF_SLOW_CHECKOUT — Checkout request hangs ~2s with no pending feedback
+- Performance / Moderate / HIPAA: no
+- Location: `app/api/checkout/route.ts` (flag resolved at the route boundary); delay via `lib/perf/simulated-latency.ts` (`simulateDelay`, `SLOW_CHECKOUT_DELAY_MS` = 2000).
+- Trigger: As a customer, complete `/checkout` and submit the order.
+- Expected (correct / admin): the `POST /api/checkout` responds promptly (no injected delay).
+- Actual (buggy / customer): the request stalls ~2s before responding, with no extra loading/pending feedback — the submit button just appears unresponsive.
+- How to spot it: DevTools Network — the `/api/checkout` request shows a ~2s duration / long "Waiting (TTFB)"; nothing on screen explains the wait.
+
+### PERF_PRODUCTS_TTFB — Products page blocks ~1.5s server-side before render
+- Performance / Moderate / HIPAA: no
+- Location: `app/(storefront)/products/page.tsx` (flag resolved on the page); delay via `lib/perf/simulated-latency.ts` (`simulateDelay`, `PRODUCTS_TTFB_DELAY_MS` = 1500).
+- Trigger: As a customer, navigate to `/products`.
+- Expected (correct / admin): the page renders immediately (fast TTFB).
+- Actual (buggy / customer): the server blocks ~1.5s before producing any HTML — a blank tab with no loading skeleton/streaming, then a sudden full render.
+- How to spot it: DevTools Network/Performance — the `/products` document request shows a ~1.5s TTFB; the tab sits blank with no skeleton.
+
+### PERF_CART_WATERFALL — Cart re-fetches each line's product one-by-one (N+1)
+- Performance / Difficult / HIPAA: no
+- Location: `components/cart/cart-line-prefetch.tsx` (client island), flag resolved on `app/(storefront)/cart/page.tsx` and passed in as `waterfall`. Hits `GET /api/products/[id]` once per line.
+- Trigger: As a customer, open `/cart` with several distinct line items.
+- Expected (correct / admin): the cart renders from data already on the page — ZERO extra per-item requests.
+- Actual (buggy / customer): a client island re-fetches every line's product **sequentially**, one `GET /api/products/[id]` per line (N+1), even though the data is already present. The fetched data is discarded; the only effect is the request chain.
+- How to spot it: DevTools Network — a staircase **waterfall** of per-item `/api/products/<id>` requests on cart load (N requests for N lines), each waiting on the previous. Note: implemented as a client-side waterfall island (the cart page is server-rendered), so the requests are observable as client XHR/fetch entries rather than nested SSR fetches.
+
+### PERF_OVERFETCH_PAYLOAD — GET /api/products returns a bloated, duplicated payload
+- Performance / Moderate / HIPAA: no
+- Location: `app/api/products/route.ts` (flag resolved at the route boundary); bloat via `lib/perf/simulated-latency.ts` (`bloatProductsPayload`).
+- Trigger: As a customer, trigger `GET /api/products` (e.g. any client code that lists products / the cart waterfall island).
+- Expected (correct / admin): a lean JSON array of products (only the fields the catalog needs).
+- Actual (buggy / customer): each item is bloated with large unused/duplicated fields (`_raw`, `_duplicate`, `_description_long`, `_seoKeywords[100]`, `_auditTrail[50]`) — a response many times larger than needed.
+- How to spot it: DevTools Network — the `/api/products` response **Size** is far larger than the rendered catalog needs; inspect the payload to see duplicated/unused fields.
+
+### PERF_NO_CACHE — Catalog API forces no-store so every navigation refetches
+- Performance / Moderate / HIPAA: no
+- Location: `app/api/products/route.ts` (flag resolved at the route boundary) — sets `Cache-Control: no-store, no-cache, must-revalidate`.
+- Trigger: As a customer, navigate to/away from a view that fetches `GET /api/products` repeatedly.
+- Expected (correct / admin): the response is cacheable/reusable (no forced no-store), so repeat navigations don't redundantly refetch.
+- Actual (buggy / customer): the response forces `no-store`, so the browser refetches the full catalog on every navigation.
+- How to spot it: DevTools Network — the `/api/products` response carries `Cache-Control: no-store`; the same request repeats (never served "from cache") on each navigation.
+
 <!-- BATCH 5: Security / Transport (HIPAA) -->
 <!-- BATCH 6: UI antipattern + UX -->
