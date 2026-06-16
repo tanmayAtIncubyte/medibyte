@@ -1,7 +1,12 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { GET as cartGet, POST as cartPost } from "@/app/api/session/cart/route";
+import {
+  DELETE as cartDelete,
+  GET as cartGet,
+  PATCH as cartPatch,
+  POST as cartPost,
+} from "@/app/api/session/cart/route";
 import { SESSION_ID_COOKIE } from "@/lib/data/session-id";
 import { resetAllSessions } from "@/lib/data/session-store";
 
@@ -20,18 +25,26 @@ function getRequest(sessionId?: string): NextRequest {
   return new NextRequest("http://localhost/api/session/cart", { headers });
 }
 
-function postRequest(
-  body: { productId: string; quantity?: number },
+function bodyRequest(
+  method: string,
+  body: Record<string, unknown>,
   sessionId?: string,
 ): NextRequest {
   return new NextRequest("http://localhost/api/session/cart", {
-    method: "POST",
+    method,
     headers: {
       "content-type": "application/json",
       ...(sessionId ? { cookie: `${SESSION_ID_COOKIE}=${sessionId}` } : {}),
     },
     body: JSON.stringify(body),
   });
+}
+
+function postRequest(
+  body: { productId: string; quantity?: number },
+  sessionId?: string,
+): NextRequest {
+  return bodyRequest("POST", body, sessionId);
 }
 
 describe("GET /api/session/cart", () => {
@@ -99,5 +112,45 @@ describe("session cart write/read roundtrip", () => {
 
     const body = await cartGet(getRequest("sess-y")).json();
     expect(body.items).toEqual([]);
+  });
+});
+
+describe("PATCH /api/session/cart", () => {
+  it("sets an item's quantity outright", async () => {
+    await cartPost(postRequest({ productId: "prod-ibuprofen-200", quantity: 2 }, "sess-p"));
+
+    const response = await cartPatch(
+      bodyRequest("PATCH", { productId: "prod-ibuprofen-200", quantity: 5 }, "sess-p"),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.items).toEqual([{ productId: "prod-ibuprofen-200", quantity: 5 }]);
+  });
+
+  it("removes the item when quantity is set to zero", async () => {
+    await cartPost(postRequest({ productId: "prod-ibuprofen-200", quantity: 2 }, "sess-p0"));
+
+    const body = await (
+      await cartPatch(
+        bodyRequest("PATCH", { productId: "prod-ibuprofen-200", quantity: 0 }, "sess-p0"),
+      )
+    ).json();
+    expect(body.items).toEqual([]);
+  });
+});
+
+describe("DELETE /api/session/cart", () => {
+  it("removes a line item", async () => {
+    await cartPost(postRequest({ productId: "prod-ibuprofen-200", quantity: 1 }, "sess-d"));
+    await cartPost(postRequest({ productId: "prod-vitamin-d3", quantity: 1 }, "sess-d"));
+
+    const response = await cartDelete(
+      bodyRequest("DELETE", { productId: "prod-ibuprofen-200" }, "sess-d"),
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.items).toEqual([{ productId: "prod-vitamin-d3", quantity: 1 }]);
   });
 });

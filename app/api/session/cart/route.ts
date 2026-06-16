@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { addToCart, getCart } from "@/lib/data/session-store";
+import {
+  addToCart,
+  getCart,
+  removeFromCart,
+  setCartItemQuantity,
+} from "@/lib/data/session-store";
 import {
   attachSessionId,
   newSessionId,
@@ -32,5 +37,21 @@ export async function POST(request: NextRequest) {
   const { productId, quantity } = await request.json();
   return respondWithCart(request, 201, (sessionId) => ({
     items: addToCart(sessionId, productId, Number(quantity) || 1),
+  }));
+}
+
+// Set an item's quantity outright (used by the cart quantity stepper).
+export async function PATCH(request: NextRequest) {
+  const { productId, quantity } = await request.json();
+  return respondWithCart(request, 200, (sessionId) => ({
+    items: setCartItemQuantity(sessionId, productId, Number(quantity)),
+  }));
+}
+
+// Remove a line item from the cart.
+export async function DELETE(request: NextRequest) {
+  const { productId } = await request.json();
+  return respondWithCart(request, 200, (sessionId) => ({
+    items: removeFromCart(sessionId, productId),
   }));
 }

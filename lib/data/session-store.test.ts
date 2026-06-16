@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { addToCart, getCart, resetAllSessions } from "@/lib/data/session-store";
+import {
+  addToCart,
+  getCart,
+  removeFromCart,
+  resetAllSessions,
+  setCartItemQuantity,
+} from "@/lib/data/session-store";
 
 // Slice 2 — in-memory per-session write store.
 // AC 6: a write performed in a session is readable back within the same session.
@@ -59,6 +65,41 @@ describe("session cart store", () => {
 
     expect(getCart("session-a")).toEqual([
       { productId: "prod-ibuprofen-200", quantity: 1 },
+    ]);
+  });
+
+  it("ignores a non-positive add quantity", () => {
+    addToCart("session-a", "prod-ibuprofen-200", 0);
+    addToCart("session-a", "prod-ibuprofen-200", -3);
+
+    expect(getCart("session-a")).toEqual([]);
+  });
+
+  // Slice 3 — quantity edits + removal.
+  it("sets an item's quantity outright", () => {
+    addToCart("session-a", "prod-ibuprofen-200", 2);
+    setCartItemQuantity("session-a", "prod-ibuprofen-200", 5);
+
+    expect(getCart("session-a")).toEqual([
+      { productId: "prod-ibuprofen-200", quantity: 5 },
+    ]);
+  });
+
+  it("removes an item when its quantity is set to zero", () => {
+    addToCart("session-a", "prod-ibuprofen-200", 2);
+    setCartItemQuantity("session-a", "prod-ibuprofen-200", 0);
+
+    expect(getCart("session-a")).toEqual([]);
+  });
+
+  it("removes an item via removeFromCart", () => {
+    addToCart("session-a", "prod-ibuprofen-200", 1);
+    addToCart("session-a", "prod-vitamin-d3", 1);
+
+    removeFromCart("session-a", "prod-ibuprofen-200");
+
+    expect(getCart("session-a")).toEqual([
+      { productId: "prod-vitamin-d3", quantity: 1 },
     ]);
   });
 

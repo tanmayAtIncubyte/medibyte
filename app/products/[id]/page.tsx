@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Pill } from "lucide-react";
 
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { findProductById } from "@/lib/data/products";
@@ -72,6 +73,18 @@ export default async function ProductDetailPage({
               </p>
             </div>
           )}
+
+          <div className="mt-6">
+            <AddToCartButton
+              productId={product.id}
+              disabled={status === "out-of-stock"}
+            />
+            {status === "out-of-stock" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                This item is currently unavailable.
+              </p>
+            )}
+          </div>
 
           <p className="mt-6 leading-relaxed text-foreground">
             {product.description}

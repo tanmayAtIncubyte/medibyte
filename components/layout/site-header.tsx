@@ -1,12 +1,17 @@
 import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Button } from "@/components/ui/button";
+import { getCartView } from "@/lib/cart/cart-service";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { readSessionIdFromCookies } from "@/lib/data/session-id";
 
 export async function SiteHeader() {
   const user = await getCurrentUser();
+  const sessionId = await readSessionIdFromCookies();
+  const cartCount = sessionId ? getCartView(sessionId).itemCount : 0;
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
@@ -15,6 +20,20 @@ export async function SiteHeader() {
         <nav className="flex items-center gap-2" aria-label="Primary">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/products">Browse</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link
+              href="/cart"
+              aria-label={`Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
+            >
+              <ShoppingCart aria-hidden />
+              <span>Cart</span>
+              {cartCount > 0 && (
+                <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground tabular-nums">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
           </Button>
           {user ? (
             <>

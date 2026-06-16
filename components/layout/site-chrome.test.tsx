@@ -14,6 +14,22 @@ vi.mock("@/lib/auth/current-user", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
+// The header now reads the cart session cookie + count (AC: header reflects
+// cart item count). Stub the server-only cart reads so the component renders
+// outside a request context.
+vi.mock("@/lib/data/session-id", () => ({
+  readSessionIdFromCookies: () => Promise.resolve(null),
+}));
+vi.mock("@/lib/cart/cart-service", () => ({
+  getCartView: () => ({
+    lines: [],
+    itemCount: 0,
+    subtotal: 0,
+    discount: 0,
+    tax: 0,
+    total: 0,
+  }),
+}));
 
 import { PageContainer } from "@/components/layout/page-container";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -68,6 +84,15 @@ describe("SiteHeader", () => {
     expect(
       screen.getByRole("navigation", { name: "Primary" }),
     ).toBeInTheDocument();
+  });
+
+  it("links to the cart", async () => {
+    await renderHeader();
+
+    expect(screen.getByRole("link", { name: /cart/i })).toHaveAttribute(
+      "href",
+      "/cart",
+    );
   });
 });
 

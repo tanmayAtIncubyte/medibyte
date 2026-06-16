@@ -28,14 +28,51 @@ export function getCart(sessionId: string): CartItem[] {
 }
 
 export function addToCart(sessionId: string, productId: string, quantity: number): CartItem[] {
+  const amount = normalizeQuantity(quantity);
+  if (amount <= 0) {
+    return getCart(sessionId);
+  }
   const session = getOrCreateSession(sessionId);
   const existingItem = session.cart.find((item) => item.productId === productId);
   if (existingItem) {
-    existingItem.quantity += quantity;
+    existingItem.quantity += amount;
   } else {
-    session.cart.push({ productId, quantity });
+    session.cart.push({ productId, quantity: amount });
   }
   return getCart(sessionId);
+}
+
+// Sets an item's quantity outright. A quantity of 0 or less removes the item,
+// so the same mutation backs both quantity edits and "remove".
+export function setCartItemQuantity(
+  sessionId: string,
+  productId: string,
+  quantity: number,
+): CartItem[] {
+  const amount = normalizeQuantity(quantity);
+  const session = getOrCreateSession(sessionId);
+  if (amount <= 0) {
+    session.cart = session.cart.filter((item) => item.productId !== productId);
+    return getCart(sessionId);
+  }
+  const existingItem = session.cart.find((item) => item.productId === productId);
+  if (existingItem) {
+    existingItem.quantity = amount;
+  } else {
+    session.cart.push({ productId, quantity: amount });
+  }
+  return getCart(sessionId);
+}
+
+export function removeFromCart(sessionId: string, productId: string): CartItem[] {
+  return setCartItemQuantity(sessionId, productId, 0);
+}
+
+function normalizeQuantity(quantity: number): number {
+  if (!Number.isFinite(quantity)) {
+    return 0;
+  }
+  return Math.floor(quantity);
 }
 
 export function resetAllSessions(): void {
