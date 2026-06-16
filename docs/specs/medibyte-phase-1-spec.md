@@ -34,7 +34,7 @@ The walking skeleton: a Next.js app you can run and load, with the design system
 
 ---
 
-### Slice 2: Mock-data layer served via real API route handlers
+### Slice 2: Mock-data layer served via real API route handlers [x]
 Establishes the canonical "deterministic mock data, real HTTP, in-memory writes" pattern that every later feature copies. Phase 1 only needs a small representative dataset and one or two read endpoints to prove the pattern; full catalog/orders data arrives in later phases.
 
 - [ ] A client page can fetch data and the request appears as a real HTTP call in the browser DevTools Network tab (genuine request/response, not an inlined import)

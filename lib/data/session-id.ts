@@ -1,0 +1,20 @@
+import { randomUUID } from "crypto";
+import { type NextRequest, NextResponse } from "next/server";
+
+export const SESSION_ID_COOKIE = "mb_session_id";
+
+export function readSessionId(request: NextRequest): string | null {
+  return request.cookies.get(SESSION_ID_COOKIE)?.value ?? null;
+}
+
+export function attachSessionId(response: NextResponse, sessionId: string): void {
+  response.cookies.set(SESSION_ID_COOKIE, sessionId, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+  });
+}
+
+export function newSessionId(): string {
+  return randomUUID();
+}
