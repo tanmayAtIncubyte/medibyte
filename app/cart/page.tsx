@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 
 import { CartLineControls } from "@/components/cart/cart-line-controls";
+import { CouponForm } from "@/components/cart/coupon-form";
 import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,8 @@ export const metadata = { title: "Your cart" };
 
 export default async function CartPage() {
   const sessionId = await readSessionIdFromCookies();
-  const cart = sessionId ? getCartView(sessionId) : getCartView("__none__");
+  const cart = getCartView(sessionId ?? "__none__");
+  const applied = cart.appliedCoupon;
 
   return (
     <PageContainer>
@@ -69,6 +71,13 @@ export default async function CartPage() {
                   label={`Subtotal (${cart.itemCount} ${cart.itemCount === 1 ? "item" : "items"})`}
                   value={formatPrice(cart.subtotal)}
                 />
+                {applied && (
+                  <SummaryRow
+                    label={`Discount (${applied.coupon.code})`}
+                    value={`-${formatPrice(applied.discount)}`}
+                    discount
+                  />
+                )}
                 <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
                 <div className="border-t border-border pt-3">
                   <SummaryRow
@@ -78,6 +87,20 @@ export default async function CartPage() {
                   />
                 </div>
               </dl>
+
+              <div className="mt-5 border-t border-border pt-5">
+                <CouponForm
+                  applied={
+                    applied
+                      ? {
+                          code: applied.coupon.code,
+                          description: applied.coupon.description,
+                        }
+                      : null
+                  }
+                />
+              </div>
+
               <p className="mt-4 text-xs text-muted-foreground">
                 Checkout opens in a later release.
               </p>
@@ -93,10 +116,12 @@ function SummaryRow({
   label,
   value,
   emphasized = false,
+  discount = false,
 }: {
   label: string;
   value: string;
   emphasized?: boolean;
+  discount?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between">
@@ -104,7 +129,9 @@ function SummaryRow({
         className={
           emphasized
             ? "font-heading text-base font-semibold text-foreground"
-            : "text-muted-foreground"
+            : discount
+              ? "text-primary"
+              : "text-muted-foreground"
         }
       >
         {label}
@@ -113,7 +140,9 @@ function SummaryRow({
         className={
           emphasized
             ? "font-heading text-base font-bold tabular-nums text-foreground"
-            : "tabular-nums text-foreground"
+            : discount
+              ? "tabular-nums text-primary"
+              : "tabular-nums text-foreground"
         }
       >
         {value}

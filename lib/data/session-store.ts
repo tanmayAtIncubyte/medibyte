@@ -5,6 +5,7 @@ export type CartItem = {
 
 type SessionState = {
   cart: CartItem[];
+  couponCode: string | null;
 };
 
 // Module-level store: writes survive for the lifetime of the running server
@@ -18,9 +19,22 @@ function getOrCreateSession(sessionId: string): SessionState {
   if (existing) {
     return existing;
   }
-  const created: SessionState = { cart: [] };
+  const created: SessionState = { cart: [], couponCode: null };
   sessions.set(sessionId, created);
   return created;
+}
+
+export function getCouponCode(sessionId: string): string | null {
+  return getOrCreateSession(sessionId).couponCode;
+}
+
+// Stores the applied coupon code for the session (replaces any existing one).
+export function setCouponCode(sessionId: string, code: string | null): void {
+  getOrCreateSession(sessionId).couponCode = code;
+}
+
+export function clearCoupon(sessionId: string): void {
+  setCouponCode(sessionId, null);
 }
 
 export function getCart(sessionId: string): CartItem[] {

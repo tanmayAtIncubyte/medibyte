@@ -2,10 +2,13 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   addToCart,
+  clearCoupon,
   getCart,
+  getCouponCode,
   removeFromCart,
   resetAllSessions,
   setCartItemQuantity,
+  setCouponCode,
 } from "@/lib/data/session-store";
 
 // Slice 2 — in-memory per-session write store.
@@ -103,14 +106,43 @@ describe("session cart store", () => {
     ]);
   });
 
+  // Slice 4 — applied coupon code per session.
+  it("starts with no applied coupon", () => {
+    expect(getCouponCode("session-a")).toBeNull();
+  });
+
+  it("stores and reads back an applied coupon code", () => {
+    setCouponCode("session-a", "SAVE10");
+    expect(getCouponCode("session-a")).toBe("SAVE10");
+  });
+
+  it("replaces an applied coupon when a new one is set", () => {
+    setCouponCode("session-a", "SAVE10");
+    setCouponCode("session-a", "WELCOME5");
+    expect(getCouponCode("session-a")).toBe("WELCOME5");
+  });
+
+  it("clears an applied coupon", () => {
+    setCouponCode("session-a", "SAVE10");
+    clearCoupon("session-a");
+    expect(getCouponCode("session-a")).toBeNull();
+  });
+
+  it("isolates coupons between sessions", () => {
+    setCouponCode("session-a", "SAVE10");
+    expect(getCouponCode("session-b")).toBeNull();
+  });
+
   // AC 7 (unit-level proxy for process-restart reset).
   it("clears all session state on resetAllSessions", () => {
     addToCart("session-a", "prod-ibuprofen-200", 2);
     addToCart("session-b", "prod-vitamin-d3", 1);
+    setCouponCode("session-a", "SAVE10");
 
     resetAllSessions();
 
     expect(getCart("session-a")).toEqual([]);
     expect(getCart("session-b")).toEqual([]);
+    expect(getCouponCode("session-a")).toBeNull();
   });
 });
