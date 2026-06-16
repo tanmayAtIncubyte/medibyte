@@ -101,9 +101,9 @@ export default async function CartPage() {
                 />
               </div>
 
-              <p className="mt-4 text-xs text-muted-foreground">
-                Checkout opens in a later release.
-              </p>
+              <Button asChild size="lg" className="mt-5 w-full">
+                <Link href="/checkout">Proceed to checkout</Link>
+              </Button>
             </div>
           </aside>
         </div>

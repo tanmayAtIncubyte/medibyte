@@ -82,6 +82,14 @@ export function removeFromCart(sessionId: string, productId: string): CartItem[]
   return setCartItemQuantity(sessionId, productId, 0);
 }
 
+// Empties the cart and clears any applied coupon. Used after a successful
+// checkout so the session starts a fresh cart.
+export function clearCart(sessionId: string): void {
+  const session = getOrCreateSession(sessionId);
+  session.cart = [];
+  session.couponCode = null;
+}
+
 function normalizeQuantity(quantity: number): number {
   if (!Number.isFinite(quantity)) {
     return 0;
