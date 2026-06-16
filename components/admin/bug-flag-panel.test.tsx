@@ -1,8 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BugDefinition } from "@/lib/bug-registry";
+import { listAssessmentBugs, listBugs } from "@/lib/bug-registry";
 import type { BugFlags } from "@/lib/bug-flags";
 import { BugFlagPanel } from "@/components/admin/bug-flag-panel";
 
@@ -28,6 +29,9 @@ const bugs: BugDefinition[] = [
     difficulty: "easy",
     location: "components/cart",
     hipaa: false,
+    effect: "Cart quantity does not update on the screen.",
+    where: "/cart",
+    howToSpot: "eyeball",
   },
   {
     key: "SEC_EXPERT",
@@ -36,6 +40,9 @@ const bugs: BugDefinition[] = [
     difficulty: "expert",
     location: "app/orders",
     hipaa: true,
+    effect: "Another customer's PHI is exposed on the order page.",
+    where: "/orders/[id]",
+    howToSpot: "DevTools Network",
   },
   {
     key: "UI_MODERATE",
@@ -44,6 +51,9 @@ const bugs: BugDefinition[] = [
     difficulty: "moderate",
     location: "components/product",
     hipaa: false,
+    effect: "The price badge is misaligned on the card.",
+    where: "/products",
+    howToSpot: "eyeball",
   },
 ];
 
@@ -235,5 +245,106 @@ describe("filtering and grouping (AC 9)", () => {
     expect(screen.getByRole("heading", { name: "Functional" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Security" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ui" })).toBeInTheDocument();
+  });
+});
+
+// MED-29 — each row has an ⓘ info affordance surfacing the reviewer enrichment
+// (effect / where / how-to-spot).
+describe("info affordance — exposes effect/where/howToSpot (MED-29)", () => {
+  it("renders an info affordance per bug row", () => {
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    for (const bug of bugs) {
+      expect(
+        screen.getByRole("button", { name: `Details for ${bug.title}` }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("reveals the effect and where text when the info affordance is opened", async () => {
+    const user = userEvent.setup();
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Details for Quantity not updating in cart" }),
+    );
+
+    expect(
+      await screen.findByText("Cart quantity does not update on the screen."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("/cart")).toBeInTheDocument();
+  });
+});
+
+// MED-29 — each row has a Preview control that opens the clean-vs-buggy modal.
+describe("preview control — per row + opens the modal (MED-29)", () => {
+  it("renders a Preview control for every bug row", () => {
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    for (const bug of bugs) {
+      expect(
+        screen.getByRole("button", { name: `Preview ${bug.title}` }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("opens a dialog with clean and buggy panes when Preview is clicked", async () => {
+    const user = userEvent.setup();
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Preview PHI leaks in order confirmation" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    // The figcaptions name the two panes exactly (the description also mentions
+    // them, so match the standalone caption text).
+    expect(within(dialog).getByText("Clean (admin)")).toBeInTheDocument();
+    expect(within(dialog).getByText("Buggy (customer)")).toBeInTheDocument();
+  });
+
+  it("shows the Screenshot pending placeholder when an image fails to load", async () => {
+    const user = userEvent.setup();
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Preview PHI leaks in order confirmation" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    // jsdom never loads <img> src, so fire onError to exercise the placeholder.
+    for (const img of within(dialog).getAllByRole("img")) {
+      fireEvent.error(img);
+    }
+
+    expect(within(dialog).getAllByText(/screenshot pending/i).length).toBeGreaterThan(0);
+  });
+});
+
+// MED-29 — the panel is fed the assessment-only list; PROBE_NOOP / internal
+// entries are excluded so only the 45 real bugs ever show.
+describe("assessment-bug filtering — excludes PROBE_NOOP / internal (MED-29)", () => {
+  it("listAssessmentBugs drops the internal PROBE_NOOP probe", () => {
+    const keys = listAssessmentBugs().map((bug) => bug.key);
+
+    expect(keys).not.toContain("PROBE_NOOP");
+    expect(listAssessmentBugs().every((bug) => bug.internal !== true)).toBe(true);
+  });
+
+  it("the assessment list is exactly the 45 real bugs (no internal entries)", () => {
+    const all = listBugs();
+    const assessment = listAssessmentBugs();
+    const internalCount = all.filter((bug) => bug.internal === true).length;
+
+    expect(internalCount).toBeGreaterThanOrEqual(1); // PROBE_NOOP
+    expect(assessment).toHaveLength(all.length - internalCount);
+    expect(assessment).toHaveLength(45);
+  });
+
+  it("does not render a row for a key that was filtered out upstream", () => {
+    // The panel renders exactly what it is given; PROBE_NOOP is never passed in.
+    render(<BugFlagPanel bugs={listAssessmentBugs()} initialFlags={{}} />);
+
+    expect(screen.queryByText(/Phase-1 engine probe/i)).not.toBeInTheDocument();
   });
 });

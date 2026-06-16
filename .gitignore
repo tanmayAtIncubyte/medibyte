@@ -31,3 +31,7 @@ npm-debug.log*
 # Next.js generated / build cache (regenerated automatically)
 next-env.d.ts
 *.tsbuildinfo
+
+# Reviewer-only answer-key screenshots (large, regenerable; never commit).
+# The folder structure (.gitkeep, README) stays tracked.
+private/bug-shots/*.png

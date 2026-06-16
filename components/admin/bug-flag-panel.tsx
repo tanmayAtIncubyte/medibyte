@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { type ReactNode, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ImageOff, Info } from "lucide-react";
 
 import type {
   BugCategory,
@@ -11,6 +12,19 @@ import type {
 import type { BugFlags } from "@/lib/bug-flags";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type GroupBy = "none" | "category" | "difficulty";
 type CategoryFilter = BugCategory | "all";
@@ -254,13 +268,17 @@ function BugRow({
   return (
     <li className="flex items-center gap-4 px-4 py-3">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-foreground">{bug.title}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="truncate font-medium text-foreground">{bug.title}</p>
+          <BugInfo bug={bug} />
+        </div>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <Badge>{bug.category}</Badge>
           <Badge>{bug.difficulty}</Badge>
           <span className="font-mono text-xs text-muted-foreground">{bug.key}</span>
         </div>
       </div>
+      <BugPreview bug={bug} />
       <span
         className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums"
         aria-hidden
@@ -274,6 +292,110 @@ function BugRow({
         aria-label={`Toggle ${bug.title}`}
       />
     </li>
+  );
+}
+
+// The ⓘ info affordance: a Popover (click + keyboard accessible) that surfaces
+// the reviewer-facing effect / where / how-to-spot enrichment for a bug.
+function BugInfo({ bug }: { bug: BugDefinition }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          aria-label={`Details for ${bug.title}`}
+        >
+          <Info className="size-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="space-y-2.5">
+        <p className="font-heading text-sm font-semibold text-foreground">{bug.title}</p>
+        <DetailRow label="Effect">{bug.effect ?? "—"}</DetailRow>
+        <DetailRow label="Where">{bug.where ?? bug.location}</DetailRow>
+        <DetailRow label="How to spot">{bug.howToSpot ?? "—"}</DetailRow>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="text-xs">
+      <span className="font-semibold text-foreground">{label}: </span>
+      <span className="text-muted-foreground">{children}</span>
+    </div>
+  );
+}
+
+// The Preview control: opens a Dialog with the clean (admin) vs buggy (customer)
+// screenshots loaded from the admin-guarded image route. Images may not be
+// captured yet, so each pane degrades to a "Screenshot pending" placeholder.
+function BugPreview({ bug }: { bug: BugDefinition }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          aria-label={`Preview ${bug.title}`}
+        >
+          Preview
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{bug.title}</DialogTitle>
+          <DialogDescription>
+            Clean (admin) vs buggy (customer). {bug.effect ?? bug.location}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <PreviewPane bugKey={bug.key} variant="clean" label="Clean (admin)" />
+          <PreviewPane bugKey={bug.key} variant="buggy" label="Buggy (customer)" />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PreviewPane({
+  bugKey,
+  variant,
+  label,
+}: {
+  bugKey: string;
+  variant: "clean" | "buggy";
+  label: string;
+}) {
+  // If the PNG hasn't been captured, the route 404s and the <img> onError swaps
+  // in the placeholder — so the panel works before any screenshots exist.
+  const [missing, setMissing] = useState(false);
+  const src = `/api/admin/bug-image/${encodeURIComponent(bugKey)}?variant=${variant}`;
+
+  return (
+    <figure className="space-y-1.5">
+      <figcaption className="text-xs font-medium text-muted-foreground">{label}</figcaption>
+      {missing ? (
+        <div
+          className="flex aspect-video flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-muted/40 text-center text-xs text-muted-foreground"
+          role="img"
+          aria-label={`${label} screenshot pending`}
+        >
+          <ImageOff className="size-5" aria-hidden />
+          <span>Screenshot pending</span>
+        </div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element -- admin-only, dynamic guarded route, not a public asset
+        <img
+          src={src}
+          alt={`${label} screenshot of ${bugKey}`}
+          className="aspect-video w-full rounded-lg border border-border bg-muted/40 object-contain"
+          onError={() => setMissing(true)}
+        />
+      )}
+    </figure>
   );
 }
 
