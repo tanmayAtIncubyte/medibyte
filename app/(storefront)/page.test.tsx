@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import HomePage from "@/app/page";
+import HomePage from "@/app/(storefront)/page";
 import { brand } from "@/lib/brand";
 import { listFeaturedProducts } from "@/lib/data/products";
 

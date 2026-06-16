@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
   redirect: (path: string) => redirectMock(path),
 }));
 
-import { getAdminOrNull, requireAdmin } from "@/lib/auth/guards";
+import { getAdminOrNull, requireAdmin, requireUser } from "@/lib/auth/guards";
 
 // Slice 4 — admin access control (AC 8). Admin areas require an admin session;
 // logged-out and customer sessions must be denied. requireAdmin guards pages
@@ -37,6 +37,32 @@ const customer: SessionUser = {
 
 afterEach(() => {
   vi.clearAllMocks();
+});
+
+// MED-17 — storefront gate. Every storefront page requires a real session;
+// both admin and customer roles pass, only logged-out visitors are redirected.
+// Clean access control, not a seeded bug.
+describe("requireUser (storefront page guard)", () => {
+  it("returns the customer user when a customer session is present", async () => {
+    getCurrentUserMock.mockResolvedValue(customer);
+
+    await expect(requireUser()).resolves.toEqual(customer);
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("returns the admin user when an admin session is present", async () => {
+    getCurrentUserMock.mockResolvedValue(admin);
+
+    await expect(requireUser()).resolves.toEqual(admin);
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("redirects to login when logged out", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+
+    await expect(requireUser()).rejects.toThrow("REDIRECT:/login");
+    expect(redirectMock).toHaveBeenCalledWith("/login");
+  });
 });
 
 describe("requireAdmin (page guard)", () => {
