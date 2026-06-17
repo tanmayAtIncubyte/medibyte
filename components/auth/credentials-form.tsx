@@ -8,6 +8,14 @@ import { Input } from "@/components/ui/input";
 
 type CredentialsFormProps = {
   mode: "login" | "register";
+  // SEC_CREDS_IN_URL: when set, submit the login as a GET with the credentials
+  // in the query string (visible in the URL bar / history / Network) instead of
+  // a POST body. Default false (clean POST). Login only.
+  credentialsInUrl?: boolean;
+  // SEC_TOKEN_LOCALSTORAGE: when set, copy the signed-in identity into
+  // localStorage on success (XSS-exfiltratable) in addition to the httpOnly
+  // session cookie. Default false (cookie only). Login only.
+  persistIdentityToLocalStorage?: boolean;
 };
 
 const COPY = {
@@ -27,7 +35,11 @@ const COPY = {
 
 type FieldErrorMap = Record<string, string>;
 
-export function CredentialsForm({ mode }: CredentialsFormProps) {
+export function CredentialsForm({
+  mode,
+  credentialsInUrl = false,
+  persistIdentityToLocalStorage = false,
+}: CredentialsFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrorMap>({});
@@ -41,9 +53,19 @@ export function CredentialsForm({ mode }: CredentialsFormProps) {
     setPending(true);
 
     const formData = new FormData(event.currentTarget);
-    const response = await submitCredentials(copy.endpoint, mode, formData);
+    const response = await submitCredentials(
+      copy.endpoint,
+      mode,
+      formData,
+      credentialsInUrl,
+    );
 
     if (response.ok) {
+      if (persistIdentityToLocalStorage) {
+        // SEC_TOKEN_LOCALSTORAGE: stash the identity client-side where any XSS
+        // can read it. The clean flow relies on the httpOnly cookie only.
+        await persistIdentity(response);
+      }
       router.push("/");
       router.refresh();
       return;
@@ -131,6 +153,7 @@ async function submitCredentials(
   endpoint: string,
   mode: "login" | "register",
   formData: FormData,
+  credentialsInUrl: boolean,
 ): Promise<Response> {
   const payload: Record<string, string> = {
     email: String(formData.get("email") ?? ""),
@@ -139,11 +162,36 @@ async function submitCredentials(
   if (mode === "register") {
     payload.name = String(formData.get("name") ?? "");
   }
+
+  // SEC_CREDS_IN_URL: send the credentials as a GET query string. They now show
+  // up in the URL, browser history, referrer, and server access logs.
+  if (credentialsInUrl) {
+    const query = new URLSearchParams(payload).toString();
+    return fetch(`${endpoint}?${query}`, { method: "GET" });
+  }
+
+  // Clean default: credentials travel in the POST body only.
   return fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+// SEC_TOKEN_LOCALSTORAGE: persist the returned identity into localStorage. This
+// duplicates the session into JS-readable storage where any XSS can exfiltrate
+// it; the clean flow never does this (the httpOnly cookie is the only token).
+async function persistIdentity(response: Response): Promise<void> {
+  try {
+    const body = (await response.clone().json().catch(() => null)) as
+      | { user?: unknown }
+      | null;
+    if (body?.user && typeof window !== "undefined") {
+      window.localStorage.setItem("mb_identity", JSON.stringify(body.user));
+    }
+  } catch {
+    // Best-effort; never block sign-in on the (buggy) side effect.
+  }
 }
 
 async function readError(

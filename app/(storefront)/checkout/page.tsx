@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import { getCartView } from "@/lib/cart/cart-service";
 import { rxLines } from "@/lib/orders/checkout";
 import { readSessionIdFromCookies } from "@/lib/data/session-id";
@@ -16,7 +17,15 @@ export const metadata = { title: "Checkout" };
 export default async function CheckoutPage() {
   const user = await getCurrentUser();
   const sessionId = await readSessionIdFromCookies();
-  const cart = getCartView(sessionId ?? "__none__");
+  // Keep the checkout summary consistent with the same money bugs as the cart
+  // (resolved here where the user lives); admins always see clean totals.
+  const cart = getCartView(sessionId ?? "__none__", {
+    taxFloor: isBugActive("FN_TAX_FLOOR", user),
+    ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
+    taxBeforeDiscount: isBugActive("FN_TAX_BEFORE_DISCOUNT", user),
+    couponNegative: isBugActive("FN_COUPON_NEGATIVE", user),
+    roundingEdge: isBugActive("FN_TOTAL_ROUNDING_EDGE", user),
+  });
 
   if (cart.lines.length === 0) {
     return (
@@ -49,6 +58,14 @@ export default async function CheckoutPage() {
 
   const applied = cart.appliedCoupon;
 
+  // UI antipattern / UX seeded-bug switches resolved at the boundary (the user
+  // lives here) and passed into the (otherwise clean) checkout form; admins
+  // always get the correct behavior.
+  const noSubmitFeedback = isBugActive("UI_NO_SUBMIT_FEEDBACK", user);
+  const clearFieldsOnError = isBugActive("UI_FORM_CLEARS_ON_ERROR", user);
+  const vagueError = isBugActive("UX_VAGUE_ERROR", user);
+  const loseProgressOnBack = isBugActive("UX_LOST_CHECKOUT_PROGRESS", user);
+
   return (
     <PageContainer>
       <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
@@ -65,6 +82,10 @@ export default async function CheckoutPage() {
           <CheckoutForm
             rxItems={rx}
             defaultFullName={user?.name ?? ""}
+            noSubmitFeedback={noSubmitFeedback}
+            clearFieldsOnError={clearFieldsOnError}
+            vagueError={vagueError}
+            loseProgressOnBack={loseProgressOnBack}
           />
         </div>
 

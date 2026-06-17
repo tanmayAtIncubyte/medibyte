@@ -1,16 +1,17 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BugDefinition } from "@/lib/bug-registry";
+import { listAssessmentBugs, listBugs } from "@/lib/bug-registry";
 import type { BugFlags } from "@/lib/bug-flags";
 import { BugFlagPanel } from "@/components/admin/bug-flag-panel";
 
 // Slice 5 — the admin panel rendering + interaction (AC 1,2,3,4,9,10). We pass an
-// explicit `bugs` fixture (the registry only ships PROBE_NOOP in Phase 1, so a
-// synthetic spread of categories/difficulties is needed to exercise filtering and
-// grouping meaningfully). Tests are behavior-focused: rendered text/state and the
-// POST body the panel sends — not internal calls.
+// explicit synthetic `bugs` fixture spanning categories/difficulties to exercise
+// filtering and grouping deterministically, independent of the real registry.
+// Tests are behavior-focused: rendered text/state and the POST body the panel
+// sends — not internal calls.
 //
 // useRouter and fetch are mocked so toggling never hits a real server. We assert
 // the panel POSTs the expected body and reflects the passed flags.
@@ -28,6 +29,9 @@ const bugs: BugDefinition[] = [
     difficulty: "easy",
     location: "components/cart",
     hipaa: false,
+    effect: "Cart quantity does not update on the screen.",
+    where: "/cart",
+    howToSpot: "eyeball",
   },
   {
     key: "SEC_EXPERT",
@@ -36,6 +40,9 @@ const bugs: BugDefinition[] = [
     difficulty: "expert",
     location: "app/orders",
     hipaa: true,
+    effect: "Another customer's PHI is exposed on the order page.",
+    where: "/orders/[id]",
+    howToSpot: "DevTools Network",
   },
   {
     key: "UI_MODERATE",
@@ -44,6 +51,9 @@ const bugs: BugDefinition[] = [
     difficulty: "moderate",
     location: "components/product",
     hipaa: false,
+    effect: "The price badge is misaligned on the card.",
+    where: "/products",
+    howToSpot: "eyeball",
   },
 ];
 
@@ -235,5 +245,128 @@ describe("filtering and grouping (AC 9)", () => {
     expect(screen.getByRole("heading", { name: "Functional" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Security" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Ui" })).toBeInTheDocument();
+  });
+});
+
+// MED-29 — each row has an ⓘ info affordance surfacing the reviewer enrichment
+// (effect / where / how-to-spot).
+describe("info affordance — exposes effect/where/howToSpot (MED-29)", () => {
+  it("renders an info affordance per bug row", () => {
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    for (const bug of bugs) {
+      expect(
+        screen.getByRole("button", { name: `Details for ${bug.title}` }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("reveals the effect and where text when the info affordance is opened", async () => {
+    const user = userEvent.setup();
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Details for Quantity not updating in cart" }),
+    );
+
+    expect(
+      await screen.findByText("Cart quantity does not update on the screen."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("/cart")).toBeInTheDocument();
+  });
+});
+
+// MED-29 — each row has a Preview control that opens the clean-vs-buggy modal.
+describe("preview control — per row + opens the modal (MED-29)", () => {
+  it("renders a Preview control for every bug row", () => {
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    for (const bug of bugs) {
+      expect(
+        screen.getByRole("button", { name: `Preview ${bug.title}` }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("opens a dialog with a buggy/clean toggle and a zoomable screenshot", async () => {
+    const user = userEvent.setup();
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Preview PHI leaks in order confirmation" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    // A Buggy/Clean toggle flips the single large screenshot; plus zoom + an
+    // "open full size" escape hatch.
+    expect(within(dialog).getByRole("tab", { name: "Buggy (customer)" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("tab", { name: "Clean (admin)" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /zoom screenshot/i })).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: /open full size/i })).toBeInTheDocument();
+  });
+
+  it("defaults to the buggy variant and can switch to clean", async () => {
+    const user = userEvent.setup();
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Preview PHI leaks in order confirmation" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+
+    expect(within(dialog).getByRole("tab", { name: "Buggy (customer)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await user.click(within(dialog).getByRole("tab", { name: "Clean (admin)" }));
+
+    expect(within(dialog).getByRole("tab", { name: "Clean (admin)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("shows the Screenshot pending placeholder when the image fails to load", async () => {
+    const user = userEvent.setup();
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Preview PHI leaks in order confirmation" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    // jsdom never loads <img> src, so fire onError to exercise the placeholder.
+    fireEvent.error(within(dialog).getByRole("img"));
+
+    expect(within(dialog).getByText(/screenshot pending/i)).toBeInTheDocument();
+  });
+});
+
+// MED-9 — after Phase-4 cleanup the registry holds exactly the 45 real
+// assessment bugs with no internal/probe entries; listAssessmentBugs still
+// filters internal entries (defensively) so the panel only ever shows real bugs.
+describe("assessment-bug filtering — exactly 45 real bugs, no internal entries (MED-9)", () => {
+  it("contains no internal entries and never surfaces the removed PROBE_NOOP probe", () => {
+    const keys = listAssessmentBugs().map((bug) => bug.key);
+
+    expect(keys).not.toContain("PROBE_NOOP");
+    expect(listAssessmentBugs().every((bug) => bug.internal !== true)).toBe(true);
+    expect(listBugs().some((bug) => bug.internal === true)).toBe(false);
+  });
+
+  it("the assessment list is exactly the 45 real bugs (registry == assessment)", () => {
+    const all = listBugs();
+    const assessment = listAssessmentBugs();
+
+    expect(all).toHaveLength(45);
+    expect(assessment).toHaveLength(45);
+    expect(assessment).toHaveLength(all.length);
+  });
+
+  it("does not render a row for the removed Phase-1 probe", () => {
+    render(<BugFlagPanel bugs={listAssessmentBugs()} initialFlags={{}} />);
+
+    expect(screen.queryByText(/Phase-1 engine probe/i)).not.toBeInTheDocument();
   });
 });

@@ -16,8 +16,19 @@ type AppliedCouponView = {
  * Coupon apply/remove form. Mutations go through the inspectable
  * /api/session/coupon endpoint; on success the server tree is refreshed so the
  * totals breakdown (discount line + total) recomputes.
+ *
+ * A11Y_INPUT_NO_LABEL: when `noLabel` is set, the coupon code input loses its
+ * programmatic label association (no `<label htmlFor>`, no `aria-label`), so it
+ * has no accessible name. The cart page resolves the flag (it has the user) and
+ * passes the boolean in, keeping this component clean for admins.
  */
-export function CouponForm({ applied }: { applied: AppliedCouponView | null }) {
+export function CouponForm({
+  applied,
+  noLabel = false,
+}: {
+  applied: AppliedCouponView | null;
+  noLabel?: boolean;
+}) {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -73,9 +84,11 @@ export function CouponForm({ applied }: { applied: AppliedCouponView | null }) {
 
   return (
     <form onSubmit={apply} className="space-y-2" noValidate>
-      <label htmlFor="coupon-code" className="block text-sm font-medium text-foreground">
-        Coupon code
-      </label>
+      {!noLabel && (
+        <label htmlFor="coupon-code" className="block text-sm font-medium text-foreground">
+          Coupon code
+        </label>
+      )}
       <div className="flex gap-2">
         <Input
           id="coupon-code"

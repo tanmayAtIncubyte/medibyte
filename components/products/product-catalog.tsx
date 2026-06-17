@@ -10,7 +10,19 @@ import { cn } from "@/lib/utils";
  * the page can fetch them on the server (no client XHR for plain display).
  * The /api/products endpoint still exists as the inspectable API surface.
  */
-export function ProductCatalog({ products }: { products: Product[] }) {
+export function ProductCatalog({
+  products,
+  // Seeded-bug switches resolved by the /products page (which has the user) and
+  // passed in as plain booleans. Default off → correct presentation.
+  dropDecimal = false,
+  inStockAtZero = false,
+  lowContrast = false,
+}: {
+  products: Product[];
+  dropDecimal?: boolean;
+  inStockAtZero?: boolean;
+  lowContrast?: boolean;
+}) {
   if (products.length === 0) {
     return (
       <p role="status" className="text-sm text-muted-foreground">
@@ -40,10 +52,19 @@ export function ProductCatalog({ products }: { products: Product[] }) {
               </p>
             )}
             <div className="mt-4 flex items-end justify-between">
-              <p className="font-heading text-lg font-bold tabular-nums text-foreground">
-                {formatPrice(product.price)}
+              {/* A11Y_LOW_CONTRAST: when set, the price text is rendered in a
+                  near-background gray (well below WCAG AA 4.5:1) instead of the
+                  accessible foreground token. The page resolves the flag and
+                  passes the boolean in, keeping the component clean for admins. */}
+              <p
+                className={cn(
+                  "font-heading text-lg font-bold tabular-nums",
+                  lowContrast ? "text-muted-foreground/40" : "text-foreground",
+                )}
+              >
+                {formatPrice(product.price, { dropDecimal })}
               </p>
-              <StockPill stock={product.stock} />
+              <StockPill stock={product.stock} inStockAtZero={inStockAtZero} />
             </div>
           </Link>
         </li>
@@ -52,8 +73,16 @@ export function ProductCatalog({ products }: { products: Product[] }) {
   );
 }
 
-function StockPill({ stock }: { stock: number }) {
-  const status = stockStatus(stock);
+function StockPill({
+  stock,
+  inStockAtZero = false,
+}: {
+  stock: number;
+  inStockAtZero?: boolean;
+}) {
+  // FN_INSTOCK_AT_ZERO: when set, a 0-stock item is styled and labelled as if it
+  // were available (the misleading "In stock" claim).
+  const status = inStockAtZero && stock <= 0 ? "in-stock" : stockStatus(stock);
   return (
     <span
       className={cn(
@@ -65,7 +94,7 @@ function StockPill({ stock }: { stock: number }) {
             : "text-muted-foreground",
       )}
     >
-      {stockLabel(stock)}
+      {stockLabel(stock, { inStockAtZero })}
     </span>
   );
 }

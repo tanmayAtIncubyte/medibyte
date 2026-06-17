@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PageContainer } from "@/components/layout/page-container";
 import { BugFlagPanel } from "@/components/admin/bug-flag-panel";
 import { requireAdmin } from "@/lib/auth/guards";
-import { listBugs } from "@/lib/bug-registry";
+import { listAssessmentBugs } from "@/lib/bug-registry";
 import { loadBugFlags } from "@/lib/bug-flags";
 
 export const metadata: Metadata = {
@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const admin = await requireAdmin();
-  const bugs = listBugs();
+  // Only the 45 real assessment bugs — any internal/scaffolding entries are filtered out.
+  const bugs = listAssessmentBugs();
   const flags = loadBugFlags();
 
   return (

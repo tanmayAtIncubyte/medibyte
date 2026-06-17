@@ -19,7 +19,8 @@ import { bugRegistry } from "@/lib/bug-registry";
 // by these tests.
 
 const registryKeys = bugRegistry.map((bug) => bug.key);
-const PROBE = "PROBE_NOOP";
+// A real registered key used as the sample flag in these writer round-trips.
+const PROBE = "FN_PRICE_DECIMALS";
 
 let tempRoot: string;
 let cwdSpy: ReturnType<typeof vi.spyOn>;
@@ -74,9 +75,9 @@ describe("saveBugFlags + loadBugFlags — round-trip persistence", () => {
   });
 });
 
-// AC 5/6 — setBugFlag merges a single key without disturbing others. (With only
-// PROBE_NOOP in the Phase-1 registry, "others" are the unknown keys that must be
-// dropped; we still assert the result is a complete, normalized registry map.)
+// AC 5/6 — setBugFlag merges a single key without disturbing others. We assert
+// the result is a complete, normalized registry map (every key present, others
+// untouched).
 describe("setBugFlag — single-key merge", () => {
   it("enables exactly the requested key and loads it back as true", async () => {
     const writer = await loadModuleInTempDir();

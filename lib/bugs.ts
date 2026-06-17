@@ -34,25 +34,11 @@ export function isBugActive(key: BugKey, user: GatingUser): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// The intended code pattern — documented and demonstrated once.
+// The intended code pattern — documented once.
 //
-// Every later feature follows this shape: the CORRECT path is the default, and
-// the BUGGY path is the gated branch. Never invert it. This keeps the clean and
+// Every feature follows this shape: the CORRECT path is the default, and the
+// BUGGY path is the gated branch. Never invert it. This keeps the clean and
 // buggy builds from drifting and makes each bug independently testable.
 //
-//   const total = isBugActive("CART_TAX_ROUNDING", user) ? buggyTax(x) : correctTax(x);
-//
-// `describeProbe` below proves the engine end-to-end against the throwaway
-// PROBE_NOOP key without affecting real UX. It is a Phase-1 probe only.
+//   const total = isBugActive("FN_TAX_FLOOR", user) ? buggyTax(x) : correctTax(x);
 // ---------------------------------------------------------------------------
-export function describeProbe(user: GatingUser): string {
-  return isBugActive("PROBE_NOOP", user) ? buggyProbe() : correctProbe();
-}
-
-function correctProbe(): string {
-  return "MediByte engine OK";
-}
-
-function buggyProbe(): string {
-  return "MediByte engine PROBE (buggy path)";
-}

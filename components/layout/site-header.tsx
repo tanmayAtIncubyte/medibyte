@@ -6,12 +6,21 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { Button } from "@/components/ui/button";
 import { getCartView } from "@/lib/cart/cart-service";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import { readSessionIdFromCookies } from "@/lib/data/session-id";
 
 export async function SiteHeader() {
   const user = await getCurrentUser();
   const sessionId = await readSessionIdFromCookies();
-  const cartCount = sessionId ? getCartView(sessionId).itemCount : 0;
+  const cart = sessionId ? getCartView(sessionId) : null;
+  // FN_CART_BADGE_LINES: count distinct line items instead of total quantity.
+  // Flag is resolved here (the user lives in the header) and never for admin.
+  const badgeCountsLines = isBugActive("FN_CART_BADGE_LINES", user);
+  const cartCount = cart
+    ? badgeCountsLines
+      ? cart.lines.length
+      : cart.itemCount
+    : 0;
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">

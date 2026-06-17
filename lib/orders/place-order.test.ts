@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { addToCart, getCart, resetAllSessions, setCouponCode } from "@/lib/data/session-store";
 import { allCreatedOrders, resetCreatedOrders } from "@/lib/data/orders-store";
+import { resetStock } from "@/lib/data/stock-store";
 import { placeOrder } from "@/lib/orders/place-order";
 
 const dana = { id: "user-customer-dana", role: "customer" as const };
@@ -19,17 +20,18 @@ const shipping = {
 afterEach(() => {
   resetAllSessions();
   resetCreatedOrders();
+  resetStock();
 });
 
 describe("placeOrder", () => {
-  it("blocks checkout on an empty cart", () => {
-    const result = placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
+  it("blocks checkout on an empty cart", async () => {
+    const result = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
     expect(result).toEqual({ ok: false, reason: "empty-cart" });
   });
 
-  it("rejects an OTC checkout with incomplete shipping", () => {
+  it("rejects an OTC checkout with incomplete shipping", async () => {
     addToCart("s1", "prod-ibuprofen-200", 1);
-    const result = placeOrder(
+    const result = await placeOrder(
       "s1",
       dana,
       { shipping: { ...shipping, city: "" }, prescriptions: {} },
@@ -42,9 +44,9 @@ describe("placeOrder", () => {
     }
   });
 
-  it("places an OTC order, persists it, and clears the cart", () => {
+  it("places an OTC order, persists it, and clears the cart", async () => {
     addToCart("s1", "prod-ibuprofen-200", 2);
-    const result = placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
+    const result = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -59,13 +61,13 @@ describe("placeOrder", () => {
     expect(allCreatedOrders()).toHaveLength(1);
   });
 
-  it("requires PHI for an Rx item and attaches it on success", () => {
+  it("requires PHI for an Rx item and attaches it on success", async () => {
     addToCart("s1", "prod-lisinopril-10", 1);
 
-    const missing = placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
+    const missing = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
     expect(missing.ok).toBe(false);
 
-    const ok = placeOrder(
+    const ok = await placeOrder(
       "s1",
       dana,
       {
@@ -89,10 +91,10 @@ describe("placeOrder", () => {
     }
   });
 
-  it("snapshots an applied coupon discount into the order totals", () => {
+  it("snapshots an applied coupon discount into the order totals", async () => {
     addToCart("s1", "prod-ibuprofen-200", 5); // 5 x 6.99 = 34.95
     setCouponCode("s1", "SAVE10");
-    const result = placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
+    const result = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.order.totals.couponCode).toBe("SAVE10");
@@ -100,11 +102,11 @@ describe("placeOrder", () => {
     }
   });
 
-  it("assigns per-user sequential order ids", () => {
+  it("assigns per-user sequential order ids", async () => {
     addToCart("s1", "prod-ibuprofen-200", 1);
-    const first = placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
+    const first = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
     addToCart("s1", "prod-ibuprofen-200", 1);
-    const second = placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
+    const second = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
     expect(first.ok && second.ok).toBe(true);
     if (first.ok && second.ok) {
       expect(first.order.id).toBe("MB-20260616-0001");

@@ -5,6 +5,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/guards";
+import { isBugActive } from "@/lib/bugs";
 import { listAllOrders, listOrdersForUser } from "@/lib/data/orders";
 import { formatPrice } from "@/lib/format";
 import type { Order } from "@/lib/orders/types";
@@ -13,6 +14,11 @@ export const metadata = { title: "Your orders" };
 
 export default async function OrdersPage() {
   const user = await requireUser();
+
+  // FN_ORDER_DATE_RAW: render the stored ISO timestamp verbatim instead of the
+  // friendly localized date. Resolved here (the user lives in the guard) and
+  // never for admin.
+  const rawDate = isBugActive("FN_ORDER_DATE_RAW", user);
 
   // Customers see ONLY their own orders (seed + session-created), newest first.
   // Admins, who have no orders of their own, get a read view of all orders for
@@ -49,7 +55,8 @@ export default async function OrdersPage() {
                     <OrderStatusBadge status={order.status} />
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {formatOrderDate(order.placedAt)} · {itemSummary(order)}
+                    {(rawDate ? order.placedAt : formatOrderDate(order.placedAt))} ·{" "}
+                    {itemSummary(order)}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">

@@ -9,7 +9,7 @@ import {
   type AddressInput,
   type InsuranceInput,
 } from "@/lib/account/account";
-import type { AccountState } from "@/lib/account/types";
+import type { AccountState, InsuranceInfo } from "@/lib/account/types";
 import type { FieldErrors } from "@/lib/orders/checkout";
 
 // Server-side account orchestration over the in-memory store + pure logic. The
@@ -22,6 +22,53 @@ export type AccountUpdateResult =
 
 export function readAccount(userId: string): AccountState {
   return getAccountState(userId);
+}
+
+// SEC_PHI_OVERFETCH: the account view only needs addresses + the three insurance
+// fields it renders (provider / memberId / groupNumber). The CLEAN API response
+// returns exactly that. When the over-fetch bug is on (resolved at the route
+// boundary, never for admins), the response is padded with sensitive PHI the
+// view never uses — full SSN, date of birth, diagnosis/medication history — so a
+// network sniff (or, chained off SEC_IDOR_ORDER, an attacker who has reused a
+// leaked order id to find a victim) pulls PHI that should never leave the server.
+export type AccountApiPayload =
+  | AccountState
+  | (AccountState & {
+      insurance: InsuranceInfo & {
+        subscriberSsn: string;
+        dateOfBirth: string;
+        diagnosisCodes: string[];
+        medicationHistory: string[];
+      };
+    });
+
+export type ReadAccountBugs = {
+  overfetchPhi?: boolean;
+};
+
+export function readAccountForApi(
+  userId: string,
+  bugs: ReadAccountBugs = {},
+): AccountApiPayload {
+  const state = getAccountState(userId);
+  if (!bugs.overfetchPhi) {
+    return state; // clean: only what the view needs
+  }
+  return {
+    ...state,
+    insurance: {
+      ...state.insurance,
+      // PHI the account view never renders — leaked only because of the bug.
+      subscriberSsn: "521-83-9042",
+      dateOfBirth: "1984-07-19",
+      diagnosisCodes: ["E11.9", "I10", "F41.1"],
+      medicationHistory: [
+        "Metformin 500mg",
+        "Lisinopril 10mg",
+        "Sertraline 50mg",
+      ],
+    },
+  };
 }
 
 export function updateAddress(userId: string, input: AddressInput): AccountUpdateResult {

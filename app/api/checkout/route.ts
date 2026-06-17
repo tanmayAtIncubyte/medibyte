@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import { readSessionId } from "@/lib/data/session-id";
 import type { CheckoutInput } from "@/lib/orders/checkout";
 import { placeOrder } from "@/lib/orders/place-order";
+import { simulateDelay, SLOW_CHECKOUT_DELAY_MS } from "@/lib/perf/simulated-latency";
 
 // Inspectable checkout endpoint (hybrid policy: mutation goes through /api/*).
 // Reads the signed session for the owner, the cart-session cookie for the cart,
@@ -23,16 +25,53 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Your cart is empty." }, { status: 422 });
   }
 
-  const body = (await request.json()) as Partial<CheckoutInput>;
+  const body = (await request.json()) as Partial<CheckoutInput> & {
+    clientTotal?: unknown;
+  };
   const input: CheckoutInput = {
     shipping: body.shipping ?? {},
     prescriptions: body.prescriptions ?? {},
   };
+  // Client-supplied total — IGNORED by the clean path (the server recomputes).
+  // Only honored when SEC_PRICE_TAMPER is on for this (non-admin) user.
+  const clientTotal = typeof body.clientTotal === "number" ? body.clientTotal : undefined;
 
-  const result = placeOrder(sessionId, user, input);
+  // PERF_SLOW_CHECKOUT (simulated): when on, stall the checkout request ~2s
+  // before doing any work and with no extra pending feedback, so the customer
+  // stares at an unresponsive submit. Admins / flag-off skip the delay entirely.
+  if (isBugActive("PERF_SLOW_CHECKOUT", user)) {
+    await simulateDelay(SLOW_CHECKOUT_DELAY_MS);
+  }
+
+  // Resolve seeded-bug flags here (the user lives at this boundary) and pass
+  // plain booleans into the pure order orchestration; admins are never affected.
+  const result = await placeOrder(sessionId, user, input, {
+    bugs: {
+      taxFloor: isBugActive("FN_TAX_FLOOR", user),
+      ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
+      skipPostalValidation: isBugActive("FN_POSTAL_UNVALIDATED", user),
+      taxBeforeDiscount: isBugActive("FN_TAX_BEFORE_DISCOUNT", user),
+      couponNegative: isBugActive("FN_COUPON_NEGATIVE", user),
+      roundingEdge: isBugActive("FN_TOTAL_ROUNDING_EDGE", user),
+      oversell: isBugActive("FN_OVERSELL", user),
+      concurrentDoubleSpend: isBugActive("FN_CONCURRENT_DOUBLESPEND", user),
+      partialCheckout: isBugActive("FN_PARTIAL_CHECKOUT", user),
+      trustClientTotal: isBugActive("SEC_PRICE_TAMPER", user),
+    },
+    clientTotal,
+  });
   if (!result.ok) {
     if (result.reason === "empty-cart") {
       return NextResponse.json({ error: "Your cart is empty." }, { status: 422 });
+    }
+    if (result.reason === "out-of-stock") {
+      return NextResponse.json(
+        {
+          error: "Some items are no longer available in the requested quantity.",
+          shortages: result.shortages,
+        },
+        { status: 409 },
+      );
     }
     return NextResponse.json(
       { error: "Please fix the highlighted fields.", errors: result.errors },

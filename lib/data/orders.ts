@@ -4,6 +4,7 @@ import {
   findOrderForViewer,
   ordersForUser,
   sortOrdersNewestFirst,
+  type FindOrderBugs,
 } from "@/lib/orders/order";
 import type { Order } from "@/lib/orders/types";
 
@@ -22,13 +23,15 @@ export function listOrdersForUser(userId: string): Order[] {
 }
 
 /**
- * Resolves a single order for a viewer with ownership enforced. Customers see
- * only their own orders; admins may see any. Unknown/forbidden -> null. The
- * IDOR bug that bypasses this is a Phase-4 toggle and is NOT built here.
+ * Resolves a single order for a viewer with ownership enforced (clean default).
+ * Customers see only their own orders; admins may see any. Unknown/forbidden ->
+ * null. SEC_IDOR_ORDER: when `bugs.dropOwnershipCheck` is set (resolved at the
+ * page boundary, never for admins), the ownership check is bypassed.
  */
 export function getOrderForViewer(
   orderId: string,
   viewer: { id: string; role: "admin" | "customer" },
+  bugs: FindOrderBugs = {},
 ): Order | null {
-  return findOrderForViewer([...seedOrders, ...allCreatedOrders()], orderId, viewer);
+  return findOrderForViewer([...seedOrders, ...allCreatedOrders()], orderId, viewer, bugs);
 }

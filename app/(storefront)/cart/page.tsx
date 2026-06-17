@@ -2,11 +2,14 @@ import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 
 import { CartLineControls } from "@/components/cart/cart-line-controls";
+import { CartLinePrefetch } from "@/components/cart/cart-line-prefetch";
 import { CouponForm } from "@/components/cart/coupon-form";
 import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
 import { getCartView } from "@/lib/cart/cart-service";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import { readSessionIdFromCookies } from "@/lib/data/session-id";
 import { formatPrice } from "@/lib/format";
 
@@ -14,8 +17,37 @@ export const metadata = { title: "Your cart" };
 
 export default async function CartPage() {
   const sessionId = await readSessionIdFromCookies();
-  const cart = getCartView(sessionId ?? "__none__");
+  // Resolve seeded-bug flags at the boundary (the user lives here) and pass
+  // plain booleans into the pure cart view; admins always get clean totals.
+  const user = await getCurrentUser();
+  const cart = getCartView(sessionId ?? "__none__", {
+    totalStale: isBugActive("FN_CART_TOTAL_STALE", user),
+    taxFloor: isBugActive("FN_TAX_FLOOR", user),
+    ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
+    taxBeforeDiscount: isBugActive("FN_TAX_BEFORE_DISCOUNT", user),
+    couponNegative: isBugActive("FN_COUPON_NEGATIVE", user),
+    roundingEdge: isBugActive("FN_TOTAL_ROUNDING_EDGE", user),
+  });
   const applied = cart.appliedCoupon;
+
+  // Accessibility seeded-bug switches resolved at the boundary and passed into
+  // the (otherwise clean) cart components as plain booleans; admins get clean.
+  const couponNoLabel = isBugActive("A11Y_INPUT_NO_LABEL", user);
+  const qtyNoKeyboardFocus = isBugActive("A11Y_NO_KEYBOARD_FOCUS", user);
+
+  // PERF_CART_WATERFALL: when on, a client island re-fetches each line's product
+  // sequentially (N+1) even though the data is already on the page; admins /
+  // flag-off make no extra requests and use the rendered data directly.
+  const cartWaterfall = isBugActive("PERF_CART_WATERFALL", user);
+  const lineProductIds = cart.lines.map((line) => line.product.id);
+
+  // UI antipattern / UX seeded-bug switches resolved at the boundary and passed
+  // into the (otherwise clean) cart UI as plain booleans; admins get clean.
+  const removeWithoutConfirm = isBugActive("UI_DESTRUCTIVE_NO_CONFIRM", user);
+  const misleadingRemoveIcon = isBugActive("UI_MISLEADING_ICON", user);
+  // UX_SURPRISE_TAX: when on, hide the tax line on the cart so tax only surfaces
+  // at the final checkout step (a surprise at the end). Clean shows it here.
+  const hideTaxOnCart = isBugActive("UX_SURPRISE_TAX", user);
 
   return (
     <PageContainer>
@@ -27,6 +59,7 @@ export default async function CartPage() {
         <EmptyCart />
       ) : (
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
+          <CartLinePrefetch productIds={lineProductIds} waterfall={cartWaterfall} />
           <ul className="space-y-4 lg:col-span-2">
             {cart.lines.map((line) => (
               <li
@@ -55,6 +88,9 @@ export default async function CartPage() {
                     productId={line.product.id}
                     productName={line.product.name}
                     quantity={line.quantity}
+                    noKeyboardFocus={qtyNoKeyboardFocus}
+                    removeWithoutConfirm={removeWithoutConfirm}
+                    misleadingRemoveIcon={misleadingRemoveIcon}
                   />
                 </div>
               </li>
@@ -78,11 +114,13 @@ export default async function CartPage() {
                     discount
                   />
                 )}
-                <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
+                {!hideTaxOnCart && (
+                  <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
+                )}
                 <div className="border-t border-border pt-3">
                   <SummaryRow
-                    label="Total"
-                    value={formatPrice(cart.total)}
+                    label={hideTaxOnCart ? "Subtotal" : "Total"}
+                    value={formatPrice(hideTaxOnCart ? cart.subtotal - cart.discount : cart.total)}
                     emphasized
                   />
                 </div>
@@ -98,6 +136,7 @@ export default async function CartPage() {
                         }
                       : null
                   }
+                  noLabel={couponNoLabel}
                 />
               </div>
 

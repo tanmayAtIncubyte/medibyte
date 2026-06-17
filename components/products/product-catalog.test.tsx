@@ -53,4 +53,20 @@ describe("ProductCatalog", () => {
     );
     expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });
+
+  // The page resolves the bug flags (FN_PRICE_DECIMALS / FN_INSTOCK_AT_ZERO) and
+  // passes plain booleans; these prove the catalog honours them. Default off ==
+  // the correct rendering already asserted above.
+  it("FN_PRICE_DECIMALS prop → renders one-decimal prices when set", () => {
+    render(<ProductCatalog products={[otc]} dropDecimal />);
+    expect(screen.getByText("$7.0")).toBeInTheDocument();
+    expect(screen.queryByText("$6.99")).not.toBeInTheDocument();
+  });
+
+  it("FN_INSTOCK_AT_ZERO prop → labels a 0-stock item 'In stock' when set", () => {
+    const oos: Product = { ...otc, id: "oos-1", name: "Out Item", stock: 0 };
+    render(<ProductCatalog products={[oos]} inStockAtZero />);
+    expect(screen.getByText("In stock")).toBeInTheDocument();
+    expect(screen.queryByText("Out of stock")).not.toBeInTheDocument();
+  });
 });

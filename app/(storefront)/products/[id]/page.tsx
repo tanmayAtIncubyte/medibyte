@@ -5,6 +5,8 @@ import { ArrowLeft, Pill } from "lucide-react";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { isBugActive } from "@/lib/bugs";
 import { findProductById } from "@/lib/data/products";
 import { formatPrice, stockLabel, stockStatus } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,13 @@ export default async function ProductDetailPage({
   if (!product) {
     notFound();
   }
+
+  // Resolve seeded-bug flags at the boundary (the user lives here) and use plain
+  // booleans below; the presentation helpers stay pure.
+  const user = await getCurrentUser();
+  const dropDecimal = isBugActive("FN_PRICE_DECIMALS", user);
+  const inStockAtZero = isBugActive("FN_INSTOCK_AT_ZERO", user);
+  const tripwireCopy = isBugActive("FN_TRIPWIRE_COPY", user);
 
   const status = stockStatus(product.stock);
 
@@ -46,20 +55,24 @@ export default async function ProductDetailPage({
           <p className="mt-1 text-sm text-muted-foreground">{product.category}</p>
 
           <p className="mt-6 font-heading text-3xl font-bold tabular-nums text-foreground">
-            {formatPrice(product.price)}
+            {formatPrice(product.price, { dropDecimal })}
           </p>
 
           <p
             className={cn(
               "mt-2 text-sm font-medium",
-              status === "out-of-stock"
+              // FN_INSTOCK_AT_ZERO recolors a 0-stock item as available.
+              (inStockAtZero && product.stock <= 0
+                ? "in-stock"
+                : status) === "out-of-stock"
                 ? "text-destructive"
-                : status === "low-stock"
+                : (inStockAtZero && product.stock <= 0 ? "in-stock" : status) ===
+                    "low-stock"
                   ? "text-amber-600 dark:text-amber-400"
                   : "text-muted-foreground",
             )}
           >
-            {stockLabel(product.stock)}
+            {stockLabel(product.stock, { inStockAtZero })}
           </p>
 
           {product.requiresPrescription && (
@@ -89,6 +102,20 @@ export default async function ProductDetailPage({
           <p className="mt-6 leading-relaxed text-foreground">
             {product.description}
           </p>
+
+          {/*
+            FN_TRIPWIRE_COPY (reading tripwire): an extra line of copy that
+            contradicts the Rx/OTC badge shown above — Rx items claim no
+            prescription is needed; OTC items claim a prescription is required.
+            Only a non-admin customer with the flag on sees it.
+          */}
+          {tripwireCopy && (
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {product.type === "Rx"
+                ? "No prescription needed — available over the counter for everyone."
+                : "Prescription required: a pharmacist must verify your prescription before this item ships."}
+            </p>
+          )}
         </div>
       </div>
     </PageContainer>
