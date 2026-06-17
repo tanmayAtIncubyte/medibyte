@@ -20,8 +20,11 @@ Every defect is a **toggleable flag**:
 - The **admin** always sees the **clean, correct app** plus a **bug-control panel**.
 - A **customer** sees a bug **only when that bug's flag is turned ON**.
 
-You (the reviewer) pick a set of flags to enable, hand the candidate a URL + brief,
+You (the reviewer) pick a set of flags to enable, hand the candidate the URL + brief,
 and grade what they find against this runbook and the live admin reference.
+
+**Deployed instance:** <https://medibyte-ten.vercel.app> — admin panel at
+<https://medibyte-ten.vercel.app/admin>.
 
 The canonical list of flags lives in `lib/bug-registry.ts`; per-bug repro detail
 lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
@@ -54,12 +57,14 @@ above are for your own verification.
 > **customer** (`dana@example.test`), not as admin. This is enforced server-side by
 > `isBugActive(key, user)` — the buggy branch never runs for admin.
 
-### Deploy-time-flags caveat (free host)
-Live in-panel toggling works in **local dev**. On the **deployed** free-host instance
-the active flag set is effectively **fixed at deploy time** — the set of enabled bugs
-is baked in when the instance is built. To change the bug set on the deployed
-instance, redeploy with the desired `data/bug-flags.json`. Plan each candidate's
-assessment around a deploy (or run assessments locally where you can toggle live).
+### Deploy-time-flags caveat (Vercel)
+The app is deployed on **Vercel**, whose runtime filesystem is **read-only /
+ephemeral**. In-panel toggles write `data/bug-flags.json`, so on the deployed
+instance they **do not persist** — the active flag set is effectively **fixed at
+deploy time**. To change the bug set on <https://medibyte-ten.vercel.app>, edit
+`data/bug-flags.json`, commit, and let Vercel redeploy. Live in-panel toggling
+works only in **local dev**. Plan each candidate's assessment around a deploy
+(or run assessments locally where you can toggle live).
 
 ---
 

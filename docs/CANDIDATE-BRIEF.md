@@ -10,7 +10,7 @@ over-the-counter (OTC) and prescription (Rx) products, search and filter the
 catalog, add items to a cart, apply promo codes, check out with a shipping
 address, and review their past orders and account details.
 
-You will explore the running app at the URL provided to you by your reviewer.
+You will explore the running app at **https://medibyte-ten.vercel.app**.
 
 ## Your task
 
