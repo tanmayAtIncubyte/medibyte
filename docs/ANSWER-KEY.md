@@ -59,7 +59,7 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Trigger: As a customer, view the 0-stock product "Daily Fiber Supplement Powder" (`prod-fiber-supplement`).
 - Expected (correct / admin): "Out of stock" (in destructive/red styling).
 - Actual (buggy / customer): "In stock" (styled as available).
-- How to spot it: eyeball the availability pill on a known out-of-stock item; cross-check with the disabled Add-to-cart on detail.
+- How to spot it: a same-page **contradiction** — the "In stock" pill is inconsistent with the disabled "Add to cart" button and the "This item is currently unavailable." note right below it. The candidate does NOT need to know the raw stock number; the page contradicts itself. (Also catchable by comparing the catalog listing.) Correct: "Out of stock", consistent with the disabled button.
 
 ### FN_NORESULTS_BLANK — No "no results" message on an empty search
 - Functional / Easy / HIPAA: no

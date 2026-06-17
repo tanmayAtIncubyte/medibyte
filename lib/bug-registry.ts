@@ -99,9 +99,10 @@ export const bugRegistry: readonly BugDefinition[] = [
     difficulty: "easy",
     location: "lib/format.ts (stockLabel) via catalog card + detail",
     hipaa: false,
-    effect: "A zero-stock product shows 'In stock' instead of 'Out of stock'.",
+    effect:
+      "A zero-stock product shows 'In stock', contradicting its disabled Add-to-cart button and 'currently unavailable' note.",
     where: "/products + /products/[id] (e.g. Daily Fiber Supplement Powder)",
-    howToSpot: "eyeball",
+    howToSpot: "cross-screen",
   },
   {
     key: "FN_NORESULTS_BLANK",
