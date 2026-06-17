@@ -1,8 +1,8 @@
 "use client";
 
-import { type ReactNode, useMemo, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ImageOff, Info } from "lucide-react";
+import { ExternalLink, ImageOff, Info, X, ZoomIn } from "lucide-react";
 
 import type {
   BugCategory,
@@ -10,6 +10,7 @@ import type {
   BugDifficulty,
 } from "@/lib/bug-registry";
 import type { BugFlags } from "@/lib/bug-flags";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -328,10 +329,25 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
-// The Preview control: opens a Dialog with the clean (admin) vs buggy (customer)
-// screenshots loaded from the admin-guarded image route. Images may not be
-// captured yet, so each pane degrades to a "Screenshot pending" placeholder.
+type Variant = "clean" | "buggy";
+
+function imageSrc(bugKey: string, variant: Variant): string {
+  return `/api/admin/bug-image/${encodeURIComponent(bugKey)}?variant=${variant}`;
+}
+
+const VARIANT_LABEL: Record<Variant, string> = {
+  buggy: "Buggy (customer)",
+  clean: "Clean (admin)",
+};
+
+// The Preview control: opens a WIDE Dialog showing one screenshot at a readable
+// size, with a Buggy/Clean toggle and a click-to-zoom lightbox for pixel-level
+// detail. Images load from the admin-guarded route; a not-yet-captured shot
+// degrades to a "Screenshot pending" placeholder.
 function BugPreview({ bug }: { bug: BugDefinition }) {
+  const [variant, setVariant] = useState<Variant>("buggy");
+  const [zoomed, setZoomed] = useState(false);
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -344,58 +360,159 @@ function BugPreview({ bug }: { bug: BugDefinition }) {
           Preview
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-[min(96vw,1500px)]">
         <DialogHeader>
           <DialogTitle>{bug.title}</DialogTitle>
-          <DialogDescription>
-            Clean (admin) vs buggy (customer). {bug.effect ?? bug.location}
-          </DialogDescription>
+          <DialogDescription>{bug.effect ?? bug.location}</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <PreviewPane bugKey={bug.key} variant="clean" label="Clean (admin)" />
-          <PreviewPane bugKey={bug.key} variant="buggy" label="Buggy (customer)" />
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div
+            role="tablist"
+            aria-label="Screenshot variant"
+            className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5"
+          >
+            {(["buggy", "clean"] as Variant[]).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={variant === v}
+                onClick={() => setVariant(v)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                  variant === v
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {VARIANT_LABEL[v]}
+              </button>
+            ))}
+          </div>
+          <a
+            href={imageSrc(bug.key, variant)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            Open full size <ExternalLink className="size-3" aria-hidden />
+          </a>
         </div>
+
+        {/* key on variant remounts so the placeholder state resets per variant */}
+        <PreviewImage
+          key={variant}
+          bugKey={bug.key}
+          variant={variant}
+          onZoom={() => setZoomed(true)}
+        />
+
+        {zoomed && (
+          <Lightbox
+            src={imageSrc(bug.key, variant)}
+            alt={`${VARIANT_LABEL[variant]} screenshot of ${bug.key}`}
+            onClose={() => setZoomed(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function PreviewPane({
+function PreviewImage({
   bugKey,
   variant,
-  label,
+  onZoom,
 }: {
   bugKey: string;
-  variant: "clean" | "buggy";
-  label: string;
+  variant: Variant;
+  onZoom: () => void;
 }) {
-  // If the PNG hasn't been captured, the route 404s and the <img> onError swaps
-  // in the placeholder — so the panel works before any screenshots exist.
+  // If the PNG hasn't been captured, the route 404s and onError swaps in the
+  // placeholder — so the panel works before any screenshots exist.
   const [missing, setMissing] = useState(false);
-  const src = `/api/admin/bug-image/${encodeURIComponent(bugKey)}?variant=${variant}`;
+
+  if (missing) {
+    return (
+      <div
+        className="flex h-[60vh] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/40 text-sm text-muted-foreground"
+        role="img"
+        aria-label={`${VARIANT_LABEL[variant]} screenshot pending`}
+      >
+        <ImageOff className="size-6" aria-hidden />
+        <span>Screenshot pending</span>
+      </div>
+    );
+  }
 
   return (
-    <figure className="space-y-1.5">
-      <figcaption className="text-xs font-medium text-muted-foreground">{label}</figcaption>
-      {missing ? (
-        <div
-          className="flex aspect-video flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-muted/40 text-center text-xs text-muted-foreground"
-          role="img"
-          aria-label={`${label} screenshot pending`}
-        >
-          <ImageOff className="size-5" aria-hidden />
-          <span>Screenshot pending</span>
-        </div>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element -- admin-only, dynamic guarded route, not a public asset
-        <img
-          src={src}
-          alt={`${label} screenshot of ${bugKey}`}
-          className="aspect-video w-full rounded-lg border border-border bg-muted/40 object-contain"
-          onError={() => setMissing(true)}
-        />
-      )}
-    </figure>
+    <button
+      type="button"
+      onClick={onZoom}
+      className="group relative block w-full cursor-zoom-in overflow-hidden rounded-lg border border-border bg-muted/30 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      aria-label="Zoom screenshot to full size"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- admin-only, dynamic guarded route, not a public asset */}
+      <img
+        src={imageSrc(bugKey, variant)}
+        alt={`${VARIANT_LABEL[variant]} screenshot of ${bugKey}`}
+        className="mx-auto max-h-[68vh] w-auto max-w-full object-contain"
+        onError={() => setMissing(true)}
+      />
+      <span className="pointer-events-none absolute right-2 bottom-2 inline-flex items-center gap-1 rounded-md bg-black/65 px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+        <ZoomIn className="size-3.5" aria-hidden /> Click to zoom
+      </span>
+    </button>
+  );
+}
+
+// Full-screen lightbox for pixel-level inspection. Esc closes it (captured so it
+// doesn't also close the parent Dialog); backdrop click closes too.
+function Lightbox({
+  src,
+  alt,
+  onClose,
+}: {
+  src: string;
+  alt: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Full-size screenshot"
+      onClick={onClose}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- admin-only, dynamic guarded route */}
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-[92vh] max-w-[96vw] object-contain"
+        onClick={(event) => event.stopPropagation()}
+      />
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 inline-flex size-9 items-center justify-center rounded-full bg-white/10 text-white outline-none transition-colors hover:bg-white/20 focus-visible:ring-3 focus-visible:ring-ring/50"
+        aria-label="Close full-size view"
+      >
+        <X className="size-5" />
+      </button>
+    </div>
   );
 }
 

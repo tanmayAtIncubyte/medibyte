@@ -288,7 +288,7 @@ describe("preview control — per row + opens the modal (MED-29)", () => {
     }
   });
 
-  it("opens a dialog with clean and buggy panes when Preview is clicked", async () => {
+  it("opens a dialog with a buggy/clean toggle and a zoomable screenshot", async () => {
     const user = userEvent.setup();
     render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
 
@@ -297,13 +297,37 @@ describe("preview control — per row + opens the modal (MED-29)", () => {
     );
 
     const dialog = await screen.findByRole("dialog");
-    // The figcaptions name the two panes exactly (the description also mentions
-    // them, so match the standalone caption text).
-    expect(within(dialog).getByText("Clean (admin)")).toBeInTheDocument();
-    expect(within(dialog).getByText("Buggy (customer)")).toBeInTheDocument();
+    // A Buggy/Clean toggle flips the single large screenshot; plus zoom + an
+    // "open full size" escape hatch.
+    expect(within(dialog).getByRole("tab", { name: "Buggy (customer)" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("tab", { name: "Clean (admin)" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /zoom screenshot/i })).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: /open full size/i })).toBeInTheDocument();
   });
 
-  it("shows the Screenshot pending placeholder when an image fails to load", async () => {
+  it("defaults to the buggy variant and can switch to clean", async () => {
+    const user = userEvent.setup();
+    render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Preview PHI leaks in order confirmation" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+
+    expect(within(dialog).getByRole("tab", { name: "Buggy (customer)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await user.click(within(dialog).getByRole("tab", { name: "Clean (admin)" }));
+
+    expect(within(dialog).getByRole("tab", { name: "Clean (admin)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("shows the Screenshot pending placeholder when the image fails to load", async () => {
     const user = userEvent.setup();
     render(<BugFlagPanel bugs={bugs} initialFlags={flags} />);
 
@@ -313,11 +337,9 @@ describe("preview control — per row + opens the modal (MED-29)", () => {
 
     const dialog = await screen.findByRole("dialog");
     // jsdom never loads <img> src, so fire onError to exercise the placeholder.
-    for (const img of within(dialog).getAllByRole("img")) {
-      fireEvent.error(img);
-    }
+    fireEvent.error(within(dialog).getByRole("img"));
 
-    expect(within(dialog).getAllByText(/screenshot pending/i).length).toBeGreaterThan(0);
+    expect(within(dialog).getByText(/screenshot pending/i)).toBeInTheDocument();
   });
 });
 
