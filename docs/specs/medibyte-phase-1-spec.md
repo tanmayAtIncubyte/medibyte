@@ -21,78 +21,78 @@ Ordering is outside-in within slices, but slices themselves follow a dependency 
 
 ---
 
-### Slice 1: App scaffold & running shell
+### Slice 1: App scaffold & running shell [x]
 The walking skeleton: a Next.js app you can run and load, with the design system wired in.
 
-- [ ] Running `npm run dev` starts the app and the home page loads in a browser with no console errors
-- [ ] The home page renders branded MediByte content (name/logo/tagline), not the framework default starter page
-- [ ] Tailwind utility classes applied in a component visibly affect rendered styling
-- [ ] At least one shadcn/ui component (e.g. Button) renders and is interactive on a page
-- [ ] A shared app layout (header with MediByte branding + a page container) wraps every route
-- [ ] Navigating to an unknown route shows a styled 404/not-found page, not an unstyled crash
-- [ ] `npm run build` completes without TypeScript or build errors
+- [x] Running `npm run dev` starts the app and the home page loads in a browser with no console errors
+- [x] The home page renders branded MediByte content (name/logo/tagline), not the framework default starter page
+- [x] Tailwind utility classes applied in a component visibly affect rendered styling
+- [x] At least one shadcn/ui component (e.g. Button) renders and is interactive on a page
+- [x] A shared app layout (header with MediByte branding + a page container) wraps every route
+- [x] Navigating to an unknown route shows a styled 404/not-found page, not an unstyled crash
+- [x] `npm run build` completes without TypeScript or build errors
 
 ---
 
-### Slice 2: Mock-data layer served via real API route handlers
+### Slice 2: Mock-data layer served via real API route handlers [x]
 Establishes the canonical "deterministic mock data, real HTTP, in-memory writes" pattern that every later feature copies. Phase 1 only needs a small representative dataset and one or two read endpoints to prove the pattern; full catalog/orders data arrives in later phases.
 
-- [ ] A client page can fetch data and the request appears as a real HTTP call in the browser DevTools Network tab (genuine request/response, not an inlined import)
-- [ ] At least one read endpoint (e.g. `GET /api/products`) returns deterministic seed data as JSON with a 200 status
-- [ ] Requesting the same read endpoint twice returns identical data (no runtime randomness)
-- [ ] Seed data lives in plain TypeScript/JSON modules under `data/` with no database, migrations, or runtime RNG
-- [ ] An endpoint for a non-existent resource id returns a 404 with a JSON body (not a 200, not an HTML error page)
-- [ ] A write performed in a session (e.g. a stub add-to-cart or session value) is readable back within the same session
-- [ ] In-memory session writes reset to the seed baseline after the server restarts
-- [ ] Seed data includes at least: a small set of products and the user accounts needed for auth (1 admin + at least 1 customer)
+- [x] A client page can fetch data and the request appears as a real HTTP call in the browser DevTools Network tab (genuine request/response, not an inlined import)
+- [x] At least one read endpoint (e.g. `GET /api/products`) returns deterministic seed data as JSON with a 200 status
+- [x] Requesting the same read endpoint twice returns identical data (no runtime randomness)
+- [x] Seed data lives in plain TypeScript/JSON modules under `data/` with no database, migrations, or runtime RNG
+- [x] An endpoint for a non-existent resource id returns a 404 with a JSON body (not a 200, not an HTML error page)
+- [x] A write performed in a session (e.g. a stub add-to-cart or session value) is readable back within the same session
+- [x] In-memory session writes reset to the seed baseline after the server restarts
+- [x] Seed data includes at least: a small set of products and the user accounts needed for auth (1 admin + at least 1 customer)
 
 ---
 
-### Slice 3: Bug-toggle infrastructure (the core idea)
+### Slice 3: Bug-toggle infrastructure (the core idea) [x]
 The registry, the flag file, and `isBugActive` — built before any feature so every later feature gates its buggy path through one helper. No real bugs yet; verified with a throwaway test/probe key.
 
-- [ ] `lib/bug-registry.ts` exports a canonical list where each entry has at minimum: `key`, `title`, `category`, `difficulty`, `location`, and `hipaa` (boolean)
-- [ ] Every registry `key` is unique
-- [ ] `data/bug-flags.json` exists and contains an enabled/disabled state for every key in the registry
-- [ ] If `bug-flags.json` is missing or is missing a key present in the registry, the system seeds/defaults that key to disabled rather than crashing
-- [ ] `lib/bugs.ts` exports `isBugActive(key, user)` returning `true` only when the flag is enabled AND the user is not an admin
-- [ ] `isBugActive` returns `false` for an admin user even when the flag is enabled
-- [ ] `isBugActive` returns `false` for any user (including customer) when the flag is disabled
-- [ ] `isBugActive` returns `false` for an unauthenticated/no-user request (default to correct behavior)
-- [ ] `isBugActive` called with a key not in the registry returns `false` (and does not throw)
-- [ ] The intended code pattern is documented and demonstrated once: correct path is the default, buggy path is the gated branch (`isBugActive(key, user) ? buggy() : correct()`)
+- [x] `lib/bug-registry.ts` exports a canonical list where each entry has at minimum: `key`, `title`, `category`, `difficulty`, `location`, and `hipaa` (boolean)
+- [x] Every registry `key` is unique
+- [x] `data/bug-flags.json` exists and contains an enabled/disabled state for every key in the registry
+- [x] If `bug-flags.json` is missing or is missing a key present in the registry, the system seeds/defaults that key to disabled rather than crashing
+- [x] `lib/bugs.ts` exports `isBugActive(key, user)` returning `true` only when the flag is enabled AND the user is not an admin
+- [x] `isBugActive` returns `false` for an admin user even when the flag is enabled
+- [x] `isBugActive` returns `false` for any user (including customer) when the flag is disabled
+- [x] `isBugActive` returns `false` for an unauthenticated/no-user request (default to correct behavior)
+- [x] `isBugActive` called with a key not in the registry returns `false` (and does not throw)
+- [x] The intended code pattern is documented and demonstrated once: correct path is the default, buggy path is the gated branch (`isBugActive(key, user) ? buggy() : correct()`)
 
 ---
 
-### Slice 4: Lightweight cookie auth with admin/customer roles
+### Slice 4: Lightweight cookie auth with admin/customer roles [x]
 Custom signed-cookie session keyed off the seed users, exposing the current user (with role) that `isBugActive` and the admin panel depend on.
 
-- [ ] A visitor can log in from `/login` using credentials that match a seed user
-- [ ] Logging in with valid admin credentials starts an admin session; with valid customer credentials starts a customer session
-- [ ] Logging in with unknown or wrong credentials shows an error and does not start a session
-- [ ] A logged-in user's role (admin vs customer) is readable by server code (route handlers / server components) for the duration of the session
-- [ ] The session is carried in a signed, httpOnly cookie (not readable via client JavaScript / `document.cookie`)
-- [ ] Tampering with the session cookie value invalidates the session (treated as logged out) rather than impersonating a user
-- [ ] A user can log out, after which protected/admin routes are no longer accessible as that user
-- [ ] Visiting `/admin` (or admin API) while logged out, or while logged in as a customer, is denied (redirect to login or 403) — admin areas require an admin session
-- [ ] The header reflects auth state (shows who is logged in and a logout action when authenticated; a login link when not)
-- [ ] Registration via `/register` exists and, on success, creates a customer-role session (registration writes are in-memory per session, consistent with the data layer)
+- [x] A visitor can log in from `/login` using credentials that match a seed user
+- [x] Logging in with valid admin credentials starts an admin session; with valid customer credentials starts a customer session
+- [x] Logging in with unknown or wrong credentials shows an error and does not start a session
+- [x] A logged-in user's role (admin vs customer) is readable by server code (route handlers / server components) for the duration of the session
+- [x] The session is carried in a signed, httpOnly cookie (not readable via client JavaScript / `document.cookie`)
+- [x] Tampering with the session cookie value invalidates the session (treated as logged out) rather than impersonating a user
+- [x] A user can log out, after which protected/admin routes are no longer accessible as that user
+- [x] Visiting `/admin` (or admin API) while logged out, or while logged in as a customer, is denied (redirect to login or 403) — admin areas require an admin session
+- [x] The header reflects auth state (shows who is logged in and a logout action when authenticated; a login link when not)
+- [x] Registration via `/register` exists and, on success, creates a customer-role session (registration writes are in-memory per session, consistent with the data layer)
 
 ---
 
-### Slice 5: Admin bug-flag control panel
+### Slice 5: Admin bug-flag control panel [x]
 The admin-only screen that lists every registry bug and writes toggles to `bug-flags.json`, closing the loop so toggles take effect for customers.
 
-- [ ] An admin visiting `/admin` sees a bug-control panel listing every bug from the registry
-- [ ] Each listed bug shows its title, category, and difficulty, and a current on/off state
-- [ ] The panel's displayed on/off state for each bug matches the value in `data/bug-flags.json`
-- [ ] An admin can toggle an individual bug on or off from the panel
-- [ ] Toggling a bug writes the new state to `data/bug-flags.json` and the change persists across a page reload
-- [ ] The change persists across a server restart (the flag file, not in-memory state, is the source of truth)
-- [ ] After a flag is toggled, a subsequent `isBugActive(key, customer)` call reflects the new state (the panel actually drives behavior)
-- [ ] A non-admin (customer or logged-out) cannot view the panel and cannot toggle flags via the toggle API (request is denied)
-- [ ] The panel can filter or group bugs by category and/or difficulty so a reviewer can configure an assessment quickly
-- [ ] A "reset to defaults" or bulk all-off action exists so the reviewer can return to a known clean baseline
+- [x] An admin visiting `/admin` sees a bug-control panel listing every bug from the registry
+- [x] Each listed bug shows its title, category, and difficulty, and a current on/off state
+- [x] The panel's displayed on/off state for each bug matches the value in `data/bug-flags.json`
+- [x] An admin can toggle an individual bug on or off from the panel
+- [x] Toggling a bug writes the new state to `data/bug-flags.json` and the change persists across a page reload
+- [x] The change persists across a server restart (the flag file, not in-memory state, is the source of truth)
+- [x] After a flag is toggled, a subsequent `isBugActive(key, customer)` call reflects the new state (the panel actually drives behavior)
+- [x] A non-admin (customer or logged-out) cannot view the panel and cannot toggle flags via the toggle API (request is denied)
+- [x] The panel can filter or group bugs by category and/or difficulty so a reviewer can configure an assessment quickly
+- [x] A "reset to defaults" or bulk all-off action exists so the reviewer can return to a known clean baseline
 
 ---
 
