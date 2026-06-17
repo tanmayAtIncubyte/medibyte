@@ -259,8 +259,9 @@ export const bugRegistry: readonly BugDefinition[] = [
     difficulty: "difficult",
     location: "lib/orders/place-order.ts via /api/checkout",
     hipaa: false,
-    effect: "Stock check is skipped, so an order for more units than exist still succeeds.",
-    where: "/checkout (order a quantity above stock) — POST /api/checkout",
+    effect:
+      "Stock check is skipped, so ordering more units than the on-screen 'Low stock (N left)' count still succeeds (should 409).",
+    where: "/products → a 'Low stock (N left)' item (e.g. Nasal Decongestant, 8 left) → order more than N — POST /api/checkout",
     howToSpot: "edge input",
   },
 
@@ -284,8 +285,9 @@ export const bugRegistry: readonly BugDefinition[] = [
     difficulty: "expert",
     location: "lib/cart/totals.ts (computeCartTotals) via /cart, /checkout, /api/checkout",
     hipaa: false,
-    effect: "Total is off by a cent only at specific subtotal+coupon values; most carts are correct.",
-    where: "/cart, /checkout (edge subtotal + percent coupon)",
+    effect:
+      "At specific subtotal+coupon values the displayed Total doesn't equal the displayed rows (Subtotal − Discount + Tax) — off by a cent; most carts stay self-consistent.",
+    where: "/cart, /checkout (edge subtotal + percent coupon, e.g. 5× Ibuprofen + SAVE10)",
     howToSpot: "edge input",
   },
   {

@@ -107,7 +107,7 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Trigger: As a customer, build a cart whose taxable base makes tax round up (e.g. base $10.07 → tax $0.8056). View `/cart` Tax row.
 - Expected (correct / admin): tax rounded to the nearest cent ($0.81).
 - Actual (buggy / customer): tax floored down ($0.80); the persisted order total reflects the floored tax too.
-- How to spot it: arithmetic — recompute `base * 0.08` and compare; off by a cent downward.
+- How to spot it: on-screen arithmetic — the summary labels the rate ("Tax (8%)") and shows the Subtotal, so 8% of the shown base can be checked against the shown Tax with no hidden value; the Tax is a cent low (rounded down, not to nearest).
 
 ### FN_EXPIRED_COUPON_OK — Expired coupon still applies
 - Functional / Moderate / HIPAA: no
@@ -152,7 +152,7 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Trigger: As a customer, build a cart and apply a coupon (e.g. `SAVE10` on a $100 cart → $10 off). Look at the Tax row.
 - Expected (correct / admin): tax = 8% of the **post-discount** base ($90 → $7.20); total $97.20.
 - Actual (buggy / customer): tax = 8% of the **pre-discount** subtotal ($100 → $8.00); total $98.00 — the customer is overcharged the tax on the discounted amount.
-- How to spot it: arithmetic — Tax ÷ (Subtotal − Discount) ≠ 8%; tax is 8% of the subtotal instead. Only visible when a coupon is applied.
+- How to spot it: on-screen arithmetic (coupon applied) — the summary shows Subtotal, Discount, and a labelled "Tax (8%)" row; the Tax equals 8% of the Subtotal rather than 8% of (Subtotal − Discount), so Tax ÷ (Subtotal − Discount) > 8%. All inputs are on screen — no hidden value needed.
 
 ### FN_COUPON_NEGATIVE — Discount not clamped to subtotal → negative total
 - Functional / Difficult / HIPAA: no
@@ -184,7 +184,7 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Trigger: As a customer, add more units of a low-stock item than exist (e.g. `prod-decongestant`, stock 8 → add 20) and check out.
 - Expected (correct / admin): 409 "Some items are no longer available in the requested quantity." — order rejected, nothing reserved.
 - Actual (buggy / customer): the stock check is skipped; the order is placed for 20 against 8 in stock, driving availability negative.
-- How to spot it: edge input / DevTools Network — order a quantity above stock; the clean app 409s, the buggy app 201s. Cross-check available stock afterward.
+- How to spot it: edge input / DevTools Network — the product page shows the available count on the screen as "Low stock (8 left)" (no hidden DB value needed); order more than that count and the clean app 409s while the buggy app 201s and places the order. Cross-check available stock afterward.
 
 ### FN_CONCURRENT_DOUBLESPEND — Concurrent orders double-spend the same stock
 - Functional / Expert / HIPAA: no
@@ -192,7 +192,7 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Trigger: As a customer, fire two checkout requests in quick succession for the last units of a low-stock product (e.g. double-submit `POST /api/checkout`, or click "Place order" twice rapidly). The buggy branch now waits a real ~300ms window (`RACE_WINDOW_MS` in `lib/data/stock-store.ts`) between the stock check and the commit, so two rapid requests both land inside the window.
 - Expected (correct / admin): the reservation is atomic and run-to-completion; exactly one of two concurrent orders for the last N units succeeds, the other 409s — never oversold.
 - Actual (buggy / customer): the racy path snapshots availability, **waits out the real race window, then commits** using the stale snapshot, so both concurrent orders pass the check and both succeed — the stock is double-spent (reserved > stock).
-- How to spot it: concurrency / rapid double-submit — fire two checkout POSTs (or double-click Place order) for the last units and observe both succeed, then reserved > seed stock. Also catchable by code review (a `setTimeout` between check and commit in `reserveStockRacy`). The window was widened from a microtask yield to a real ~300ms timer in Phase-4 cleanup specifically so an HTTP double-submit reproduces it; the clean atomic `reserveStock` has no window. Still exercised in the unit test via `Promise.all` of two `reserveStockRacy`/`placeOrder` calls (with a shrunk window for speed).
+- How to spot it: concurrency / rapid double-submit — pick a low-stock item whose remaining count is shown on the product page as "Low stock (N left)" (no hidden value needed), then fire two checkout POSTs (or double-click Place order) for the last units and observe both succeed, then reserved > seed stock. Also catchable by code review (a `setTimeout` between check and commit in `reserveStockRacy`). The window was widened from a microtask yield to a real ~300ms timer in Phase-4 cleanup specifically so an HTTP double-submit reproduces it; the clean atomic `reserveStock` has no window. Still exercised in the unit test via `Promise.all` of two `reserveStockRacy`/`placeOrder` calls (with a shrunk window for speed).
 
 ### FN_TOTAL_ROUNDING_EDGE — Wrong total only at specific coupon+tax values (rounding-order edge)
 - Functional / Expert / HIPAA: no
@@ -200,7 +200,7 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Trigger: As a customer, hit a cart+percent-coupon whose discount rounds in a way that flips a cent (e.g. subtotal $1.05 with a 10% coupon — most carts are correct). The bug builds the taxed base from the **unrounded** discount instead of the rounded one.
 - Expected (correct / admin): taxed base uses the rounded discount; total $1.02 at the edge value (and correct everywhere).
 - Actual (buggy / customer): taxed base uses the unrounded discount, so at the edge value the total is $1.03 — off by a cent. **Most other carts compute correctly**, which is what makes it hard to spot.
-- How to spot it: arithmetic — recompute (subtotal − rounded discount) + rounded tax and compare; only specific subtotal+coupon combinations are off by a cent. Easy to miss because the common cases are right.
+- How to spot it: on-screen arithmetic — the displayed **Total does not equal the displayed rows** (Subtotal − Discount + Tax). No hidden/expected value needed: at the edge cart (e.g. 5× Ibuprofen $34.95 + SAVE10) the summary shows Subtotal $34.95, Discount -$3.50, Tax $2.52 but Total $33.98, when the rows add to $33.97 — the Total is internally inconsistent with the numbers shown right above it. Only specific subtotal+coupon combinations are off by a cent; easy to miss because the common cases are self-consistent.
 
 ### FN_PARTIAL_CHECKOUT — Order created but the cart is not cleared (inconsistent state)
 - Functional / Expert / HIPAA: no
