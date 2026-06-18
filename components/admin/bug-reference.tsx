@@ -1,7 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ExternalLink, ImageOff, Info, X, ZoomIn } from "lucide-react";
 
 import type {
@@ -9,10 +8,8 @@ import type {
   BugDefinition,
   BugDifficulty,
 } from "@/lib/bug-registry";
-import type { BugFlags } from "@/lib/bug-flags";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Popover,
   PopoverContent,
@@ -47,19 +44,14 @@ const DIFFICULTIES: BugDifficulty[] = [
   "expert",
 ];
 
-export function BugFlagPanel({
-  bugs,
-  initialFlags,
-}: {
-  bugs: BugDefinition[];
-  initialFlags: BugFlags;
-}) {
-  const router = useRouter();
-  const [flags, setFlags] = useState<BugFlags>(initialFlags);
+// Read-only reviewer reference: lists every seeded bug with its metadata, the
+// effect/where/how-to-spot enrichment, and a clean-vs-buggy screenshot preview.
+// There are no toggles — all flags are baked on for the deployed assessment, so
+// the panel exists only to help the reviewer grade against ground truth.
+export function BugReference({ bugs }: { bugs: BugDefinition[] }) {
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [difficulty, setDifficulty] = useState<DifficultyFilter>("all");
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
-  const [isPending, startTransition] = useTransition();
 
   const visibleBugs = useMemo(
     () => bugs.filter((bug) => matchesFilters(bug, category, difficulty)),
@@ -68,60 +60,24 @@ export function BugFlagPanel({
 
   const groups = useMemo(() => groupBugs(visibleBugs, groupBy), [visibleBugs, groupBy]);
 
-  function persist(action: () => Promise<Response>, optimistic: (current: BugFlags) => BugFlags) {
-    setFlags(optimistic);
-    startTransition(async () => {
-      const response = await action();
-      if (response.ok) {
-        setFlags(await response.json());
-      }
-      router.refresh();
-    });
-  }
-
-  function toggleBug(key: string, enabled: boolean) {
-    persist(
-      () => postFlags({ key, enabled }),
-      (current) => ({ ...current, [key]: enabled }),
-    );
-  }
-
-  function resetAll() {
-    persist(
-      () => postFlags({ reset: true }),
-      (current) => mapValues(current, () => false),
-    );
-  }
-
-  const enabledCount = Object.values(flags).filter(Boolean).length;
-
   return (
     <div className="space-y-6">
       <Toolbar
         category={category}
         difficulty={difficulty}
         groupBy={groupBy}
-        enabledCount={enabledCount}
+        visibleCount={visibleBugs.length}
         totalCount={bugs.length}
-        isPending={isPending}
         onCategoryChange={setCategory}
         onDifficultyChange={setDifficulty}
         onGroupByChange={setGroupBy}
-        onReset={resetAll}
       />
 
       {visibleBugs.length === 0 ? (
         <EmptyState />
       ) : (
         groups.map((group) => (
-          <BugGroup
-            key={group.label}
-            label={group.label}
-            bugs={group.bugs}
-            flags={flags}
-            disabled={isPending}
-            onToggle={toggleBug}
-          />
+          <BugGroup key={group.label} label={group.label} bugs={group.bugs} />
         ))
       )}
     </div>
@@ -132,24 +88,20 @@ function Toolbar({
   category,
   difficulty,
   groupBy,
-  enabledCount,
+  visibleCount,
   totalCount,
-  isPending,
   onCategoryChange,
   onDifficultyChange,
   onGroupByChange,
-  onReset,
 }: {
   category: CategoryFilter;
   difficulty: DifficultyFilter;
   groupBy: GroupBy;
-  enabledCount: number;
+  visibleCount: number;
   totalCount: number;
-  isPending: boolean;
   onCategoryChange: (value: CategoryFilter) => void;
   onDifficultyChange: (value: DifficultyFilter) => void;
   onGroupByChange: (value: GroupBy) => void;
-  onReset: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card p-4">
@@ -177,11 +129,8 @@ function Toolbar({
       />
       <div className="ml-auto flex items-center gap-4">
         <p className="text-sm text-muted-foreground" role="status">
-          {enabledCount} of {totalCount} enabled
+          Showing {visibleCount} of {totalCount} bugs
         </p>
-        <Button variant="outline" size="sm" onClick={onReset} disabled={isPending}>
-          Reset to defaults
-        </Button>
       </div>
     </div>
   );
@@ -220,19 +169,7 @@ function SelectField({
   );
 }
 
-function BugGroup({
-  label,
-  bugs,
-  flags,
-  disabled,
-  onToggle,
-}: {
-  label: string;
-  bugs: BugDefinition[];
-  flags: BugFlags;
-  disabled: boolean;
-  onToggle: (key: string, enabled: boolean) => void;
-}) {
+function BugGroup({ label, bugs }: { label: string; bugs: BugDefinition[] }) {
   return (
     <section className="rounded-xl border border-border bg-card">
       {label !== UNGROUPED && (
@@ -242,30 +179,14 @@ function BugGroup({
       )}
       <ul className="divide-y divide-border">
         {bugs.map((bug) => (
-          <BugRow
-            key={bug.key}
-            bug={bug}
-            enabled={flags[bug.key] === true}
-            disabled={disabled}
-            onToggle={onToggle}
-          />
+          <BugRow key={bug.key} bug={bug} />
         ))}
       </ul>
     </section>
   );
 }
 
-function BugRow({
-  bug,
-  enabled,
-  disabled,
-  onToggle,
-}: {
-  bug: BugDefinition;
-  enabled: boolean;
-  disabled: boolean;
-  onToggle: (key: string, enabled: boolean) => void;
-}) {
+function BugRow({ bug }: { bug: BugDefinition }) {
   return (
     <li className="flex items-center gap-4 px-4 py-3">
       <div className="min-w-0 flex-1">
@@ -280,18 +201,6 @@ function BugRow({
         </div>
       </div>
       <BugPreview bug={bug} />
-      <span
-        className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums"
-        aria-hidden
-      >
-        {enabled ? "On" : "Off"}
-      </span>
-      <Switch
-        checked={enabled}
-        disabled={disabled}
-        onCheckedChange={(checked) => onToggle(bug.key, checked)}
-        aria-label={`Toggle ${bug.title}`}
-      />
     </li>
   );
 }
@@ -561,24 +470,10 @@ function groupBugs(
   return [...buckets.entries()].map(([label, grouped]) => ({ label, bugs: grouped }));
 }
 
-function postFlags(body: Record<string, unknown>): Promise<Response> {
-  return fetch("/api/admin/bug-flags", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
 function labelPair(value: string): [string, string] {
   return [value, capitalize(value)];
 }
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function mapValues(flags: BugFlags, transform: (value: boolean) => boolean): BugFlags {
-  return Object.fromEntries(
-    Object.entries(flags).map(([key, value]) => [key, transform(value)]),
-  );
 }
