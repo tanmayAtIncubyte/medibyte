@@ -47,8 +47,19 @@ and make the candidate's access key the same TTL that owns all their state.**
   `redis.set('cand:'+code, {...}, {ex: 864000})`. Candidate opens `/start?code=…` (sets a
   signed cookie); middleware checks `cand:<code>` exists → if gone, "Assessment closed."
   - Auto-expire: TTL. Revoke early: `DEL`. Extend: re-set TTL. List active: `SCAN cand:*`.
-- **Scope now:** cart + orders persisted per candidate. (Per-candidate bug-flag profiles
-  deferred — see Open Questions.)
+- **Scope now:** cart + orders (+ stock) persisted per candidate. **Bug flags are out of
+  scope entirely.**
+
+### Bug-flag system: explicitly unchanged (user decision)
+- **All 45 flags stay ON and global** (baked `data/bug-flags.json`) — every candidate faces
+  the full set. No per-candidate flag profiles.
+- **The flag code stays as-is** — `lib/bug-registry.ts`, `isBugActive` gating, and every bug
+  code path are untouched. Flags do NOT move into Redis.
+- **No toggle UI** — the `/admin` bug-flag panel is unused in the assessment deploy (and can't
+  toggle on Vercel's read-only FS anyway). Optional cleanup: delete the panel *component*
+  (`components/admin/bug-flag-panel.tsx`) to avoid confusion.
+- **Keep the `/api/admin/bug-flags` endpoint code** — the `SEC_MISSING_ADMIN_AUTH` bug *is*
+  that endpoint missing its guard, so the route must remain even though the panel UI is gone.
 
 ## Key Insights
 - **One infra, two problems.** The Redis needed to fix serverless cart persistence *also*
@@ -62,8 +73,8 @@ and make the candidate's access key the same TTL that owns all their state.**
   the door to per-candidate flag profiles.
 
 ## Open Questions
-- **Per-candidate bug-flag profiles** (junior vs senior sets) — natural next step once flags
-  live in Redis; out of current scope.
+- ~~Per-candidate bug-flag profiles~~ — **decided OUT.** All 45 flags stay ON/global, flag
+  code unchanged, no toggle UI. Redis touches cart/orders/stock only.
 - **Stock ledger:** confirmed per-candidate namespace (isolated) so candidates don't affect
   each other's oversell/double-spend repros.
 - **code→cookie handoff:** `/start?code=…` landing sets a signed cookie, then middleware
