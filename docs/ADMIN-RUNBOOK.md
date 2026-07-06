@@ -53,6 +53,30 @@ above are for your own verification.
   hosted instance). The admin-guarded `/api/admin/bug-flags` endpoint also still
   accepts programmatic reads/writes in local dev.
 
+### Candidate access — time-boxed links (`/admin/candidates`)
+Candidates don't get the bare URL; you mint each one a **personal, expiring access
+link**. This also fixes the deploy so their cart/orders actually persist (see
+"Why the link matters" below).
+
+- Go to **`/admin/candidates`** (linked from `/admin`).
+- **Create** a link: enter the candidate's name + a window in days (default **10**),
+  click **Create access link**, then **Copy link** — it looks like
+  `https://…/start?code=<code>`. Send that to the candidate.
+- The candidate opens the link once; it drops a cookie and lands them on `/login`
+  to register/sign in. Everything they do lives in an isolated `cand:<code>`
+  namespace with the window's TTL.
+- **Auto-expiry:** when the window lapses the code (and all their state) is gone —
+  the next page load shows **`/closed`**. No cleanup needed.
+- **Revoke** locks a candidate out immediately; **Extend +10 days** lengthens the
+  window. You (admin) never need a code — your admin session always passes the gate.
+
+> **Why the link matters (not optional on the deploy):** Vercel is serverless, so
+> in-memory state doesn't survive between requests — without the Redis-backed
+> candidate namespace, add-to-cart would return 201 but the cart would render empty,
+> killing every cart/checkout/order bug. The access link *is* the persistence
+> mechanism. Requires the Upstash env vars (see §7); with no Redis env the gate is
+> **disabled** (local dev / demos are unaffected and need no link).
+
 ### The one rule that matters
 > **Admin always sees the clean app. Bugs only manifest for customer logins.**
 > If you're verifying a bug and don't see it, confirm you're logged in as a
@@ -74,11 +98,14 @@ deployed instance, edit the file, commit, and redeploy.
    below), aim for a mix of difficulties and at least a couple of categories.
 2. **Set the flags** — edit `data/bug-flags.json` (`true`/`false` per key) and, for
    the deployed instance, commit + redeploy. There is no toggle UI.
-3. **Share the URL + a candidate brief** (the brief is candidate-facing and must NOT
-   reference flags, keys, or this runbook — describe the app and the task only).
-4. Candidate **self-registers** a customer account and works the app.
+3. **Mint an access link** at `/admin/candidates` and send it, with a candidate
+   brief (the brief is candidate-facing and must NOT reference flags, keys, or this
+   runbook — describe the app and the task only). On local dev (no Redis) just share
+   the URL — no link needed.
+4. Candidate opens the link, **self-registers** a customer account, and works the app.
 5. **Grade** their bug reports against this runbook + the answer key, using your own
    **admin login as the live "correct" reference** (clean app side-by-side).
+6. When done, **Revoke** the link (or let it expire).
 
 ### Example profiles
 
@@ -704,6 +731,34 @@ _Where:_ `/products (the pager)`
 | Buggy (customer, flag ON) | Clean (admin / correct) |
 |---|---|
 | ![UX_NO_PAGE_TOTAL buggy](../private/bug-shots/UX_NO_PAGE_TOTAL-buggy.png) | ![UX_NO_PAGE_TOTAL clean](../private/bug-shots/UX_NO_PAGE_TOTAL-clean.png) |
+
+---
+
+## 7. Deployment & environment (one-time setup)
+
+The deploy needs a small key–value store so per-candidate state (cart, orders,
+stock, account) survives Vercel's serverless requests and so access links can
+expire. We use **Upstash Redis** (free tier is plenty).
+
+**One-time setup:**
+1. Create a free database at **console.upstash.com** (Redis → create database).
+2. Copy its **REST URL** and **REST token**.
+3. In the Vercel project → **Settings → Environment Variables**, add (Production +
+   Preview):
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+   - `SESSION_SECRET` — a long random string (signs the auth + access cookies).
+4. Redeploy.
+
+**Behavior by environment:**
+- **Redis env present** (the deploy) → state persists in Redis; the access gate is
+  **on** (candidates need a `/start?code=…` link; admin passes without one).
+- **No Redis env** (local dev, `npm run dev`) → in-memory store; the gate is **off**
+  (open the app directly, no link). Tests always run offline against the in-memory
+  store.
+
+No cron or cleanup job is needed — candidate namespaces carry a TTL and Redis
+evicts them when the window lapses.
 
 ---
 
