@@ -1,0 +1,3 @@
+- How can we introduce reddis DB in this.
+- how do i make the website accessible to a candidate for a short time like 10 days and then make it non accessible the fix needds to be simple light and easy to maintain. 
+- Dont need the turn on and turn off features from the admin side 

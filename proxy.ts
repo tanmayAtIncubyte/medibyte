@@ -4,7 +4,8 @@
 // - gate enabled  = Redis env present (the deployed assessment). Local dev,
 //   demos and tests have no Redis env, so the gate passes everything.
 // - admin         = HMAC-verified mb_session cookie whose signed role is
-//   "admin" (node:crypto — hence the REQUIRED Node runtime below).
+//   "admin" (node:crypto — fine here: Next 16's proxy runs on the Node
+//   runtime by default).
 // - candidate     = mb_cand cookie whose `cand:<code>` access key still exists
 //   in the KV. Native TTL is the timer; a DEL (revoke) locks out instantly.
 //
@@ -20,7 +21,7 @@ import { SESSION_COOKIE } from "@/lib/auth/session-cookie";
 import { backend } from "@/lib/data/backend";
 import { hasRedisEnv } from "@/lib/data/backend-redis";
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const gateEnabled = hasRedisEnv();
   if (!gateEnabled) {
     return NextResponse.next();
@@ -62,6 +63,4 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
-  // Node runtime is REQUIRED: session verification uses node:crypto HMAC.
-  runtime: "nodejs",
 };
