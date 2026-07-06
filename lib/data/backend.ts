@@ -10,6 +10,7 @@
 // Values are JSON-serializable. `ttlSeconds` lets candidate-scoped state
 // expire together with the candidate's access window (see lib/access/scope.ts).
 
+import { createRedisBackend, hasRedisEnv } from "@/lib/data/backend-redis";
 import { globalSingleton } from "@/lib/data/global-store";
 
 export interface KvBackend {
@@ -64,10 +65,15 @@ export function createInMemoryBackend(
 }
 
 /**
- * The process-wide backend. In-memory unless the Redis env is configured
- * (the Redis implementation lands with the deploy work; selection happens
- * here so no caller ever branches on environment).
+ * The process-wide backend. Env-detected: Upstash Redis when configured (the
+ * deploy), otherwise in-memory (local dev + tests). Selection happens here so
+ * no caller ever branches on environment.
  */
 export function backend(): KvBackend {
-  return globalSingleton("kv/backend", () => createInMemoryBackend());
+  return globalSingleton("kv/backend", () => {
+    if (hasRedisEnv()) {
+      return createRedisBackend();
+    }
+    return createInMemoryBackend();
+  });
 }
