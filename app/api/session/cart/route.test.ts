@@ -1,5 +1,13 @@
 import { NextRequest } from "next/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// This file tests the CLEAN cart behavior, so pin every bug flag off in-memory
+// (the committed data/bug-flags.json is the deploy profile and may enable
+// bugs). The buggy paths are covered in route.bugs.test.ts.
+vi.mock("@/lib/bug-flags", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/bug-flags")>()),
+  loadBugFlags: () => ({}),
+}));
 
 import {
   DELETE as cartDelete,
