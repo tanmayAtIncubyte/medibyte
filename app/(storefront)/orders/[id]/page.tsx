@@ -28,7 +28,7 @@ export default async function OrderDetailPage({
   // when on for a non-admin, the ownership check is dropped at this boundary so
   // any order id resolves (leaking another customer's PII/PHI). Admins are never
   // affected.
-  const order = getOrderForViewer(
+  const order = await getOrderForViewer(
     id,
     { id: user.id, role: user.role },
     { dropOwnershipCheck: isBugActive("SEC_IDOR_ORDER", user) },

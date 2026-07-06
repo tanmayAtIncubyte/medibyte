@@ -12,7 +12,7 @@ import { readSessionIdFromCookies } from "@/lib/data/session-id";
 export async function SiteHeader() {
   const user = await getCurrentUser();
   const sessionId = await readSessionIdFromCookies();
-  const cart = sessionId ? getCartView(sessionId) : null;
+  const cart = sessionId ? await getCartView(sessionId) : null;
   // FN_CART_BADGE_LINES: count distinct line items instead of total quantity.
   // Flag is resolved here (the user lives in the header) and never for admin.
   const badgeCountsLines = isBugActive("FN_CART_BADGE_LINES", user);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // next/headers cookies() is server-runtime only; mock it so we can drive
 // getCurrentUser from a controllable cookie jar under jsdom.
@@ -24,7 +24,12 @@ import { signSession, type SessionPayload } from "@/lib/auth/session";
 // AC 6: a tampered cookie resolves to no user (logged out, not impersonation).
 // AC 7: logout clears the cookie.
 
-const adminUser: SessionUser = authenticate("admin@medibyte.test", "admin1234")!;
+// authenticate is async (store reads go through the KV seam), so the shared
+// fixture is resolved in beforeAll rather than at module load.
+let adminUser: SessionUser;
+beforeAll(async () => {
+  adminUser = (await authenticate("admin@medibyte.test", "admin1234"))!;
+});
 
 function setCookieValue(value: string | undefined): void {
   cookieStore.get.mockReturnValue(value === undefined ? undefined : { value });

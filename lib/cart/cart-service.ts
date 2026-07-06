@@ -44,18 +44,21 @@ export type CartViewBugs = {
 };
 
 /**
- * Server-only cart view: reads the in-memory cart for a session, prices it
+ * Server-only cart view: reads the stored cart for a session, prices it
  * against the product catalog, resolves any applied coupon, and computes the
  * totals breakdown. A stored coupon that is no longer valid for the current
  * cart (e.g. cart now below its minimum) is simply not applied.
  */
-export function getCartView(sessionId: string, bugs: CartViewBugs = {}): CartView {
-  const items = getCart(sessionId);
+export async function getCartView(
+  sessionId: string,
+  bugs: CartViewBugs = {},
+): Promise<CartView> {
+  const items = await getCart(sessionId);
   const lines = buildCartLines(items, findProductById);
   const subtotal = roundMoney(lines.reduce((sum, line) => sum + line.lineTotal, 0));
 
   const applied = resolveAppliedCoupon(
-    getCouponCode(sessionId),
+    await getCouponCode(sessionId),
     subtotal,
     bugs.ignoreExpiry ?? false,
   );

@@ -19,7 +19,7 @@ export default async function CheckoutPage() {
   const sessionId = await readSessionIdFromCookies();
   // Keep the checkout summary consistent with the same money bugs as the cart
   // (resolved here where the user lives); admins always see clean totals.
-  const cart = getCartView(sessionId ?? "__none__", {
+  const cart = await getCartView(sessionId ?? "__none__", {
     taxFloor: isBugActive("FN_TAX_FLOOR", user),
     ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
     taxBeforeDiscount: isBugActive("FN_TAX_BEFORE_DISCOUNT", user),

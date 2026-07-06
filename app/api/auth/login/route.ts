@@ -20,8 +20,8 @@ export async function GET(request: Request) {
   return loginWith(email, password);
 }
 
-function loginWith(email: string, password: string): NextResponse {
-  const user = authenticate(email, password);
+async function loginWith(email: string, password: string): Promise<NextResponse> {
+  const user = await authenticate(email, password);
   if (!user) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }

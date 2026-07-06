@@ -14,8 +14,8 @@ import { POST as cartPost } from "@/app/api/session/cart/route";
 import { SESSION_ID_COOKIE } from "@/lib/data/session-id";
 import { resetAllSessions } from "@/lib/data/session-store";
 
-afterEach(() => {
-  resetAllSessions();
+afterEach(async () => {
+  await resetAllSessions();
 });
 
 function req(method: string, body: Record<string, unknown>, sessionId: string): NextRequest {

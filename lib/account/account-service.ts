@@ -20,7 +20,7 @@ export type AccountUpdateResult =
   | { ok: true; state: AccountState }
   | { ok: false; errors: FieldErrors };
 
-export function readAccount(userId: string): AccountState {
+export async function readAccount(userId: string): Promise<AccountState> {
   return getAccountState(userId);
 }
 
@@ -46,11 +46,11 @@ export type ReadAccountBugs = {
   overfetchPhi?: boolean;
 };
 
-export function readAccountForApi(
+export async function readAccountForApi(
   userId: string,
   bugs: ReadAccountBugs = {},
-): AccountApiPayload {
-  const state = getAccountState(userId);
+): Promise<AccountApiPayload> {
+  const state = await getAccountState(userId);
   if (!bugs.overfetchPhi) {
     return state; // clean: only what the view needs
   }
@@ -71,20 +71,30 @@ export function readAccountForApi(
   };
 }
 
-export function updateAddress(userId: string, input: AddressInput): AccountUpdateResult {
-  const result = saveAddress(getAccountState(userId), input, nextAddressSequence(userId));
+export async function updateAddress(
+  userId: string,
+  input: AddressInput,
+): Promise<AccountUpdateResult> {
+  const result = saveAddress(
+    await getAccountState(userId),
+    input,
+    await nextAddressSequence(userId),
+  );
   if (!result.ok) {
     return result;
   }
-  setAccountState(userId, result.state);
+  await setAccountState(userId, result.state);
   return { ok: true, state: result.state };
 }
 
-export function updateInsurance(userId: string, input: InsuranceInput): AccountUpdateResult {
-  const result = saveInsurance(getAccountState(userId), input);
+export async function updateInsurance(
+  userId: string,
+  input: InsuranceInput,
+): Promise<AccountUpdateResult> {
+  const result = saveInsurance(await getAccountState(userId), input);
   if (!result.ok) {
     return result;
   }
-  setAccountState(userId, result.state);
+  await setAccountState(userId, result.state);
   return { ok: true, state: result.state };
 }

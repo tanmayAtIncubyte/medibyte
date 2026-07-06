@@ -26,7 +26,7 @@ import { stockStatus } from "@/lib/format";
 // next/headers cookies()), so bug-flag gating in this mutation endpoint works in
 // both the running app and unit tests. Read-only — does not change access
 // control; the endpoint itself is intentionally session-scoped, not auth-gated.
-function userFromRequest(request: NextRequest): GatingUser {
+async function userFromRequest(request: NextRequest): Promise<GatingUser> {
   const raw = request.cookies.get(SESSION_COOKIE)?.value;
   const payload = verifySession(raw, getSessionSecret());
   if (!payload) {
@@ -35,14 +35,14 @@ function userFromRequest(request: NextRequest): GatingUser {
   return sessionUserFromPayload(payload);
 }
 
-function respondWithCart(
+async function respondWithCart(
   request: NextRequest,
   status: number,
-  produce: (sessionId: string) => unknown,
-): NextResponse {
+  produce: (sessionId: string) => Promise<unknown>,
+): Promise<NextResponse> {
   const existingSessionId = readSessionId(request);
   const sessionId = existingSessionId ?? newSessionId();
-  const body = produce(sessionId);
+  const body = await produce(sessionId);
   const response = NextResponse.json(body, { status });
   if (!existingSessionId) {
     attachSessionId(response, sessionId);
@@ -51,14 +51,14 @@ function respondWithCart(
 }
 
 export function GET(request: NextRequest) {
-  return respondWithCart(request, 200, (sessionId) => ({
-    items: getCart(sessionId),
+  return respondWithCart(request, 200, async (sessionId) => ({
+    items: await getCart(sessionId),
   }));
 }
 
 export async function POST(request: NextRequest) {
   const { productId, quantity } = await request.json();
-  const user = userFromRequest(request);
+  const user = await userFromRequest(request);
 
   // FN_OOS_ADDABLE: the correct (default) behaviour rejects adding an item with
   // no stock; the gated buggy path lets it through. Flag resolved at this
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   if (
     !oosAddable &&
     product &&
-    stockStatus(getAvailableStock(product.id)) === "out-of-stock"
+    stockStatus(await getAvailableStock(product.id)) === "out-of-stock"
   ) {
     return NextResponse.json(
       { error: "This item is out of stock." },
@@ -78,31 +78,31 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return respondWithCart(request, 201, (sessionId) => ({
-    items: addToCart(sessionId, productId, Number(quantity) || 1),
+  return respondWithCart(request, 201, async (sessionId) => ({
+    items: await addToCart(sessionId, productId, Number(quantity) || 1),
   }));
 }
 
 // Set an item's quantity outright (used by the cart quantity stepper).
 export async function PATCH(request: NextRequest) {
   const { productId, quantity } = await request.json();
-  const user = userFromRequest(request);
+  const user = await userFromRequest(request);
 
   // FN_QTY_NONPOSITIVE: the correct (default) setter removes a line when the
   // quantity drops to 0 or below; the gated buggy path persists the raw
   // non-positive quantity instead. Flag resolved at this boundary; never admin.
   const qtyNonPositive = isBugActive("FN_QTY_NONPOSITIVE", user);
-  return respondWithCart(request, 200, (sessionId) => ({
+  return respondWithCart(request, 200, async (sessionId) => ({
     items: qtyNonPositive
-      ? setCartItemQuantityRaw(sessionId, productId, Number(quantity))
-      : setCartItemQuantity(sessionId, productId, Number(quantity)),
+      ? await setCartItemQuantityRaw(sessionId, productId, Number(quantity))
+      : await setCartItemQuantity(sessionId, productId, Number(quantity)),
   }));
 }
 
 // Remove a line item from the cart.
 export async function DELETE(request: NextRequest) {
   const { productId } = await request.json();
-  return respondWithCart(request, 200, (sessionId) => ({
-    items: removeFromCart(sessionId, productId),
+  return respondWithCart(request, 200, async (sessionId) => ({
+    items: await removeFromCart(sessionId, productId),
   }));
 }
