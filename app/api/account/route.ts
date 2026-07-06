@@ -22,7 +22,7 @@ export async function GET() {
   // SEC_PHI_OVERFETCH: resolved at the boundary (the user lives here). When on
   // for a non-admin, the response is padded with PHI the view never needs; clean
   // / admin gets only the rendered fields.
-  const account = readAccountForApi(user.id, {
+  const account = await readAccountForApi(user.id, {
     overfetchPhi: isBugActive("SEC_PHI_OVERFETCH", user),
   });
   return NextResponse.json({ account });
@@ -40,8 +40,8 @@ export async function PATCH(request: NextRequest) {
 
   const result =
     body.kind === "insurance"
-      ? updateInsurance(user.id, body.insurance ?? {})
-      : updateAddress(user.id, body.address ?? {});
+      ? await updateInsurance(user.id, body.insurance ?? {})
+      : await updateAddress(user.id, body.address ?? {});
 
   if (!result.ok) {
     return NextResponse.json(

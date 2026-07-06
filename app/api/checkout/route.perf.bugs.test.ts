@@ -70,21 +70,21 @@ function checkoutRequest(): NextRequest {
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   flags = {};
   simulateDelayMock.mockClear();
-  resetAllSessions();
-  resetCreatedOrders();
-  resetStock();
+  await resetAllSessions();
+  await resetCreatedOrders();
+  await resetStock();
   // A single in-stock OTC item so checkout proceeds far enough to matter.
-  addToCart(SID, "prod-ibuprofen-200", 1);
+  await addToCart(SID, "prod-ibuprofen-200", 1);
 });
-afterEach(() => {
+afterEach(async () => {
   vi.clearAllMocks();
   flags = {};
-  resetAllSessions();
-  resetCreatedOrders();
-  resetStock();
+  await resetAllSessions();
+  await resetCreatedOrders();
+  await resetStock();
 });
 
 describe("PERF_SLOW_CHECKOUT toggle", () => {

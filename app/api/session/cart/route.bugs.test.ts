@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Control the flag in-memory (no shared on-disk file → no cross-test race). The
 // REAL isBugActiveWith still runs, so admin-clean is enforced by the engine.
@@ -26,13 +26,19 @@ import { resetAllSessions } from "@/lib/data/session-store";
 
 const SID = "sess-cart-bugs";
 
-function sessionCookie(email: string, password: string): string {
-  const user = authenticate(email, password)!;
+// authenticate is async (store reads go through the KV seam), so the session
+// cookies are built in beforeAll rather than at module load.
+async function sessionCookie(email: string, password: string): Promise<string> {
+  const user = (await authenticate(email, password))!;
   return signSession(toSessionPayload(user), getSessionSecret());
 }
 
-const CUSTOMER_COOKIE = sessionCookie("dana@example.test", "dana1234");
-const ADMIN_COOKIE = sessionCookie("admin@medibyte.test", "admin1234");
+let CUSTOMER_COOKIE: string;
+let ADMIN_COOKIE: string;
+beforeAll(async () => {
+  CUSTOMER_COOKIE = await sessionCookie("dana@example.test", "dana1234");
+  ADMIN_COOKIE = await sessionCookie("admin@medibyte.test", "admin1234");
+});
 
 function request(
   method: string,
@@ -53,8 +59,8 @@ function request(
 beforeEach(() => {
   flags = {};
 });
-afterEach(() => {
-  resetAllSessions();
+afterEach(async () => {
+  await resetAllSessions();
   flags = {};
 });
 
@@ -91,7 +97,7 @@ describe("FN_QTY_NONPOSITIVE toggle (PATCH)", () => {
 
   it("flag off → setting quantity 0 removes the line for everyone", async () => {
     expect(await setQtyZero(CUSTOMER_COOKIE)).toEqual([]);
-    resetAllSessions();
+    await resetAllSessions();
     expect(await setQtyZero(ADMIN_COOKIE)).toEqual([]);
   });
 
@@ -103,7 +109,7 @@ describe("FN_QTY_NONPOSITIVE toggle (PATCH)", () => {
       quantity: 0,
     });
 
-    resetAllSessions();
+    await resetAllSessions();
     expect(await setQtyZero(ADMIN_COOKIE)).toEqual([]);
   });
 });

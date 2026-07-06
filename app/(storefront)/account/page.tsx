@@ -12,7 +12,7 @@ export default async function AccountPage() {
   // and only ever loads that user's account state. There is no way to request
   // another user's account here.
   const user = await requireUser();
-  const account = readAccount(user.id);
+  const account = await readAccount(user.id);
 
   return (
     <PageContainer>

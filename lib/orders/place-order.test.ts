@@ -17,10 +17,10 @@ const shipping = {
   country: "USA",
 };
 
-afterEach(() => {
-  resetAllSessions();
-  resetCreatedOrders();
-  resetStock();
+afterEach(async () => {
+  await resetAllSessions();
+  await resetCreatedOrders();
+  await resetStock();
 });
 
 describe("placeOrder", () => {
@@ -30,7 +30,7 @@ describe("placeOrder", () => {
   });
 
   it("rejects an OTC checkout with incomplete shipping", async () => {
-    addToCart("s1", "prod-ibuprofen-200", 1);
+    await addToCart("s1", "prod-ibuprofen-200", 1);
     const result = await placeOrder(
       "s1",
       dana,
@@ -45,7 +45,7 @@ describe("placeOrder", () => {
   });
 
   it("places an OTC order, persists it, and clears the cart", async () => {
-    addToCart("s1", "prod-ibuprofen-200", 2);
+    await addToCart("s1", "prod-ibuprofen-200", 2);
     const result = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
 
     expect(result.ok).toBe(true);
@@ -57,12 +57,12 @@ describe("placeOrder", () => {
       expect(result.order.totals.tax).toBe(1.12);
       expect(result.order.totals.total).toBe(15.1);
     }
-    expect(getCart("s1")).toEqual([]);
-    expect(allCreatedOrders()).toHaveLength(1);
+    expect(await getCart("s1")).toEqual([]);
+    expect(await allCreatedOrders()).toHaveLength(1);
   });
 
   it("requires PHI for an Rx item and attaches it on success", async () => {
-    addToCart("s1", "prod-lisinopril-10", 1);
+    await addToCart("s1", "prod-lisinopril-10", 1);
 
     const missing = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
     expect(missing.ok).toBe(false);
@@ -92,8 +92,8 @@ describe("placeOrder", () => {
   });
 
   it("snapshots an applied coupon discount into the order totals", async () => {
-    addToCart("s1", "prod-ibuprofen-200", 5); // 5 x 6.99 = 34.95
-    setCouponCode("s1", "SAVE10");
+    await addToCart("s1", "prod-ibuprofen-200", 5); // 5 x 6.99 = 34.95
+    await setCouponCode("s1", "SAVE10");
     const result = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -103,9 +103,9 @@ describe("placeOrder", () => {
   });
 
   it("assigns per-user sequential order ids", async () => {
-    addToCart("s1", "prod-ibuprofen-200", 1);
+    await addToCart("s1", "prod-ibuprofen-200", 1);
     const first = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
-    addToCart("s1", "prod-ibuprofen-200", 1);
+    await addToCart("s1", "prod-ibuprofen-200", 1);
     const second = await placeOrder("s1", dana, { shipping, prescriptions: {} }, { now });
     expect(first.ok && second.ok).toBe(true);
     if (first.ok && second.ok) {

@@ -13,13 +13,13 @@ import type { Order } from "@/lib/orders/types";
 // call these directly (hybrid policy: plain reads are server-rendered).
 
 /** Every known order (seed + session-created), newest first. Admin-facing. */
-export function listAllOrders(): Order[] {
-  return sortOrdersNewestFirst([...seedOrders, ...allCreatedOrders()]);
+export async function listAllOrders(): Promise<Order[]> {
+  return sortOrdersNewestFirst([...seedOrders, ...(await allCreatedOrders())]);
 }
 
 /** A customer's orders (seed + session-created), newest first. */
-export function listOrdersForUser(userId: string): Order[] {
-  return ordersForUser([...seedOrders, ...allCreatedOrders()], userId);
+export async function listOrdersForUser(userId: string): Promise<Order[]> {
+  return ordersForUser([...seedOrders, ...(await allCreatedOrders())], userId);
 }
 
 /**
@@ -28,10 +28,15 @@ export function listOrdersForUser(userId: string): Order[] {
  * null. SEC_IDOR_ORDER: when `bugs.dropOwnershipCheck` is set (resolved at the
  * page boundary, never for admins), the ownership check is bypassed.
  */
-export function getOrderForViewer(
+export async function getOrderForViewer(
   orderId: string,
   viewer: { id: string; role: "admin" | "customer" },
   bugs: FindOrderBugs = {},
-): Order | null {
-  return findOrderForViewer([...seedOrders, ...allCreatedOrders()], orderId, viewer, bugs);
+): Promise<Order | null> {
+  return findOrderForViewer(
+    [...seedOrders, ...(await allCreatedOrders())],
+    orderId,
+    viewer,
+    bugs,
+  );
 }

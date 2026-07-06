@@ -20,13 +20,15 @@ const SID = "sess-cart-total-stale";
 const ON: BugFlags = { FN_CART_TOTAL_STALE: true };
 const OFF: BugFlags = { FN_CART_TOTAL_STALE: false };
 
-beforeEach(() => {
-  resetAllSessions();
+beforeEach(async () => {
+  await resetAllSessions();
   // 3 units of a $6.99 item → correct subtotal 20.97, tax 1.68, total 22.65.
-  addToCart(SID, "prod-ibuprofen-200", 3);
+  await addToCart(SID, "prod-ibuprofen-200", 3);
 });
 
-afterEach(() => resetAllSessions());
+afterEach(async () => {
+  await resetAllSessions();
+});
 
 function totalFor(flags: BugFlags, user: { role: "admin" | "customer" } | null) {
   return getCartView(SID, {
@@ -35,15 +37,15 @@ function totalFor(flags: BugFlags, user: { role: "admin" | "customer" } | null) 
 }
 
 describe("FN_CART_TOTAL_STALE toggle", () => {
-  it("flag off → total reflects the full quantity for everyone", () => {
-    for (const view of [totalFor(OFF, CUSTOMER), totalFor(OFF, ADMIN)]) {
+  it("flag off → total reflects the full quantity for everyone", async () => {
+    for (const view of [await totalFor(OFF, CUSTOMER), await totalFor(OFF, ADMIN)]) {
       expect(view.subtotal).toBe(20.97);
       expect(view.total).toBe(22.65);
     }
   });
 
-  it("flag on → total ignores the quantity change for a customer, correct for an admin", () => {
-    const buggy = totalFor(ON, CUSTOMER);
+  it("flag on → total ignores the quantity change for a customer, correct for an admin", async () => {
+    const buggy = await totalFor(ON, CUSTOMER);
     // Lines / subtotal still reflect the real quantity...
     expect(buggy.itemCount).toBe(3);
     expect(buggy.subtotal).toBe(20.97);
@@ -51,7 +53,7 @@ describe("FN_CART_TOTAL_STALE toggle", () => {
     expect(buggy.total).toBe(7.55); // 6.99 + 8% tax
     expect(buggy.total).not.toBe(22.65);
 
-    const clean = totalFor(ON, ADMIN);
+    const clean = await totalFor(ON, ADMIN);
     expect(clean.total).toBe(22.65);
   });
 });
@@ -66,13 +68,15 @@ describe("FN_COUPON_NEGATIVE — MEGA50 on a small cart goes negative (MED-9)", 
   const CN_ON: BugFlags = { FN_COUPON_NEGATIVE: true };
   const CN_OFF: BugFlags = { FN_COUPON_NEGATIVE: false };
 
-  beforeEach(() => {
-    resetAllSessions();
-    addToCart(SID_CN, "prod-ibuprofen-200", 1); // $6.99 subtotal
-    setCouponCode(SID_CN, "MEGA50");
+  beforeEach(async () => {
+    await resetAllSessions();
+    await addToCart(SID_CN, "prod-ibuprofen-200", 1); // $6.99 subtotal
+    await setCouponCode(SID_CN, "MEGA50");
   });
 
-  afterEach(() => resetAllSessions());
+  afterEach(async () => {
+    await resetAllSessions();
+  });
 
   function viewFor(flags: BugFlags, user: { role: "admin" | "customer" } | null) {
     return getCartView(SID_CN, {
@@ -80,21 +84,21 @@ describe("FN_COUPON_NEGATIVE — MEGA50 on a small cart goes negative (MED-9)", 
     });
   }
 
-  it("flag off → discount clamps to the subtotal so the total floors at $0", () => {
-    for (const view of [viewFor(CN_OFF, CUSTOMER), viewFor(CN_OFF, ADMIN)]) {
+  it("flag off → discount clamps to the subtotal so the total floors at $0", async () => {
+    for (const view of [await viewFor(CN_OFF, CUSTOMER), await viewFor(CN_OFF, ADMIN)]) {
       expect(view.subtotal).toBe(6.99);
       expect(view.discount).toBe(6.99);
       expect(view.total).toBe(0);
     }
   });
 
-  it("flag on → unclamped MEGA50 discount drives the total negative for a customer, clean for admin", () => {
-    const buggy = viewFor(CN_ON, CUSTOMER);
+  it("flag on → unclamped MEGA50 discount drives the total negative for a customer, clean for admin", async () => {
+    const buggy = await viewFor(CN_ON, CUSTOMER);
     expect(buggy.subtotal).toBe(6.99);
     expect(buggy.discount).toBe(50); // full face value, not clamped to $6.99
     expect(buggy.total).toBeLessThan(0);
 
     // Admin always sees the clean clamped total.
-    expect(viewFor(CN_ON, ADMIN).total).toBe(0);
+    expect((await viewFor(CN_ON, ADMIN)).total).toBe(0);
   });
 });

@@ -28,7 +28,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   if (!payload) {
     return null;
   }
-  return sessionUserFromPayload(payload);
+  return await sessionUserFromPayload(payload);
 }
 
 export function setSessionCookie(response: NextResponse, user: SessionUser): void {

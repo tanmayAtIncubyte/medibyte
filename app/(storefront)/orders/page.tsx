@@ -24,7 +24,7 @@ export default async function OrdersPage() {
   // Admins, who have no orders of their own, get a read view of all orders for
   // support — single-order ownership is still enforced on /orders/[id].
   const isAdmin = user.role === "admin";
-  const orders = isAdmin ? listAllOrders() : listOrdersForUser(user.id);
+  const orders = isAdmin ? await listAllOrders() : await listOrdersForUser(user.id);
 
   return (
     <PageContainer>

@@ -1,45 +1,55 @@
-import { globalSingleton } from "@/lib/data/global-store";
+import { currentScope, scopeTtlSeconds } from "@/lib/access/scope";
+import { backend } from "@/lib/data/backend";
 import type { Order } from "@/lib/orders/types";
 
-// In-memory per-process order store for orders created at checkout. Anchored on
-// globalThis (globalSingleton) so the same store is shared across Next's separate
-// API-route and server-component bundles — otherwise a checkout written via the
-// /api/checkout route would be invisible to the /orders page render. Writes
-// survive for the running server process and are wiped on restart, returning
-// every customer to the seed-only baseline. No DB. Orders carry their own userId
-// so they are stored globally and filtered by owner on read (ownership enforced
-// in lib/orders).
+// Order store for orders created at checkout, kept in the async KV seam
+// (lib/data/backend.ts) under the current request's scope: the order list at
+// `${scope}:orders:list`, per-user id sequences at `${scope}:orders:seq:<userId>`.
+// Scoping isolates a candidate's orders from everyone else's and expires them
+// with the access window; locally the backend is in-memory (wiped on restart,
+// returning every customer to the seed-only baseline), on the deploy it is
+// Redis so a checkout written via /api/checkout is visible to the /orders page
+// render on a different lambda. No DB. Orders carry their own userId so they
+// are stored globally within the scope and filtered by owner on read
+// (ownership enforced in lib/orders).
 
-const createdOrders = globalSingleton(
-  "orders-store/createdOrders",
-  () => [] as Order[],
-);
+function listKey(scope: string): string {
+  return `${scope}:orders:list`;
+}
 
-// Per-user monotonic sequence used to derive stable, readable order ids without
-// RNG. Resets with the store on restart.
-const userSequences = globalSingleton(
-  "orders-store/userSequences",
-  () => new Map<string, number>(),
-);
+function seqKey(scope: string, userId: string): string {
+  return `${scope}:orders:seq:${userId}`;
+}
 
 /** Next 1-based sequence number for a user's session-created orders. */
-export function nextOrderSequence(userId: string): number {
-  const next = (userSequences.get(userId) ?? 0) + 1;
-  userSequences.set(userId, next);
+export async function nextOrderSequence(userId: string): Promise<number> {
+  const scope = await currentScope();
+  const current = (await backend().get<number>(seqKey(scope, userId))) ?? 0;
+  const next = current + 1;
+  await backend().set(seqKey(scope, userId), next, scopeTtlSeconds(scope));
   return next;
 }
 
 /** Appends a created order to the store. */
-export function appendOrder(order: Order): void {
-  createdOrders.push(order);
+export async function appendOrder(order: Order): Promise<void> {
+  const scope = await currentScope();
+  const orders = (await backend().get<Order[]>(listKey(scope))) ?? [];
+  orders.push(order);
+  await backend().set(listKey(scope), orders, scopeTtlSeconds(scope));
 }
 
 /** All session-created orders (unfiltered). */
-export function allCreatedOrders(): Order[] {
-  return createdOrders.map((order) => ({ ...order }));
+export async function allCreatedOrders(): Promise<Order[]> {
+  const scope = await currentScope();
+  const orders = (await backend().get<Order[]>(listKey(scope))) ?? [];
+  return orders.map((order) => ({ ...order }));
 }
 
-export function resetCreatedOrders(): void {
-  createdOrders.length = 0;
-  userSequences.clear();
+export async function resetCreatedOrders(): Promise<void> {
+  const scope = await currentScope();
+  await backend().del(listKey(scope));
+  const seqKeys = await backend().listKeys(`${scope}:orders:seq:`);
+  for (const key of seqKeys) {
+    await backend().del(key);
+  }
 }

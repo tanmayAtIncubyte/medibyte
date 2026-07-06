@@ -17,8 +17,8 @@ import { resetRegistrations } from "@/lib/data/registrations";
 // AC 7: logout clears the cookie.
 // AC 10: register creates a customer session; duplicate email returns 409.
 
-afterEach(() => {
-  resetRegistrations();
+afterEach(async () => {
+  await resetRegistrations();
 });
 
 function jsonRequest(url: string, body: unknown): Request {

@@ -20,7 +20,7 @@ export default async function CartPage() {
   // Resolve seeded-bug flags at the boundary (the user lives here) and pass
   // plain booleans into the pure cart view; admins always get clean totals.
   const user = await getCurrentUser();
-  const cart = getCartView(sessionId ?? "__none__", {
+  const cart = await getCartView(sessionId ?? "__none__", {
     totalStale: isBugActive("FN_CART_TOTAL_STALE", user),
     taxFloor: isBugActive("FN_TAX_FLOOR", user),
     ignoreExpiry: isBugActive("FN_EXPIRED_COUPON_OK", user),
