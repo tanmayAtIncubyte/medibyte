@@ -10,7 +10,10 @@ over-the-counter (OTC) and prescription (Rx) products, search and filter the
 catalog, add items to a cart, apply promo codes, check out with a shipping
 address, and review their past orders and account details.
 
-You will explore the running app at the URL provided to you by your reviewer.
+Your reviewer will send you a **personal access link** (it looks like
+`https://…/start?code=…`). Open it once to begin — it gives you access to the app
+for a limited window (typically 10 days). After that the link expires. Use the
+same browser so you stay signed in.
 
 ## Your task
 
