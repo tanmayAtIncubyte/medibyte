@@ -1,19 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CandidateManager } from "@/components/admin/candidate-manager";
 import { PageContainer } from "@/components/layout/page-container";
-import { BugReference } from "@/components/admin/bug-reference";
 import { requireAdmin } from "@/lib/auth/guards";
-import { listAssessmentBugs } from "@/lib/bug-registry";
 
 export const metadata: Metadata = {
-  title: "Admin",
+  title: "Candidate access",
 };
 
-export default async function AdminPage() {
-  const admin = await requireAdmin();
-  // Only the 45 real assessment bugs — any internal/scaffolding entries are filtered out.
-  const bugs = listAssessmentBugs();
+export default async function AdminCandidatesPage() {
+  await requireAdmin();
 
   return (
     <PageContainer>
@@ -21,24 +18,24 @@ export default async function AdminPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
-              Bug reference
+              Candidate access
             </h1>
             <p className="mt-2 text-muted-foreground">
-              Signed in as {admin.name}. All {bugs.length} seeded defects are active for
-              customers; you always see the clean reference app. Use Preview to compare the
-              clean and buggy views while grading.
+              Mint time-boxed access links for candidates. A code expires on its
+              own when its window lapses; revoking locks the candidate out
+              immediately.
             </p>
           </div>
           <Link
-            href="/admin/candidates"
+            href="/admin"
             className="text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            Candidate access →
+            ← Bug reference
           </Link>
         </div>
       </header>
 
-      <BugReference bugs={bugs} />
+      <CandidateManager />
     </PageContainer>
   );
 }

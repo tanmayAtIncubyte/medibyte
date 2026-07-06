@@ -8,8 +8,11 @@ import {
 } from "@/lib/auth/accounts";
 import { getSessionSecret } from "@/lib/auth/secret";
 import { signSession, verifySession } from "@/lib/auth/session";
+import { SESSION_COOKIE } from "@/lib/auth/session-cookie";
 
-export const SESSION_COOKIE = "mb_session";
+// Re-exported so existing imports keep working; the name itself lives in
+// lib/auth/session-cookie.ts so middleware can import it leanly.
+export { SESSION_COOKIE };
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
