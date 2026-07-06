@@ -1,4 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Pin the flag source in-memory (the committed data/bug-flags.json is the
+// DEPLOY profile — currently all-ON — not a test fixture). The real gating
+// engine still runs; only the file read is replaced.
+let fileFlags: Record<string, boolean> = {};
+vi.mock("@/lib/bug-flags", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/bug-flags")>()),
+  loadBugFlags: () => fileFlags,
+}));
 
 import { isBugActive, isBugActiveWith, type GatingUser } from "@/lib/bugs";
 import type { BugFlags } from "@/lib/bug-flags";
@@ -6,7 +15,7 @@ import type { BugFlags } from "@/lib/bug-flags";
 // Slice 3 — the safety-critical core. A leak here (an admin seeing a bug, or a
 // disabled flag still firing) corrupts every assessment, so the full truth table
 // is exercised exhaustively. isBugActiveWith is the pure core (flags injected);
-// isBugActive is the file-loading wrapper over the real all-disabled baseline.
+// isBugActive is the flag-file-loading wrapper over that core.
 
 const ADMIN: GatingUser = { role: "admin" };
 const CUSTOMER: GatingUser = { role: "customer" };
@@ -89,15 +98,31 @@ describe("isBugActiveWith — unknown key", () => {
   });
 });
 
-// AC 10 (wrapper): isBugActive reads the real committed all-disabled baseline,
-// so every bug is inactive for everyone (default flags are OFF).
-describe("isBugActive — file-loading wrapper over the all-disabled baseline", () => {
+// AC 10 (wrapper): isBugActive resolves the flag from the flag file and feeds
+// the same gating core — flag off → inactive for everyone; flag on → active
+// for non-admins only (admin-clean guaranteed by the engine).
+describe("isBugActive — flag-file-loading wrapper", () => {
+  afterEach(() => {
+    fileFlags = {};
+  });
+
   it.each([
     ["a customer", CUSTOMER],
     ["an admin", ADMIN],
     ["a null user", NO_USER],
-  ])("returns false for a real bug key with %s (baseline is clean)", (_label, user) => {
+  ])("returns false for a real bug key with %s when its flag is off", (_label, user) => {
+    fileFlags = { [KNOWN_KEY]: false };
     expect(isBugActive(KNOWN_KEY, user)).toBe(false);
+  });
+
+  it("returns true for a customer when the file enables the flag", () => {
+    fileFlags = { [KNOWN_KEY]: true };
+    expect(isBugActive(KNOWN_KEY, CUSTOMER)).toBe(true);
+  });
+
+  it("returns false for an admin even when the file enables the flag", () => {
+    fileFlags = { [KNOWN_KEY]: true };
+    expect(isBugActive(KNOWN_KEY, ADMIN)).toBe(false);
   });
 });
 

@@ -1,5 +1,13 @@
 import { NextRequest } from "next/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// This file tests the CLEAN coupon behavior, so pin every bug flag off
+// in-memory (the committed data/bug-flags.json is the deploy profile and may
+// enable bugs like FN_EXPIRED_COUPON_OK).
+vi.mock("@/lib/bug-flags", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/bug-flags")>()),
+  loadBugFlags: () => ({}),
+}));
 
 import { DELETE as couponDelete, POST as couponPost } from "@/app/api/session/coupon/route";
 import { POST as cartPost } from "@/app/api/session/cart/route";

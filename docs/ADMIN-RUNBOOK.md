@@ -40,13 +40,18 @@ lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
 Candidates **self-register** their own customer accounts; the two seeded customers
 above are for your own verification.
 
-### The control panel
+### The bug reference (`/admin`)
 - Log in as admin and go to **`/admin`**.
-- Each registered flag has a toggle. Turning it **ON** enables that bug for customer
-  logins; turning it **OFF** restores correct behavior for everyone.
-- **Persistence:** toggles are written to **`data/bug-flags.json`** (all keys default
-  to `false`). The file is the live source of truth for which bugs are active.
-- **Reset to defaults** = every flag OFF (clean app).
+- The page is a **read-only reference** of all 45 seeded bugs: filter by category /
+  difficulty, open the ⓘ info popover (effect, where, how to spot), and open the
+  **Preview** modal for annotated Buggy-vs-Clean screenshots. There is **no toggle
+  UI** — flags are not changed from the panel.
+- **Source of truth:** which bugs are active is read from **`data/bug-flags.json`**
+  at request time. The committed file is the **deploy profile — currently all 45
+  flags ON**. Every candidate faces the full set.
+- To change the active set, **edit `data/bug-flags.json`** (and redeploy for the
+  hosted instance). The admin-guarded `/api/admin/bug-flags` endpoint also still
+  accepts programmatic reads/writes in local dev.
 
 ### The one rule that matters
 > **Admin always sees the clean app. Bugs only manifest for customer logins.**
@@ -54,21 +59,21 @@ above are for your own verification.
 > **customer** (`dana@example.test`), not as admin. This is enforced server-side by
 > `isBugActive(key, user)` — the buggy branch never runs for admin.
 
-### Deploy-time-flags caveat (free host)
-Live in-panel toggling works in **local dev**. On the **deployed** free-host instance
-the active flag set is effectively **fixed at deploy time** — the set of enabled bugs
-is baked in when the instance is built. To change the bug set on the deployed
-instance, redeploy with the desired `data/bug-flags.json`. Plan each candidate's
-assessment around a deploy (or run assessments locally where you can toggle live).
+### Deploy-time flags (Vercel)
+The deployed instance runs on Vercel, whose filesystem is **read-only** — the
+active flag set is **fixed at deploy time**, baked in from the committed
+`data/bug-flags.json` (currently all 45 ON). To change the bug set on the
+deployed instance, edit the file, commit, and redeploy.
 
 ---
 
 ## 3. How to configure an assessment
 
-1. **Choose a profile** — decide which bugs this candidate should face (see example
-   profiles below). Aim for a mix of difficulties and at least a couple of categories.
-2. **Enable the flags** — local: toggle them ON in `/admin`. Deployed: set them to
-   `true` in `data/bug-flags.json` and deploy.
+1. **Choose a profile** — the default deploy profile is **all 45 flags ON** (every
+   candidate faces the full set). If you want a narrower set (see example profiles
+   below), aim for a mix of difficulties and at least a couple of categories.
+2. **Set the flags** — edit `data/bug-flags.json` (`true`/`false` per key) and, for
+   the deployed instance, commit + redeploy. There is no toggle UI.
 3. **Share the URL + a candidate brief** (the brief is candidate-facing and must NOT
    reference flags, keys, or this runbook — describe the app and the task only).
 4. Candidate **self-registers** a customer account and works the app.
@@ -99,18 +104,13 @@ Requires Network inspection, edge inputs, and HIPAA reasoning:
 
 All flags are listed below, **grouped by category**. Columns:
 
-- **Flag key** — the toggle in `/admin` / `data/bug-flags.json`.
+- **Flag key** — the key in `data/bug-flags.json` (and in the `/admin` reference list).
 - **Diff** — difficulty (E easy / M moderate / D difficult / X expert).
 - **What it does (ON)** — the customer-visible effect.
 - **Where** — route/screen to observe it.
 - **How to spot** — the technique (eyeball / edge input / Network / a11y tool /
   keyboard / arithmetic / code).
 - **HIPAA** — whether the defect is a HIPAA/PHI concern.
-
-> Entries marked **🔧 per spec — confirm after verification** are from Batches 5 & 6,
-> which were still being built when this runbook was written; their detailed
-> answer-key entries may not exist yet, so the described behavior is from the spec and
-> should be confirmed once those bugs are implemented and verified.
 
 ### 4.1 Functional
 
@@ -168,45 +168,35 @@ All flags are listed below, **grouped by category**. Columns:
 | `PERF_OVERFETCH_PAYLOAD` | M | `GET /api/products` bloats each item with large unused/duplicated fields (`_raw`, `_duplicate`, `_description_long`, `_seoKeywords[100]`, `_auditTrail[50]`). | `GET /api/products` | DevTools Network: response **Size** far larger than needed; inspect payload | No |
 | `PERF_NO_CACHE` | M | `GET /api/products` forces `Cache-Control: no-store` → full catalog refetched on every navigation. | `/api/products` (repeat nav) | DevTools Network: `no-store` header; request repeats, never "from cache" | No |
 
-### 4.4 Security / Transport (HIPAA) — 🔧 per spec — confirm after verification
-
-> Batch 5 was still being built when this runbook was written. Behavior below is from
-> the spec (`docs/specs/medibyte-phase-4-spec.md`); confirm against the answer key and
-> a live toggle once implemented.
+### 4.4 Security / Transport (HIPAA)
 
 | Flag key | Diff | What it does (ON) | Where | How to spot | HIPAA |
 |---|---|---|---|---|---|
-| `SEC_IDOR_ORDER` 🔗 | — | Ownership check dropped on the order route → a customer can view **another customer's order** by guessing/altering the order id. | `/orders/[id]` + API | Edit the order id in the URL/request and load someone else's order; compare to admin-clean (403/own-only) | **Yes** |
-| `SEC_PHI_OVERFETCH` 🔗 | — | Orders/account API response includes **PHI the page doesn't need**. Chains with IDOR: an id leaked via `SEC_IDOR_ORDER` reused here exposes extra PHI. | Orders / account API | DevTools Network: inspect response body for PHI fields not rendered | **Yes** |
-| `SEC_MISSING_ADMIN_AUTH` | — | Admin guard removed on the bug-flags endpoint → a non-admin can read/modify flags. | `/api/admin/bug-flags` | Call the endpoint as a customer (or unauthenticated) and get a non-403 response | **Yes** |
-| `SEC_CREDS_IN_URL` | — | Login sends credentials via **GET query string** → password leaks into URL/history/logs. | Login | DevTools Network: credentials visible in the request URL/query string | **Yes** |
-| `SEC_TOKEN_LOCALSTORAGE` | — | Auth identity/token copied into **`localStorage`** (XSS-exfiltratable, not httpOnly). | Client auth | DevTools Application → Local Storage: identity/token present | **Yes** |
-| `SEC_PRICE_TAMPER` | — | Checkout **trusts the client-supplied price** instead of recomputing server-side → tampered request pays a manipulated amount. | `/api/checkout` | Edit the price in the checkout request and confirm the order honors it | **Yes** |
+| `SEC_IDOR_ORDER` 🔗 | D | Ownership check dropped on the order route → a customer can view **another customer's order** by guessing/altering the order id. | `/orders/[id]` + API | Edit the order id in the URL/request and load someone else's order; compare to admin-clean (403/own-only) | **Yes** |
+| `SEC_PHI_OVERFETCH` 🔗 | D | Orders/account API response includes **PHI the page doesn't need**. Chains with IDOR: an id leaked via `SEC_IDOR_ORDER` reused here exposes extra PHI. | Orders / account API | DevTools Network: inspect response body for PHI fields not rendered | **Yes** |
+| `SEC_MISSING_ADMIN_AUTH` | D | Admin guard removed on the bug-flags endpoint → a non-admin can read/modify flags. | `/api/admin/bug-flags` | Call the endpoint as a customer (or unauthenticated) and get a non-403 response | **Yes** |
+| `SEC_CREDS_IN_URL` | M | Login sends credentials via **GET query string** → password leaks into URL/history/logs. | Login | DevTools Network: credentials visible in the request URL/query string | **Yes** |
+| `SEC_TOKEN_LOCALSTORAGE` | M | Auth identity/token copied into **`localStorage`** (XSS-exfiltratable, not httpOnly). | Client auth | DevTools Application → Local Storage: identity/token present | **Yes** |
+| `SEC_PRICE_TAMPER` | D | Checkout **trusts the client-supplied price** instead of recomputing server-side → tampered request pays a manipulated amount. | `/api/checkout` | Edit the price in the checkout request and confirm the order honors it | **Yes** |
 
-### 4.5 UI antipattern — 🔧 per spec — confirm after verification
-
-> Batch 6 was still being built when this runbook was written. Behavior is from the
-> spec; confirm after verification.
+### 4.5 UI antipattern
 
 | Flag key | Diff | What it does (ON) | Where | How to spot | HIPAA |
 |---|---|---|---|---|---|
-| `UI_DESTRUCTIVE_NO_CONFIRM` | — | Destructive action (remove cart item / delete address) executes instantly with **no confirmation**. | `/cart` remove, address delete | Eyeball: irreversible action with no confirm dialog/undo | No |
-| `UI_NO_SUBMIT_FEEDBACK` | — | A form submit gives **no visible feedback** (no spinner/disable/success). | A form | Eyeball: submit and observe nothing changes/confirms | No |
-| `UI_MISLEADING_ICON` | — | A button's **icon doesn't match its action**. | A button | Eyeball: icon vs actual behavior mismatch | No |
-| `UI_FORM_CLEARS_ON_ERROR` | — | A checkout validation error **wipes the entered fields**, forcing full re-entry. | `/checkout` | Edge input: trigger a validation error, watch fields clear | No |
+| `UI_DESTRUCTIVE_NO_CONFIRM` | E | Destructive action (remove cart item / delete address) executes instantly with **no confirmation**. | `/cart` remove, address delete | Eyeball: irreversible action with no confirm dialog/undo | No |
+| `UI_NO_SUBMIT_FEEDBACK` | E | A form submit gives **no visible feedback** (no spinner/disable/success). | A form | Eyeball: submit and observe nothing changes/confirms | No |
+| `UI_MISLEADING_ICON` | E | A button's **icon doesn't match its action**. | A button | Eyeball: icon vs actual behavior mismatch | No |
+| `UI_FORM_CLEARS_ON_ERROR` | M | A checkout validation error **wipes the entered fields**, forcing full re-entry. | `/checkout` | Edge input: trigger a validation error, watch fields clear | No |
 
-### 4.6 UX — 🔧 per spec — confirm after verification
-
-> Batch 6 was still being built when this runbook was written. Behavior is from the
-> spec; confirm after verification.
+### 4.6 UX
 
 | Flag key | Diff | What it does (ON) | Where | How to spot | HIPAA |
 |---|---|---|---|---|---|
-| `UX_VAGUE_ERROR` | — | A catch handler shows "Something went wrong" with **no next step / cause**. | A catch handler | Eyeball: trigger the error path, read the unhelpful message | No |
-| `UX_NO_ORDER_CONFIRM` | — | Order confirmation gives **no clear success cue** — unclear the order placed. | Order confirmation | Eyeball: complete an order, look for missing success confirmation | No |
-| `UX_SURPRISE_TAX` | — | Tax is **hidden until the final checkout step** (not shown in cart). | `/cart` vs `/checkout` | Cross-screen: cart total vs final total, tax appears late | No |
-| `UX_LOST_CHECKOUT_PROGRESS` | — | **Back navigation loses entered checkout data.** | `/checkout` (back nav) | Manual: fill checkout, navigate back, data gone | No |
-| `UX_NO_PAGE_TOTAL` | — | No indication of **total pages / total results** in the catalog pager. | `/products` pager | Eyeball: pager shows no "of N pages" / total count | No |
+| `UX_VAGUE_ERROR` | E | A catch handler shows "Something went wrong" with **no next step / cause**. | A catch handler | Eyeball: trigger the error path, read the unhelpful message | No |
+| `UX_NO_ORDER_CONFIRM` | E | Order confirmation gives **no clear success cue** — unclear the order placed. | Order confirmation | Eyeball: complete an order, look for missing success confirmation | No |
+| `UX_SURPRISE_TAX` | M | Tax is **hidden until the final checkout step** (not shown in cart). | `/cart` vs `/checkout` | Cross-screen: cart total vs final total, tax appears late | No |
+| `UX_LOST_CHECKOUT_PROGRESS` | M | **Back navigation loses entered checkout data.** | `/checkout` (back nav) | Manual: fill checkout, navigate back, data gone | No |
+| `UX_NO_PAGE_TOTAL` | E | No indication of **total pages / total results** in the catalog pager. | `/products` pager | Eyeball: pager shows no "of N pages" / total count | No |
 
 ---
 
@@ -239,9 +229,6 @@ All flags are listed below, **grouped by category**. Columns:
   - **`SEC_PRICE_TAMPER`, `SEC_CREDS_IN_URL`, `SEC_TOKEN_LOCALSTORAGE`** require
     DevTools (Network request body/URL, Application → Local Storage) — not visible in
     the UI.
-
-- **Difficulty (`—`) for Batch 5/6 flags** is left blank pending the answer-key
-  entries; assign and confirm difficulty once those bugs are verified.
 
 ---
 
@@ -721,5 +708,4 @@ _Where:_ `/products (the pager)`
 ---
 
 *Source of truth: `lib/bug-registry.ts` (flags) + `docs/ANSWER-KEY.md` (per-bug repro).
-This runbook covers all ~45 flags; Batch 5 (Security) and Batch 6 (UI/UX) rows are
-marked "per spec — confirm after verification" until their bugs are built and verified.*
+This runbook covers all 45 flags — every bug is implemented and browser-verified.*
