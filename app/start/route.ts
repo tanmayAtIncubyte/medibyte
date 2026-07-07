@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCandidate } from "@/lib/access/candidates";
+import { getCandidate, markStarted } from "@/lib/access/candidates";
 import { CANDIDATE_COOKIE, parseCandidateCode } from "@/lib/access/scope";
 
 // The candidate's single entry point: /start?code=<minted code>. A LIVE code
@@ -19,6 +19,9 @@ export async function GET(request: Request): Promise<NextResponse> {
   if (!access) {
     return NextResponse.redirect(new URL("/closed", request.url));
   }
+
+  // Stamp the assignment start on the first open (no-op on later opens).
+  await markStarted(code);
 
   const maxAge = Math.max(
     0,

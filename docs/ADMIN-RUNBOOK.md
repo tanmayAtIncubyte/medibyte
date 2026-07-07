@@ -58,10 +58,16 @@ Candidates don't get the bare URL; you mint each one a **personal, expiring acce
 link**. This also fixes the deploy so their cart/orders actually persist (see
 "Why the link matters" below).
 
-- Go to **`/admin/candidates`** (linked from `/admin`).
-- **Create** a link: enter the candidate's name + a window in days (default **10**),
-  click **Create access link**, then **Copy link** — it looks like
-  `https://…/start?code=<code>`. Send that to the candidate.
+- Go to **`/admin/candidates`** (linked from `/admin`, and from the **Candidates**
+  nav item shown to admins).
+- **Create** a link: enter the candidate's **name**, **email** (required — your
+  unique identifier for the roster), an optional **role** and **internal notes**
+  (reviewer-only, never shown to the candidate), and a **window** in days
+  (default **10**). Click **Create access link**, then **Copy link** — it looks
+  like `https://…/start?code=<code>`. Send that to the candidate.
+- The table shows each candidate's email/role, a **Status** column
+  (**Not started**, or **Started** + the date/time they first opened the link),
+  the code, expiry (with days left), the copy-link button, and Extend/Revoke.
 - The candidate opens the link once; it drops a cookie and lands them on `/login`
   to register/sign in. Everything they do lives in an isolated `cand:<code>`
   namespace with the window's TTL.

@@ -9,8 +9,13 @@ import { getAdminOrNull } from "@/lib/auth/guards";
 // of any page guard, same as the bug-image route.
 
 const MAX_NAME_LENGTH = 80;
+const MAX_EMAIL_LENGTH = 120;
+const MAX_ROLE_LENGTH = 80;
+const MAX_NOTES_LENGTH = 500;
 const MIN_WINDOW_DAYS = 1;
 const MAX_WINDOW_DAYS = 60;
+// Deliberately lenient — reject the obvious non-emails, not RFC edge cases.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function GET(): Promise<NextResponse> {
   if (!(await getAdminOrNull())) {
@@ -30,6 +35,21 @@ export async function POST(request: Request): Promise<NextResponse> {
     return badRequest(`Name is required (max ${MAX_NAME_LENGTH} characters)`);
   }
 
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  if (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_SHAPE.test(email)) {
+    return badRequest("A valid email is required");
+  }
+
+  const role = typeof body.role === "string" ? body.role.trim() : "";
+  if (role.length > MAX_ROLE_LENGTH) {
+    return badRequest(`Role must be at most ${MAX_ROLE_LENGTH} characters`);
+  }
+
+  const notes = typeof body.notes === "string" ? body.notes.trim() : "";
+  if (notes.length > MAX_NOTES_LENGTH) {
+    return badRequest(`Notes must be at most ${MAX_NOTES_LENGTH} characters`);
+  }
+
   const windowDays =
     body.windowDays === undefined ? DEFAULT_CANDIDATE_WINDOW_DAYS : body.windowDays;
   if (
@@ -43,7 +63,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const candidate = await mintCandidate(name, windowDays);
+  const candidate = await mintCandidate({
+    name,
+    email,
+    windowDays,
+    role: role || undefined,
+    notes: notes || undefined,
+  });
   return NextResponse.json({ candidate }, { status: 201 });
 }
 

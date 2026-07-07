@@ -4,6 +4,7 @@ import {
   extendCandidate,
   getCandidate,
   listCandidates,
+  markStarted,
   mintCandidate,
   revokeCandidate,
 } from "@/lib/access/candidates";
@@ -28,25 +29,50 @@ afterEach(() => {
 
 describe("mintCandidate", () => {
   it("mints an 8-char lowercase hex code that satisfies parseCandidateCode", async () => {
-    const minted = await mintCandidate("Priya Sharma");
+    const minted = await mintCandidate({ name: "Priya Sharma", email: "priya@example.com" });
 
     expect(minted.code).toMatch(/^[0-9a-f]{8}$/);
     expect(parseCandidateCode(minted.code)).toBe(minted.code);
   });
 
-  it("stores the access record at cand:<code> with name and ISO timestamps", async () => {
-    const minted = await mintCandidate("Priya Sharma");
+  it("stores the access record at cand:<code> with name, email and ISO timestamps", async () => {
+    const minted = await mintCandidate({ name: "Priya Sharma", email: "priya@example.com" });
 
     const stored = await backend().get(`cand:${minted.code}`);
     expect(stored).toEqual({
       name: "Priya Sharma",
+      email: "priya@example.com",
       createdAt: "2026-07-01T12:00:00.000Z",
       expiresAt: "2026-07-11T12:00:00.000Z", // default 10-day window
     });
   });
 
+  it("stores optional role and notes when provided", async () => {
+    const minted = await mintCandidate({
+      name: "Omar Reid",
+      email: "omar@example.com",
+      role: "Senior QA",
+      notes: "Referred by Anita",
+    });
+
+    expect(await getCandidate(minted.code)).toMatchObject({
+      role: "Senior QA",
+      notes: "Referred by Anita",
+    });
+  });
+
+  it("leaves startedAt unset at mint time (not started yet)", async () => {
+    const minted = await mintCandidate({ name: "Fresh", email: "fresh@example.com" });
+
+    expect((await getCandidate(minted.code))?.startedAt).toBeUndefined();
+  });
+
   it("honors a custom window and TTLs the key so it dies when the window lapses", async () => {
-    const minted = await mintCandidate("Short Window", 1);
+    const minted = await mintCandidate({
+      name: "Short Window",
+      email: "short@example.com",
+      windowDays: 1,
+    });
 
     expect(minted.expiresAt).toBe("2026-07-02T12:00:00.000Z");
     expect(await getCandidate(minted.code)).not.toBeNull();
@@ -59,16 +85,58 @@ describe("mintCandidate", () => {
   });
 
   it("is listable immediately after minting", async () => {
-    const minted = await mintCandidate("Listable");
+    const minted = await mintCandidate({ name: "Listable", email: "listable@example.com" });
 
     const records = await listCandidates();
     expect(records).toContainEqual({ code: minted.code, ...access(minted) });
   });
 });
 
+describe("markStarted", () => {
+  it("stamps startedAt on the first open", async () => {
+    const minted = await mintCandidate({ name: "Starter", email: "starter@example.com" });
+
+    const marked = await markStarted(minted.code);
+
+    expect(marked?.startedAt).toBe("2026-07-01T12:00:00.000Z");
+    expect((await getCandidate(minted.code))?.startedAt).toBe("2026-07-01T12:00:00.000Z");
+  });
+
+  it("is a no-op on later opens — first open wins", async () => {
+    const minted = await mintCandidate({ name: "Starter", email: "starter@example.com" });
+    await markStarted(minted.code);
+
+    vi.advanceTimersByTime(2 * 3_600_000); // 2h later
+    const again = await markStarted(minted.code);
+
+    expect(again?.startedAt).toBe("2026-07-01T12:00:00.000Z"); // unchanged
+  });
+
+  it("preserves the remaining TTL (marking started never extends the window)", async () => {
+    const minted = await mintCandidate({
+      name: "Timed",
+      email: "timed@example.com",
+      windowDays: 1,
+    });
+
+    vi.advanceTimersByTime(12 * 3_600_000); // 12h into the 1-day window
+    await markStarted(minted.code);
+
+    vi.advanceTimersByTime(11 * 3_600_000); // total 23h — still inside the window
+    expect(await getCandidate(minted.code)).not.toBeNull();
+
+    vi.advanceTimersByTime(2 * 3_600_000); // total 25h — past the original 1-day window
+    expect(await getCandidate(minted.code)).toBeNull();
+  });
+
+  it("returns null for an unknown code", async () => {
+    expect(await markStarted("deadbeef")).toBeNull();
+  });
+});
+
 describe("getCandidate", () => {
   it("returns the record for a live code", async () => {
-    const minted = await mintCandidate("Live");
+    const minted = await mintCandidate({ name: "Live", email: "live@example.com" });
 
     expect(await getCandidate(minted.code)).toEqual(access(minted));
   });
@@ -90,7 +158,7 @@ describe("getCandidate", () => {
 
 describe("listCandidates", () => {
   it("excludes candidate STATE keys that share the cand: prefix", async () => {
-    const minted = await mintCandidate("Real Candidate");
+    const minted = await mintCandidate({ name: "Real Candidate", email: "real@example.com" });
     // A state key namespaced under a candidate scope — matched by the "cand:"
     // prefix scan but NOT an access key (it has segments after the code).
     await backend().set("cand:abc12345:sess:x", { cart: [] });
@@ -105,7 +173,7 @@ describe("listCandidates", () => {
 
 describe("revokeCandidate", () => {
   it("deletes the access key: getCandidate is null and the code leaves the list", async () => {
-    const minted = await mintCandidate("Revoked Soon");
+    const minted = await mintCandidate({ name: "Revoked Soon", email: "rev@example.com" });
 
     await revokeCandidate(minted.code);
 
@@ -117,7 +185,11 @@ describe("revokeCandidate", () => {
 
 describe("extendCandidate", () => {
   it("pushes expiresAt out by extraDays from the old expiry (window still live)", async () => {
-    const minted = await mintCandidate("Extended", 10);
+    const minted = await mintCandidate({
+      name: "Extended",
+      email: "ext@example.com",
+      windowDays: 10,
+    });
 
     const updated = await extendCandidate(minted.code, 5);
 
@@ -127,7 +199,11 @@ describe("extendCandidate", () => {
   });
 
   it("keeps the key alive past the original window after an extension", async () => {
-    const minted = await mintCandidate("Kept Alive", 1);
+    const minted = await mintCandidate({
+      name: "Kept Alive",
+      email: "keep@example.com",
+      windowDays: 1,
+    });
     await extendCandidate(minted.code, 5);
 
     vi.advanceTimersByTime(2 * DAY_MS); // past the original 1-day window
@@ -140,9 +216,10 @@ describe("extendCandidate", () => {
   });
 });
 
-function access(minted: { name: string; createdAt: string; expiresAt: string }) {
+function access(minted: { name: string; email: string; createdAt: string; expiresAt: string }) {
   return {
     name: minted.name,
+    email: minted.email,
     createdAt: minted.createdAt,
     expiresAt: minted.expiresAt,
   };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { GET } from "@/app/start/route";
-import { mintCandidate, revokeCandidate } from "@/lib/access/candidates";
+import { getCandidate, mintCandidate, revokeCandidate } from "@/lib/access/candidates";
 import { CANDIDATE_COOKIE } from "@/lib/access/scope";
 
 // Phase 3 — /start?code=… is the candidate's single entry point. A LIVE code
@@ -14,7 +14,7 @@ function startRequest(query: string): Request {
 
 describe("/start with a live code", () => {
   it("sets the mb_cand cookie and redirects to /login", async () => {
-    const minted = await mintCandidate("Live Candidate");
+    const minted = await mintCandidate({ name: "Live Candidate", email: "live@example.com" });
 
     const response = await GET(startRequest(`?code=${minted.code}`));
 
@@ -29,11 +29,23 @@ describe("/start with a live code", () => {
     expect(cookie?.maxAge).toBeGreaterThan(0);
     expect(cookie?.maxAge).toBeLessThanOrEqual(10 * 86_400);
   });
+
+  it("stamps startedAt on first open and leaves it unchanged on a second open", async () => {
+    const minted = await mintCandidate({ name: "Starter", email: "starter@example.com" });
+
+    await GET(startRequest(`?code=${minted.code}`));
+    const first = (await getCandidate(minted.code))?.startedAt;
+    expect(first).toBeTruthy();
+
+    await GET(startRequest(`?code=${minted.code}`));
+    const second = (await getCandidate(minted.code))?.startedAt;
+    expect(second).toBe(first); // first-open wins
+  });
 });
 
 describe("/start without live access", () => {
   it("redirects a revoked (dead) code to /closed without setting a cookie", async () => {
-    const minted = await mintCandidate("Revoked Candidate");
+    const minted = await mintCandidate({ name: "Revoked Candidate", email: "rev@example.com" });
     await revokeCandidate(minted.code);
 
     const response = await GET(startRequest(`?code=${minted.code}`));
