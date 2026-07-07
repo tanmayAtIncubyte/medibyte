@@ -53,9 +53,14 @@ export async function SiteHeader() {
                 <Link href="/account">Account</Link>
               </Button>
               {user.role === "admin" && (
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/admin">Admin</Link>
-                </Button>
+                <>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/admin">Admin</Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/admin/candidates">Candidates</Link>
+                  </Button>
+                </>
               )}
               <span className="text-sm text-muted-foreground">{user.name}</span>
               <LogoutButton />
