@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SessionUser } from "@/lib/auth/accounts";
-import { getCandidate, mintCandidate } from "@/lib/access/candidates";
+import { effectiveExpiresAt, getCandidate, mintCandidate } from "@/lib/access/candidates";
 import type { CandidateRecord } from "@/lib/access/candidates";
 
 // Phase 3 — the reviewer candidate-access API is a GENUINE access-control
@@ -45,8 +45,18 @@ function patchRequest(code: string, body: unknown): Request {
   });
 }
 
+function deleteRequest(code: string): Request {
+  return new Request(`http://localhost/api/admin/candidates/${code}`, { method: "DELETE" });
+}
+
 function params(code: string): { params: Promise<{ code: string }> } {
   return { params: Promise.resolve({ code }) };
+}
+
+let emailSeq = 0;
+function uniqueEmail(): string {
+  emailSeq += 1;
+  return `cand-${emailSeq}@example.com`;
 }
 
 beforeEach(() => {
@@ -70,31 +80,32 @@ describe("access control — every method 403s for non-admins", () => {
 
   it("DELETE (revoke) returns 403", async () => {
     const { DELETE } = await itemRoute();
-    const response = await DELETE(
-      new Request("http://localhost/api/admin/candidates/deadbeef", { method: "DELETE" }),
-      params("deadbeef"),
-    );
+    const response = await DELETE(deleteRequest("deadbeef"), params("deadbeef"));
     expect(response.status).toBe(403);
   });
 
-  it("PATCH (extend) returns 403", async () => {
+  it("PATCH (action) returns 403", async () => {
     const { PATCH } = await itemRoute();
-    const response = await PATCH(patchRequest("deadbeef", { extraDays: 10 }), params("deadbeef"));
+    const response = await PATCH(
+      patchRequest("deadbeef", { action: "extend", extraDays: 10 }),
+      params("deadbeef"),
+    );
     expect(response.status).toBe(403);
   });
 });
 
 describe("POST — mint", () => {
-  it("mints a candidate and returns 201 with the record (name, email, role, notes)", async () => {
+  it("mints a candidate and returns 201 with the record (name, email, role, notes, fractional window)", async () => {
     const { POST } = await collectionRoute();
+    const email = uniqueEmail();
 
     const response = await POST(
       postRequest({
         name: "Priya Sharma",
-        email: "priya@example.com",
+        email,
         role: "Senior QA",
         notes: "Referred by Anita",
-        windowDays: 7,
+        windowDays: 0.5,
       }),
     );
 
@@ -102,21 +113,44 @@ describe("POST — mint", () => {
     const { candidate } = (await response.json()) as { candidate: CandidateRecord };
     expect(candidate.code).toMatch(/^[0-9a-f]{8}$/);
     expect(candidate.name).toBe("Priya Sharma");
-    expect(candidate.email).toBe("priya@example.com");
+    expect(candidate.email).toBe(email);
     expect(candidate.role).toBe("Senior QA");
     expect(candidate.notes).toBe("Referred by Anita");
+    expect(candidate.attempts[0]).toBeDefined();
+    expect(candidate.attempts[0].windowDays).toBe(0.5);
+    expect(candidate.status).toBe("active");
     expect(await getCandidate(candidate.code)).not.toBeNull();
   });
 
   it("defaults windowDays to the standard 10-day window when omitted", async () => {
     const { POST } = await collectionRoute();
 
-    const response = await POST(postRequest({ name: "Default Window", email: "d@example.com" }));
+    const response = await POST(postRequest({ name: "Default Window", email: uniqueEmail() }));
 
     expect(response.status).toBe(201);
     const { candidate } = (await response.json()) as { candidate: CandidateRecord };
-    const windowMs = Date.parse(candidate.expiresAt) - Date.parse(candidate.createdAt);
+    const attempt = candidate.attempts[0];
+    const windowMs = Date.parse(attempt.expiresAt) - Date.parse(attempt.grantedAt);
     expect(windowMs).toBe(10 * 86_400_000);
+  });
+
+  it("rejects a duplicate email with 409", async () => {
+    const { POST } = await collectionRoute();
+    const email = uniqueEmail();
+
+    const first = await POST(postRequest({ name: "First", email }));
+    expect(first.status).toBe(201);
+
+    const second = await POST(postRequest({ name: "Second", email }));
+    expect(second.status).toBe(409);
+  });
+
+  it("accepts a fractional windowDays such as 2.5", async () => {
+    const { POST } = await collectionRoute();
+    const response = await POST(
+      postRequest({ name: "Fractional", email: uniqueEmail(), windowDays: 2.5 }),
+    );
+    expect(response.status).toBe(201);
   });
 
   const E = "x@example.com"; // valid email so each case exercises the field under test
@@ -129,9 +163,9 @@ describe("POST — mint", () => {
     ["malformed email", { name: "X", email: "not-an-email", windowDays: 10 }],
     ["role over 80 chars", { name: "X", email: E, role: "r".repeat(81) }],
     ["notes over 500 chars", { name: "X", email: E, notes: "n".repeat(501) }],
-    ["windowDays below 1", { name: "X", email: E, windowDays: 0 }],
+    ["windowDays at 0", { name: "X", email: E, windowDays: 0 }],
+    ["windowDays negative", { name: "X", email: E, windowDays: -1 }],
     ["windowDays above 60", { name: "X", email: E, windowDays: 61 }],
-    ["non-integer windowDays", { name: "X", email: E, windowDays: 2.5 }],
     ["non-numeric windowDays", { name: "X", email: E, windowDays: "ten" }],
   ])("rejects %s with 400", async (_label, body) => {
     const { POST } = await collectionRoute();
@@ -141,7 +175,7 @@ describe("POST — mint", () => {
 
 describe("GET — list", () => {
   it("lists a minted candidate", async () => {
-    const minted = await mintCandidate({ name: "Listed Candidate", email: "listed@example.com" });
+    const minted = await mintCandidate({ name: "Listed Candidate", email: uniqueEmail() });
     const { GET } = await collectionRoute();
 
     const response = await GET();
@@ -152,59 +186,130 @@ describe("GET — list", () => {
   });
 });
 
-describe("DELETE — revoke", () => {
-  it("revokes a live candidate", async () => {
-    const minted = await mintCandidate({ name: "Revoked Candidate", email: "rev@example.com" });
+describe("DELETE — revoke (soft)", () => {
+  it("revokes a live candidate but keeps the record", async () => {
+    const minted = await mintCandidate({ name: "Revoked Candidate", email: uniqueEmail() });
     const { DELETE } = await itemRoute();
 
-    const response = await DELETE(
-      new Request(`http://localhost/api/admin/candidates/${minted.code}`, { method: "DELETE" }),
-      params(minted.code),
-    );
+    const response = await DELETE(deleteRequest(minted.code), params(minted.code));
 
     expect(response.status).toBe(200);
-    expect(await getCandidate(minted.code)).toBeNull();
+    const stored = await getCandidate(minted.code);
+    expect(stored).not.toBeNull();
+    expect(stored?.status).toBe("revoked");
   });
 
   it("returns 404 for a malformed code", async () => {
     const { DELETE } = await itemRoute();
-    const response = await DELETE(
-      new Request("http://localhost/api/admin/candidates/BAD!!", { method: "DELETE" }),
-      params("BAD!!"),
-    );
+    const response = await DELETE(deleteRequest("BAD!!"), params("BAD!!"));
     expect(response.status).toBe(404);
   });
 });
 
-describe("PATCH — extend", () => {
-  it("extends a live candidate's window by extraDays", async () => {
+describe("PATCH — actions", () => {
+  it("extend pushes the current attempt's expiry out by extraDays", async () => {
     const minted = await mintCandidate({
       name: "Extended Candidate",
-      email: "ext@example.com",
+      email: uniqueEmail(),
       windowDays: 10,
     });
+    const before = effectiveExpiresAt(minted);
     const { PATCH } = await itemRoute();
 
-    const response = await PATCH(patchRequest(minted.code, { extraDays: 5 }), params(minted.code));
+    const response = await PATCH(
+      patchRequest(minted.code, { action: "extend", extraDays: 5 }),
+      params(minted.code),
+    );
 
     expect(response.status).toBe(200);
     const { candidate } = (await response.json()) as { candidate: CandidateRecord };
-    expect(Date.parse(candidate.expiresAt) - Date.parse(minted.expiresAt)).toBe(5 * 86_400_000);
+    expect(Date.parse(effectiveExpiresAt(candidate)) - Date.parse(before)).toBe(5 * 86_400_000);
   });
 
-  it("returns 404 for an unknown code", async () => {
+  it("extend accepts a fractional extraDays", async () => {
+    const minted = await mintCandidate({ name: "Frac Extend", email: uniqueEmail() });
     const { PATCH } = await itemRoute();
-    const response = await PATCH(patchRequest("deadbeef", { extraDays: 5 }), params("deadbeef"));
+    const response = await PATCH(
+      patchRequest(minted.code, { action: "extend", extraDays: 0.5 }),
+      params(minted.code),
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it("regrant opens a new attempt and returns to active", async () => {
+    const minted = await mintCandidate({ name: "Regranted", email: uniqueEmail() });
+    const { DELETE, PATCH } = await itemRoute();
+    await DELETE(deleteRequest(minted.code), params(minted.code));
+
+    const response = await PATCH(
+      patchRequest(minted.code, { action: "regrant", windowDays: 3 }),
+      params(minted.code),
+    );
+
+    expect(response.status).toBe(200);
+    const { candidate } = (await response.json()) as { candidate: CandidateRecord };
+    expect(candidate.attempts.length).toBe(minted.attempts.length + 1);
+    expect(candidate.status).toBe("active");
+  });
+
+  it("remove hard-deletes the roster record", async () => {
+    const minted = await mintCandidate({ name: "Removed", email: uniqueEmail() });
+    const { PATCH } = await itemRoute();
+
+    const response = await PATCH(
+      patchRequest(minted.code, { action: "remove" }),
+      params(minted.code),
+    );
+
+    expect(response.status).toBe(200);
+    const { ok } = (await response.json()) as { ok: boolean };
+    expect(ok).toBe(true);
+    expect(await getCandidate(minted.code)).toBeNull();
+  });
+
+  it("returns 400 for an unknown action", async () => {
+    const minted = await mintCandidate({ name: "Bad Action", email: uniqueEmail() });
+    const { PATCH } = await itemRoute();
+    const response = await PATCH(
+      patchRequest(minted.code, { action: "explode", extraDays: 5 }),
+      params(minted.code),
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when action is missing", async () => {
+    const minted = await mintCandidate({ name: "No Action", email: uniqueEmail() });
+    const { PATCH } = await itemRoute();
+    const response = await PATCH(patchRequest(minted.code, { extraDays: 5 }), params(minted.code));
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 404 for extend on an unknown code", async () => {
+    const { PATCH } = await itemRoute();
+    const response = await PATCH(
+      patchRequest("deadbeef", { action: "extend", extraDays: 5 }),
+      params("deadbeef"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 404 for regrant on an unknown code", async () => {
+    const { PATCH } = await itemRoute();
+    const response = await PATCH(
+      patchRequest("deadbeef", { action: "regrant", windowDays: 5 }),
+      params("deadbeef"),
+    );
     expect(response.status).toBe(404);
   });
 
   it.each([
-    ["missing extraDays", {}],
-    ["extraDays below 1", { extraDays: 0 }],
-    ["extraDays above 60", { extraDays: 61 }],
-    ["non-integer extraDays", { extraDays: 1.5 }],
+    ["missing extraDays", { action: "extend" }],
+    ["extraDays at 0", { action: "extend", extraDays: 0 }],
+    ["extraDays above 60", { action: "extend", extraDays: 61 }],
+    ["missing windowDays", { action: "regrant" }],
+    ["windowDays above 60", { action: "regrant", windowDays: 61 }],
   ])("rejects %s with 400", async (_label, body) => {
-    const minted = await mintCandidate({ name: "Validation Candidate", email: "val@example.com" });
+    const minted = await mintCandidate({ name: "Validation Candidate", email: uniqueEmail() });
     const { PATCH } = await itemRoute();
     const response = await PATCH(patchRequest(minted.code, body), params(minted.code));
     expect(response.status).toBe(400);

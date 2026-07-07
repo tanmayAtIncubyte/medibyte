@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
 
-import { extendCandidate, revokeCandidate } from "@/lib/access/candidates";
+import {
+  extendCandidate,
+  regrantCandidate,
+  removeCandidate,
+  revokeCandidate,
+} from "@/lib/access/candidates";
 import { parseCandidateCode } from "@/lib/access/scope";
 import { getAdminOrNull } from "@/lib/auth/guards";
 
 // Per-candidate reviewer actions. Same genuine admin boundary as the
 // collection route: every method re-checks the real guard.
 
-const MIN_EXTRA_DAYS = 1;
-const MAX_EXTRA_DAYS = 60;
+const MAX_DAYS = 60;
 
 type RouteContext = { params: Promise<{ code: string }> };
 
-// Revoke: DEL the access key — the candidate is locked out on their next request.
+// Revoke (soft): flip status to revoked, keeping the roster record + state so
+// the candidate can be re-granted later.
 export async function DELETE(
   _request: Request,
   { params }: RouteContext,
@@ -26,11 +31,14 @@ export async function DELETE(
     return notFound();
   }
 
-  await revokeCandidate(code);
-  return NextResponse.json({ ok: true });
+  const revoked = await revokeCandidate(code);
+  if (!revoked) {
+    return notFound();
+  }
+  return NextResponse.json({ candidate: revoked });
 }
 
-// Extend: push expiresAt out by extraDays and re-set the TTL to match.
+// Roster actions keyed by `action`: extend, regrant, remove.
 export async function PATCH(
   request: Request,
   { params }: RouteContext,
@@ -45,30 +53,50 @@ export async function PATCH(
   }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const extraDays = body.extraDays;
-  if (
-    typeof extraDays !== "number" ||
-    !Number.isInteger(extraDays) ||
-    extraDays < MIN_EXTRA_DAYS ||
-    extraDays > MAX_EXTRA_DAYS
-  ) {
-    return NextResponse.json(
-      {
-        error: `extraDays must be an integer between ${MIN_EXTRA_DAYS} and ${MAX_EXTRA_DAYS}`,
-      },
-      { status: 400 },
-    );
+  const action = body.action;
+
+  if (action === "extend") {
+    const extraDays = body.extraDays;
+    if (!isValidDays(extraDays)) {
+      return badRequest(`extraDays must be a number greater than 0 and at most ${MAX_DAYS}`);
+    }
+    const updated = await extendCandidate(code, extraDays);
+    if (!updated) {
+      return notFound();
+    }
+    return NextResponse.json({ candidate: updated });
   }
 
-  const updated = await extendCandidate(code, extraDays);
-  if (!updated) {
-    return notFound();
+  if (action === "regrant") {
+    const windowDays = body.windowDays;
+    if (!isValidDays(windowDays)) {
+      return badRequest(`windowDays must be a number greater than 0 and at most ${MAX_DAYS}`);
+    }
+    const updated = await regrantCandidate(code, windowDays);
+    if (!updated) {
+      return notFound();
+    }
+    return NextResponse.json({ candidate: updated });
   }
-  return NextResponse.json({ candidate: { code, ...updated } });
+
+  if (action === "remove") {
+    await removeCandidate(code);
+    return NextResponse.json({ ok: true });
+  }
+
+  return badRequest("Unknown action — expected extend, regrant, or remove");
+}
+
+function isValidDays(value: unknown): value is number {
+  return typeof value === "number" && value > 0 && value <= MAX_DAYS;
 }
 
 function forbidden(): NextResponse {
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
+
+function badRequest(message: string): NextResponse {
+  return NextResponse.json({ error: message }, { status: 400 });
 }
 
 function notFound(): NextResponse {

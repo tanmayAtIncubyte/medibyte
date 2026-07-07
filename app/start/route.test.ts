@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { GET } from "@/app/start/route";
-import { getCandidate, mintCandidate, revokeCandidate } from "@/lib/access/candidates";
+import { currentAttempt, getCandidate, mintCandidate, revokeCandidate } from "@/lib/access/candidates";
 import { CANDIDATE_COOKIE } from "@/lib/access/scope";
 
 // Phase 3 — /start?code=… is the candidate's single entry point. A LIVE code
@@ -34,11 +34,13 @@ describe("/start with a live code", () => {
     const minted = await mintCandidate({ name: "Starter", email: "starter@example.com" });
 
     await GET(startRequest(`?code=${minted.code}`));
-    const first = (await getCandidate(minted.code))?.startedAt;
+    const afterFirst = await getCandidate(minted.code);
+    const first = afterFirst ? currentAttempt(afterFirst).startedAt : undefined;
     expect(first).toBeTruthy();
 
     await GET(startRequest(`?code=${minted.code}`));
-    const second = (await getCandidate(minted.code))?.startedAt;
+    const afterSecond = await getCandidate(minted.code);
+    const second = afterSecond ? currentAttempt(afterSecond).startedAt : undefined;
     expect(second).toBe(first); // first-open wins
   });
 });

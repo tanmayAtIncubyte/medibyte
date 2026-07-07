@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { listCandidates, mintCandidate } from "@/lib/access/candidates";
+import {
+  findCandidateByEmail,
+  listCandidates,
+  mintCandidate,
+} from "@/lib/access/candidates";
 import { DEFAULT_CANDIDATE_WINDOW_DAYS } from "@/lib/access/scope";
 import { getAdminOrNull } from "@/lib/auth/guards";
 
@@ -12,7 +16,6 @@ const MAX_NAME_LENGTH = 80;
 const MAX_EMAIL_LENGTH = 120;
 const MAX_ROLE_LENGTH = 80;
 const MAX_NOTES_LENGTH = 500;
-const MIN_WINDOW_DAYS = 1;
 const MAX_WINDOW_DAYS = 60;
 // Deliberately lenient — reject the obvious non-emails, not RFC edge cases.
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -52,14 +55,14 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const windowDays =
     body.windowDays === undefined ? DEFAULT_CANDIDATE_WINDOW_DAYS : body.windowDays;
-  if (
-    typeof windowDays !== "number" ||
-    !Number.isInteger(windowDays) ||
-    windowDays < MIN_WINDOW_DAYS ||
-    windowDays > MAX_WINDOW_DAYS
-  ) {
-    return badRequest(
-      `windowDays must be an integer between ${MIN_WINDOW_DAYS} and ${MAX_WINDOW_DAYS}`,
+  if (typeof windowDays !== "number" || windowDays <= 0 || windowDays > MAX_WINDOW_DAYS) {
+    return badRequest(`windowDays must be a number greater than 0 and at most ${MAX_WINDOW_DAYS}`);
+  }
+
+  const dup = await findCandidateByEmail(email);
+  if (dup) {
+    return conflict(
+      "A candidate with this email is already on the roster — re-grant or remove them",
     );
   }
 
@@ -79,4 +82,8 @@ function forbidden(): NextResponse {
 
 function badRequest(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function conflict(message: string): NextResponse {
+  return NextResponse.json({ error: message }, { status: 409 });
 }

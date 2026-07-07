@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getCandidate, markStarted } from "@/lib/access/candidates";
+import {
+  candidateHasAccess,
+  effectiveExpiresAt,
+  getCandidate,
+  markStarted,
+} from "@/lib/access/candidates";
 import { CANDIDATE_COOKIE, parseCandidateCode } from "@/lib/access/scope";
 
 // The candidate's single entry point: /start?code=<minted code>. A LIVE code
@@ -15,18 +20,22 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.redirect(new URL("/closed", request.url));
   }
 
-  const access = await getCandidate(code);
-  if (!access) {
+  // Gate on LIVE access: revoked or expired candidates land on /closed, never
+  // get a cookie. Only active-and-unexpired codes proceed.
+  if (!(await candidateHasAccess(code))) {
     return NextResponse.redirect(new URL("/closed", request.url));
   }
 
-  // Stamp the assignment start on the first open (no-op on later opens).
+  // Stamp the current attempt's start on its first open (no-op on later opens).
   await markStarted(code);
 
-  const maxAge = Math.max(
-    0,
-    Math.floor((Date.parse(access.expiresAt) - Date.now()) / 1000),
-  );
+  const record = await getCandidate(code);
+  const maxAge = record
+    ? Math.max(
+        0,
+        Math.floor((Date.parse(effectiveExpiresAt(record)) - Date.now()) / 1000),
+      )
+    : 0;
   const response = NextResponse.redirect(new URL("/login", request.url));
   response.cookies.set(CANDIDATE_COOKIE, code, {
     httpOnly: true,

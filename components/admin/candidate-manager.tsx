@@ -8,9 +8,19 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 // Reviewer console for time-boxed candidate access: mint a code, copy its
-// /start link, extend a window, or revoke it. Talks to the admin-guarded
-// /api/admin/candidates routes; the KV key's TTL is the single source of
-// truth, so the list only ever shows LIVE candidates.
+// /start link, extend a window, revoke it (reversibly), re-grant a fresh
+// attempt, or hard-remove a candidate. Talks to the admin-guarded
+// /api/admin/candidates routes. The roster is PERSISTENT: revoked/expired
+// candidates stay listed so a reviewer can re-grant or remove them.
+
+type Attempt = {
+  attempt: number;
+  grantedAt: string;
+  windowDays: number;
+  expiresAt: string;
+  startedAt?: string;
+  revokedAt?: string;
+};
 
 type CandidateRecord = {
   code: string;
@@ -19,12 +29,14 @@ type CandidateRecord = {
   role?: string;
   notes?: string;
   createdAt: string;
-  expiresAt: string;
-  startedAt?: string;
+  status: "active" | "revoked";
+  attempts: Attempt[];
 };
 
+type DisplayStatus = "active" | "revoked" | "expired";
+
 const DEFAULT_WINDOW_DAYS = 10;
-const EXTEND_DAYS = 10;
+const DEFAULT_EXTEND_DAYS = 5;
 
 type ListResult = { candidates: CandidateRecord[]; error: string | null };
 
@@ -81,7 +93,7 @@ export function CandidateManager() {
         </p>
       ) : candidates.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No active candidates. Mint an access link above to invite one.
+          No candidates yet. Mint an access link above to invite one.
         </p>
       ) : (
         <CandidateTable candidates={candidates} onChanged={refresh} />
@@ -121,6 +133,8 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
         }),
       });
       if (!response.ok) {
+        // Surface the server's message inline — notably a 409 on a duplicate
+        // email (an active candidate already owns it).
         const data = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? "Failed to create access link");
       }
@@ -188,8 +202,8 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
         <Input
           id="candidate-window"
           type="number"
-          min={1}
-          max={60}
+          step={0.5}
+          min={0.5}
           value={windowDays}
           onChange={(event) => setWindowDays(event.target.value)}
           className="w-28"
@@ -242,9 +256,7 @@ function CandidateTable({
             <th className="px-4 py-2.5">Name</th>
             <th className="px-4 py-2.5">Email</th>
             <th className="px-4 py-2.5">Status</th>
-            <th className="px-4 py-2.5">Code</th>
-            <th className="px-4 py-2.5">Expires</th>
-            <th className="px-4 py-2.5">Start link</th>
+            <th className="px-4 py-2.5">Access until</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
           </tr>
         </thead>
@@ -262,6 +274,18 @@ function CandidateTable({
   );
 }
 
+function currentAttemptOf(candidate: CandidateRecord): Attempt {
+  return candidate.attempts[candidate.attempts.length - 1];
+}
+
+function displayStatusOf(candidate: CandidateRecord): DisplayStatus {
+  if (candidate.status === "revoked") {
+    return "revoked";
+  }
+  const expiresAt = currentAttemptOf(candidate).expiresAt;
+  return Date.now() >= Date.parse(expiresAt) ? "expired" : "active";
+}
+
 function CandidateRow({
   candidate,
   onChanged,
@@ -270,14 +294,20 @@ function CandidateRow({
   onChanged: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const currentAttempt = currentAttemptOf(candidate);
+  const effectiveExpiresAt = currentAttempt.expiresAt;
+  const displayStatus = displayStatusOf(candidate);
 
-  async function extend() {
+  const [extraDays, setExtraDays] = useState(String(DEFAULT_EXTEND_DAYS));
+  const [regrantDays, setRegrantDays] = useState(String(currentAttempt.windowDays));
+
+  async function patch(body: Record<string, unknown>) {
     setBusy(true);
     try {
       await fetch(`/api/admin/candidates/${candidate.code}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ extraDays: EXTEND_DAYS }),
+        body: JSON.stringify(body),
       });
       await onChanged();
     } finally {
@@ -285,8 +315,29 @@ function CandidateRow({
     }
   }
 
+  async function extend() {
+    await patch({ action: "extend", extraDays: Number(extraDays) });
+  }
+
+  async function regrant() {
+    await patch({ action: "regrant", windowDays: Number(regrantDays) });
+  }
+
+  async function remove() {
+    if (
+      !window.confirm(`Permanently remove ${candidate.name}? This frees their email.`)
+    ) {
+      return;
+    }
+    await patch({ action: "remove" });
+  }
+
   async function revoke() {
-    if (!window.confirm(`Revoke access for ${candidate.name}? They are locked out immediately.`)) {
+    if (
+      !window.confirm(
+        `Revoke access for ${candidate.name}? They are locked out immediately.`,
+      )
+    ) {
       return;
     }
     setBusy(true);
@@ -305,6 +356,7 @@ function CandidateRow({
         {candidate.role && (
           <div className="text-xs text-muted-foreground">{candidate.role}</div>
         )}
+        <div className="font-mono text-xs text-muted-foreground/80">{candidate.code}</div>
         {candidate.notes && (
           <div
             className="mt-0.5 max-w-52 truncate text-xs text-muted-foreground/80"
@@ -316,49 +368,127 @@ function CandidateRow({
       </td>
       <td className="px-4 py-3 align-top text-muted-foreground">{candidate.email}</td>
       <td className="px-4 py-3 align-top">
-        <StatusBadge startedAt={candidate.startedAt} />
-      </td>
-      <td className="px-4 py-3 align-top font-mono text-xs text-muted-foreground">
-        {candidate.code}
+        <StatusCell
+          displayStatus={displayStatus}
+          attemptCount={candidate.attempts.length}
+          startedAt={currentAttempt.startedAt}
+        />
+        <AttemptHistory attempts={candidate.attempts} />
       </td>
       <td className="px-4 py-3 align-top text-muted-foreground">
-        {formatDate(candidate.expiresAt)}
-        <span className="ml-1.5 text-xs text-muted-foreground/80">
-          ({daysLeftLabel(candidate.expiresAt)})
-        </span>
+        <div>{formatDateTime(effectiveExpiresAt)}</div>
+        <div className="text-xs text-muted-foreground/80">
+          {remainingLabel(effectiveExpiresAt)}
+        </div>
       </td>
       <td className="px-4 py-3 align-top">
-        <CopyLinkButton code={candidate.code} />
-      </td>
-      <td className="px-4 py-3 align-top">
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={extend} disabled={busy}>
-            Extend +{EXTEND_DAYS} days
-          </Button>
-          <Button variant="destructive" size="sm" onClick={revoke} disabled={busy}>
-            Revoke
-          </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {displayStatus === "active" ? (
+            <>
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  step={0.5}
+                  min={0.5}
+                  value={extraDays}
+                  onChange={(event) => setExtraDays(event.target.value)}
+                  className="w-20"
+                  aria-label={`Extend days for ${candidate.name}`}
+                />
+                <Button variant="outline" size="sm" onClick={extend} disabled={busy}>
+                  Extend
+                </Button>
+              </div>
+              <Button variant="destructive" size="sm" onClick={revoke} disabled={busy}>
+                Revoke
+              </Button>
+              <CopyLinkButton code={candidate.code} />
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  step={0.5}
+                  min={0.5}
+                  value={regrantDays}
+                  onChange={(event) => setRegrantDays(event.target.value)}
+                  className="w-20"
+                  aria-label={`Re-grant window for ${candidate.name}`}
+                />
+                <Button variant="outline" size="sm" onClick={regrant} disabled={busy}>
+                  Re-grant
+                </Button>
+              </div>
+              <Button variant="destructive" size="sm" onClick={remove} disabled={busy}>
+                Remove
+              </Button>
+            </>
+          )}
         </div>
       </td>
     </tr>
   );
 }
 
-function StatusBadge({ startedAt }: { startedAt?: string }) {
-  if (!startedAt) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-        Not started
-      </span>
-    );
-  }
+function StatusCell({
+  displayStatus,
+  attemptCount,
+  startedAt,
+}: {
+  displayStatus: DisplayStatus;
+  attemptCount: number;
+  startedAt?: string;
+}) {
+  const badgeClass =
+    displayStatus === "active"
+      ? "bg-primary/10 text-primary"
+      : displayStatus === "revoked"
+        ? "bg-destructive/10 text-destructive"
+        : "bg-amber-500/15 text-amber-600 dark:text-amber-400";
+  const label =
+    displayStatus === "active"
+      ? "Active"
+      : displayStatus === "revoked"
+        ? "Revoked"
+        : "Expired";
+
   return (
-    <span
-      className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-      title={`Started ${formatDateTime(startedAt)}`}
-    >
-      Started {formatDateTime(startedAt)}
-    </span>
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1.5">
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+            badgeClass,
+          )}
+        >
+          {label}
+        </span>
+        <span className="text-xs text-muted-foreground">Attempt {attemptCount}</span>
+      </div>
+      <span className="text-xs text-muted-foreground/80">
+        {startedAt ? `Started ${formatDateTime(startedAt)}` : "Not started"}
+      </span>
+    </div>
+  );
+}
+
+function AttemptHistory({ attempts }: { attempts: Attempt[] }) {
+  return (
+    <details className="mt-1 text-xs text-muted-foreground/80">
+      <summary className="cursor-pointer select-none">
+        History ({attempts.length} attempts)
+      </summary>
+      <ul className="mt-1 space-y-0.5">
+        {attempts.map((attempt) => (
+          <li key={attempt.attempt}>
+            Attempt {attempt.attempt} · granted {formatDateTime(attempt.grantedAt)} ·
+            started {attempt.startedAt ? formatDateTime(attempt.startedAt) : "—"} ·
+            revoked {attempt.revokedAt ? formatDateTime(attempt.revokedAt) : "—"}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -373,7 +503,7 @@ function CopyLinkButton({ code }: { code: string }) {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard unavailable (permissions/insecure context) — leave the
-      // button as-is; the code column still lets the reviewer copy manually.
+      // button as-is; the code sub-line still lets the reviewer copy manually.
     }
   }
 
@@ -402,7 +532,10 @@ function formatDate(iso: string): string {
       });
 }
 
-function formatDateTime(iso: string): string {
+function formatDateTime(iso?: string): string {
+  if (!iso) {
+    return "—";
+  }
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
     ? iso
@@ -414,11 +547,24 @@ function formatDateTime(iso: string): string {
       });
 }
 
-function daysLeftLabel(expiresAt: string): string {
+function remainingLabel(expiresAt: string): string {
   const msLeft = Date.parse(expiresAt) - Date.now();
   if (Number.isNaN(msLeft) || msLeft <= 0) {
     return "expired";
   }
-  const days = Math.ceil(msLeft / 86_400_000);
-  return `${days}d left`;
+  const totalMinutes = Math.floor(msLeft / 60_000);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days >= 1) {
+    return `${days}d ${hours}h left`;
+  }
+  if (hours >= 1) {
+    return `${hours}h left`;
+  }
+  return `${minutes}m left`;
 }
+
+// Retained per the console's helper set (date-only rendering).
+void formatDate;

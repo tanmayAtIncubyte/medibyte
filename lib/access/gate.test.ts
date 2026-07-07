@@ -10,7 +10,7 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
     gateEnabled: true,
     isAdmin: false,
     candidateCode: null,
-    candidateExists: false,
+    candidateActive: false,
     pathname: "/products",
     ...overrides,
   };
@@ -62,16 +62,16 @@ describe("admin session", () => {
   it("passes an admin even with a stale candidate cookie alongside", () => {
     expect(
       gateDecision(
-        input({ isAdmin: true, candidateCode: "deadbeef", candidateExists: false }),
+        input({ isAdmin: true, candidateCode: "deadbeef", candidateActive: false }),
       ),
     ).toBe("pass");
   });
 });
 
 describe("candidate cookie", () => {
-  it("passes when the cand:<code> access key still exists", () => {
+  it("passes when the candidate is active and unexpired", () => {
     expect(
-      gateDecision(input({ candidateCode: "abc12345", candidateExists: true })),
+      gateDecision(input({ candidateCode: "abc12345", candidateActive: true })),
     ).toBe("pass");
   });
 
@@ -79,18 +79,18 @@ describe("candidate cookie", () => {
     expect(gateDecision(input({ candidateCode: null }))).toBe("closed");
   });
 
-  it("closes when the cookie is present but the key has expired or been revoked", () => {
+  it("closes when the cookie is present but the candidate has expired or been revoked", () => {
     expect(
-      gateDecision(input({ candidateCode: "abc12345", candidateExists: false })),
+      gateDecision(input({ candidateCode: "abc12345", candidateActive: false })),
     ).toBe("closed");
   });
 
-  it("never passes on candidateExists alone (no parsed code → closed)", () => {
-    // candidateExists without a parsed code must never pass (defensive: the
-    // adapter only sets candidateExists when a code parsed, but the pure rule
+  it("never passes on candidateActive alone (no parsed code → closed)", () => {
+    // candidateActive without a parsed code must never pass (defensive: the
+    // adapter only sets candidateActive when a code parsed, but the pure rule
     // must not rely on that).
     expect(
-      gateDecision(input({ candidateCode: null, candidateExists: true })),
+      gateDecision(input({ candidateCode: null, candidateActive: true })),
     ).toBe("closed");
   });
 });
@@ -103,7 +103,7 @@ describe("API paths under the gate", () => {
   it("passes API paths for a live candidate", () => {
     expect(
       gateDecision(
-        input({ pathname: "/api/cart", candidateCode: "abc12345", candidateExists: true }),
+        input({ pathname: "/api/cart", candidateCode: "abc12345", candidateActive: true }),
       ),
     ).toBe("pass");
   });

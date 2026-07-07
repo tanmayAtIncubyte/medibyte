@@ -1,22 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  candidateHasAccess,
+  currentAttempt,
+  displayStatus,
+  effectiveExpiresAt,
   extendCandidate,
+  findCandidateByEmail,
   getCandidate,
   listCandidates,
   markStarted,
   mintCandidate,
+  regrantCandidate,
+  removeCandidate,
   revokeCandidate,
 } from "@/lib/access/candidates";
-import { parseCandidateCode } from "@/lib/access/scope";
 import { backend } from "@/lib/data/backend";
 
-// Phase 3 — the candidate access registry. The `cand:<code>` key IS the access
-// authority: native TTL is the timer, DEL is revocation. These tests run
-// against the offline in-memory backend (no Redis env), whose TTL is honored
-// lazily via Date.now() — so fake timers let us cross the expiry line.
+// The persistent candidate roster. The `cand:<code>` record PERSISTS (no TTL);
+// access = status "active" AND the current attempt not yet expired. Revoke is
+// reversible, re-grant opens a new attempt, remove is the only delete. Fake
+// timers drive the computed expiry checks.
 
 const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -28,199 +35,184 @@ afterEach(() => {
 });
 
 describe("mintCandidate", () => {
-  it("mints an 8-char lowercase hex code that satisfies parseCandidateCode", async () => {
+  it("mints an 8-char hex code with attempt 1, active, name + email", async () => {
     const minted = await mintCandidate({ name: "Priya Sharma", email: "priya@example.com" });
 
     expect(minted.code).toMatch(/^[0-9a-f]{8}$/);
-    expect(parseCandidateCode(minted.code)).toBe(minted.code);
-  });
-
-  it("stores the access record at cand:<code> with name, email and ISO timestamps", async () => {
-    const minted = await mintCandidate({ name: "Priya Sharma", email: "priya@example.com" });
-
-    const stored = await backend().get(`cand:${minted.code}`);
-    expect(stored).toEqual({
-      name: "Priya Sharma",
-      email: "priya@example.com",
-      createdAt: "2026-07-01T12:00:00.000Z",
-      expiresAt: "2026-07-11T12:00:00.000Z", // default 10-day window
+    expect(minted.status).toBe("active");
+    expect(minted.email).toBe("priya@example.com");
+    expect(minted.attempts).toHaveLength(1);
+    expect(minted.attempts[0]).toMatchObject({
+      attempt: 1,
+      grantedAt: "2026-07-01T12:00:00.000Z",
+      windowDays: 10,
+      expiresAt: "2026-07-11T12:00:00.000Z",
     });
+    expect(minted.attempts[0].startedAt).toBeUndefined();
   });
 
   it("stores optional role and notes when provided", async () => {
     const minted = await mintCandidate({
-      name: "Omar Reid",
+      name: "Omar",
       email: "omar@example.com",
       role: "Senior QA",
       notes: "Referred by Anita",
     });
 
-    expect(await getCandidate(minted.code)).toMatchObject({
-      role: "Senior QA",
-      notes: "Referred by Anita",
-    });
+    expect(await getCandidate(minted.code)).toMatchObject({ role: "Senior QA", notes: "Referred by Anita" });
   });
 
-  it("leaves startedAt unset at mint time (not started yet)", async () => {
-    const minted = await mintCandidate({ name: "Fresh", email: "fresh@example.com" });
+  it("honors a FRACTIONAL window (0.5 day = 12h)", async () => {
+    const minted = await mintCandidate({ name: "Half", email: "half@example.com", windowDays: 0.5 });
 
-    expect((await getCandidate(minted.code))?.startedAt).toBeUndefined();
+    expect(currentAttempt(minted).expiresAt).toBe("2026-07-02T00:00:00.000Z");
   });
 
-  it("honors a custom window and TTLs the key so it dies when the window lapses", async () => {
-    const minted = await mintCandidate({
-      name: "Short Window",
-      email: "short@example.com",
-      windowDays: 1,
-    });
+  it("persists without a TTL — the record survives past expiry (not deleted)", async () => {
+    const minted = await mintCandidate({ name: "Timed", email: "timed@example.com", windowDays: 1 });
 
-    expect(minted.expiresAt).toBe("2026-07-02T12:00:00.000Z");
-    expect(await getCandidate(minted.code)).not.toBeNull();
+    vi.advanceTimersByTime(DAY_MS + HOUR_MS); // past the window
 
-    vi.advanceTimersByTime(DAY_MS + 1000); // just past the 1-day window
-
-    expect(await getCandidate(minted.code)).toBeNull();
-    const codes = (await listCandidates()).map((record) => record.code);
-    expect(codes).not.toContain(minted.code);
-  });
-
-  it("is listable immediately after minting", async () => {
-    const minted = await mintCandidate({ name: "Listable", email: "listable@example.com" });
-
-    const records = await listCandidates();
-    expect(records).toContainEqual({ code: minted.code, ...access(minted) });
+    const record = await getCandidate(minted.code);
+    expect(record).not.toBeNull(); // still stored
+    expect(displayStatus(record!)).toBe("expired");
+    expect(await candidateHasAccess(minted.code)).toBe(false);
+    // still on the roster (only removeCandidate deletes)
+    expect((await listCandidates()).map((r) => r.code)).toContain(minted.code);
   });
 });
 
-describe("markStarted", () => {
-  it("stamps startedAt on the first open", async () => {
-    const minted = await mintCandidate({ name: "Starter", email: "starter@example.com" });
+describe("findCandidateByEmail (dedup guard)", () => {
+  it("finds a roster entry by email, case-insensitively", async () => {
+    const minted = await mintCandidate({ name: "Dedup", email: "Dedup@Example.com" });
 
-    const marked = await markStarted(minted.code);
-
-    expect(marked?.startedAt).toBe("2026-07-01T12:00:00.000Z");
-    expect((await getCandidate(minted.code))?.startedAt).toBe("2026-07-01T12:00:00.000Z");
+    const found = await findCandidateByEmail("dedup@example.com");
+    expect(found?.code).toBe(minted.code);
   });
 
-  it("is a no-op on later opens — first open wins", async () => {
-    const minted = await mintCandidate({ name: "Starter", email: "starter@example.com" });
-    await markStarted(minted.code);
-
-    vi.advanceTimersByTime(2 * 3_600_000); // 2h later
-    const again = await markStarted(minted.code);
-
-    expect(again?.startedAt).toBe("2026-07-01T12:00:00.000Z"); // unchanged
-  });
-
-  it("preserves the remaining TTL (marking started never extends the window)", async () => {
-    const minted = await mintCandidate({
-      name: "Timed",
-      email: "timed@example.com",
-      windowDays: 1,
-    });
-
-    vi.advanceTimersByTime(12 * 3_600_000); // 12h into the 1-day window
-    await markStarted(minted.code);
-
-    vi.advanceTimersByTime(11 * 3_600_000); // total 23h — still inside the window
-    expect(await getCandidate(minted.code)).not.toBeNull();
-
-    vi.advanceTimersByTime(2 * 3_600_000); // total 25h — past the original 1-day window
-    expect(await getCandidate(minted.code)).toBeNull();
-  });
-
-  it("returns null for an unknown code", async () => {
-    expect(await markStarted("deadbeef")).toBeNull();
+  it("returns null when no candidate has that email", async () => {
+    await mintCandidate({ name: "Someone", email: "someone@example.com" });
+    expect(await findCandidateByEmail("nobody@example.com")).toBeNull();
   });
 });
 
-describe("getCandidate", () => {
-  it("returns the record for a live code", async () => {
-    const minted = await mintCandidate({ name: "Live", email: "live@example.com" });
+describe("displayStatus", () => {
+  it("is active for a live candidate, expired past the window, revoked after revoke", async () => {
+    const minted = await mintCandidate({ name: "S", email: "s@example.com", windowDays: 1 });
+    expect(displayStatus((await getCandidate(minted.code))!)).toBe("active");
 
-    expect(await getCandidate(minted.code)).toEqual(access(minted));
-  });
-
-  it("returns null for an unknown (well-formed) code", async () => {
-    expect(await getCandidate("deadbeef")).toBeNull();
-  });
-
-  it("returns null for a code with an invalid shape", async () => {
-    expect(await getCandidate("NOT VALID!!")).toBeNull();
-  });
-
-  it("returns null when the stored value is not a CandidateAccess shape", async () => {
-    await backend().set("cand:badvalue", "just-a-string");
-
-    expect(await getCandidate("badvalue")).toBeNull();
-  });
-});
-
-describe("listCandidates", () => {
-  it("excludes candidate STATE keys that share the cand: prefix", async () => {
-    const minted = await mintCandidate({ name: "Real Candidate", email: "real@example.com" });
-    // A state key namespaced under a candidate scope — matched by the "cand:"
-    // prefix scan but NOT an access key (it has segments after the code).
-    await backend().set("cand:abc12345:sess:x", { cart: [] });
-
-    const codes = (await listCandidates()).map((record) => record.code);
-
-    expect(codes).toContain(minted.code);
-    expect(codes).not.toContain("abc12345");
-    expect(codes.every((code) => !code.includes(":"))).toBe(true);
+    vi.advanceTimersByTime(2 * DAY_MS);
+    expect(displayStatus((await getCandidate(minted.code))!)).toBe("expired");
   });
 });
 
 describe("revokeCandidate", () => {
-  it("deletes the access key: getCandidate is null and the code leaves the list", async () => {
-    const minted = await mintCandidate({ name: "Revoked Soon", email: "rev@example.com" });
+  it("flips status to revoked, stamps the current attempt's revokedAt, and KEEPS the record", async () => {
+    const minted = await mintCandidate({ name: "Rev", email: "rev@example.com" });
 
+    const revoked = await revokeCandidate(minted.code);
+
+    expect(revoked?.status).toBe("revoked");
+    expect(currentAttempt(revoked!).revokedAt).toBe("2026-07-01T12:00:00.000Z");
+    expect(await getCandidate(minted.code)).not.toBeNull(); // still there
+    expect(await candidateHasAccess(minted.code)).toBe(false);
+    expect((await listCandidates()).map((r) => r.code)).toContain(minted.code);
+  });
+});
+
+describe("regrantCandidate", () => {
+  it("opens attempt 2, sets active, retains the prior (revoked) attempt", async () => {
+    const minted = await mintCandidate({ name: "Back", email: "back@example.com", windowDays: 1 });
     await revokeCandidate(minted.code);
 
-    expect(await getCandidate(minted.code)).toBeNull();
-    const codes = (await listCandidates()).map((record) => record.code);
-    expect(codes).not.toContain(minted.code);
+    vi.advanceTimersByTime(3 * DAY_MS); // months-later style return
+    const regranted = await regrantCandidate(minted.code, 2);
+
+    expect(regranted?.status).toBe("active");
+    expect(regranted?.attempts).toHaveLength(2);
+    expect(regranted?.attempts[0].revokedAt).toBeTruthy(); // history preserved
+    expect(currentAttempt(regranted!)).toMatchObject({ attempt: 2, windowDays: 2 });
+    expect(await candidateHasAccess(minted.code)).toBe(true);
+  });
+
+  it("does NOT touch the candidate's state keys (resume their work)", async () => {
+    const minted = await mintCandidate({ name: "Resume", email: "resume@example.com" });
+    await backend().set(`cand:${minted.code}:sess:x`, { cart: [{ productId: "p", quantity: 2 }] });
+    await revokeCandidate(minted.code);
+
+    await regrantCandidate(minted.code, 5);
+
+    expect(await backend().get(`cand:${minted.code}:sess:x`)).toEqual({
+      cart: [{ productId: "p", quantity: 2 }],
+    });
   });
 });
 
 describe("extendCandidate", () => {
-  it("pushes expiresAt out by extraDays from the old expiry (window still live)", async () => {
-    const minted = await mintCandidate({
-      name: "Extended",
-      email: "ext@example.com",
-      windowDays: 10,
-    });
+  it("pushes the current attempt's expiry out by fractional extraDays", async () => {
+    const minted = await mintCandidate({ name: "Ext", email: "ext@example.com", windowDays: 1 });
 
-    const updated = await extendCandidate(minted.code, 5);
+    const extended = await extendCandidate(minted.code, 0.5);
 
-    // old expiry 2026-07-11 + 5 days
-    expect(updated?.expiresAt).toBe("2026-07-16T12:00:00.000Z");
-    expect(await getCandidate(minted.code)).toEqual(updated);
-  });
-
-  it("keeps the key alive past the original window after an extension", async () => {
-    const minted = await mintCandidate({
-      name: "Kept Alive",
-      email: "keep@example.com",
-      windowDays: 1,
-    });
-    await extendCandidate(minted.code, 5);
-
-    vi.advanceTimersByTime(2 * DAY_MS); // past the original 1-day window
-
-    expect(await getCandidate(minted.code)).not.toBeNull();
-  });
-
-  it("returns null for an unknown code (extension never resurrects dead access)", async () => {
-    expect(await extendCandidate("deadbeef", 10)).toBeNull();
+    // current expiry (07-02 12:00) + 0.5 day (12h) = 07-03 00:00
+    expect(effectiveExpiresAt(extended!)).toBe("2026-07-03T00:00:00.000Z");
   });
 });
 
-function access(minted: { name: string; email: string; createdAt: string; expiresAt: string }) {
-  return {
-    name: minted.name,
-    email: minted.email,
-    createdAt: minted.createdAt,
-    expiresAt: minted.expiresAt,
-  };
-}
+describe("removeCandidate", () => {
+  it("deletes the record AND purges the candidate's state keys (frees the email)", async () => {
+    const minted = await mintCandidate({ name: "Gone", email: "gone@example.com" });
+    await backend().set(`cand:${minted.code}:sess:x`, { cart: [] });
+    await backend().set(`cand:${minted.code}:orders`, []);
+
+    await removeCandidate(minted.code);
+
+    expect(await getCandidate(minted.code)).toBeNull();
+    expect(await backend().get(`cand:${minted.code}:sess:x`)).toBeNull();
+    expect(await backend().get(`cand:${minted.code}:orders`)).toBeNull();
+    expect(await findCandidateByEmail("gone@example.com")).toBeNull(); // email reusable
+  });
+});
+
+describe("markStarted", () => {
+  it("stamps the current attempt on first open; no-op on a second open", async () => {
+    const minted = await mintCandidate({ name: "Start", email: "start@example.com" });
+
+    await markStarted(minted.code);
+    const first = currentAttempt((await getCandidate(minted.code))!).startedAt;
+    expect(first).toBe("2026-07-01T12:00:00.000Z");
+
+    vi.advanceTimersByTime(2 * HOUR_MS);
+    await markStarted(minted.code);
+    expect(currentAttempt((await getCandidate(minted.code))!).startedAt).toBe(first);
+  });
+
+  it("stamps the NEW attempt after a re-grant (attempt 2), leaving attempt 1's startedAt intact", async () => {
+    const minted = await mintCandidate({ name: "Two", email: "two@example.com" });
+    await markStarted(minted.code); // attempt 1 started
+    await revokeCandidate(minted.code);
+    vi.advanceTimersByTime(DAY_MS);
+    await regrantCandidate(minted.code, 5); // attempt 2, not started yet
+
+    vi.advanceTimersByTime(HOUR_MS);
+    await markStarted(minted.code); // stamps attempt 2
+
+    const record = (await getCandidate(minted.code))!;
+    expect(record.attempts[0].startedAt).toBe("2026-07-01T12:00:00.000Z");
+    expect(record.attempts[1].startedAt).toBe("2026-07-02T13:00:00.000Z");
+  });
+});
+
+describe("candidateHasAccess", () => {
+  it("is true only when active and unexpired", async () => {
+    const active = await mintCandidate({ name: "A", email: "a@example.com", windowDays: 1 });
+    expect(await candidateHasAccess(active.code)).toBe(true);
+
+    const revoked = await mintCandidate({ name: "B", email: "b@example.com" });
+    await revokeCandidate(revoked.code);
+    expect(await candidateHasAccess(revoked.code)).toBe(false);
+
+    expect(await candidateHasAccess("deadbeef")).toBe(false); // unknown
+    expect(await candidateHasAccess("NOT VALID!!")).toBe(false); // malformed
+  });
+});

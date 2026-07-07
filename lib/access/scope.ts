@@ -11,6 +11,12 @@ import { cookies } from "next/headers";
 
 export const CANDIDATE_COOKIE = "mb_cand";
 export const DEFAULT_CANDIDATE_WINDOW_DAYS = 10;
+// Per-candidate STATE (cart/orders/…) auto-cleanup TTL. Deliberately generous
+// and DECOUPLED from the access window: access is governed by the (persistent)
+// candidate record's expiry, while this is only a safety net so a candidate's
+// work survives their window and short/fractional windows never delete it
+// mid-assessment. `removeCandidate` is the real cleanup.
+export const CANDIDATE_STATE_TTL_DAYS = 60;
 
 /** Candidate codes are minted as lowercase slugs; reject anything else. */
 const CODE_SHAPE = /^[a-z0-9][a-z0-9-]{2,63}$/;
@@ -40,6 +46,6 @@ export async function currentScope(): Promise<string> {
  */
 export function scopeTtlSeconds(scope: string): number | undefined {
   return scope.startsWith("cand:")
-    ? DEFAULT_CANDIDATE_WINDOW_DAYS * 86_400
+    ? CANDIDATE_STATE_TTL_DAYS * 86_400
     : undefined;
 }

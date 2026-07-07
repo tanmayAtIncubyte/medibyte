@@ -6,19 +6,19 @@
 // - admin         = HMAC-verified mb_session cookie whose signed role is
 //   "admin" (node:crypto — fine here: Next 16's proxy runs on the Node
 //   runtime by default).
-// - candidate     = mb_cand cookie whose `cand:<code>` access key still exists
-//   in the KV. Native TTL is the timer; a DEL (revoke) locks out instantly.
+// - candidate     = mb_cand cookie whose roster entry is active AND unexpired
+//   (candidateHasAccess). A revoked/expired candidate still EXISTS but is denied.
 //
 // Locked-out pages redirect to /closed; locked-out API calls get 403 JSON.
 
 import { NextResponse, type NextRequest } from "next/server";
 
+import { candidateHasAccess } from "@/lib/access/candidates";
 import { gateDecision } from "@/lib/access/gate";
 import { CANDIDATE_COOKIE, parseCandidateCode } from "@/lib/access/scope";
 import { getSessionSecret } from "@/lib/auth/secret";
 import { verifySession } from "@/lib/auth/session";
 import { SESSION_COOKIE } from "@/lib/auth/session-cookie";
-import { backend } from "@/lib/data/backend";
 import { hasRedisEnv } from "@/lib/data/backend-redis";
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
@@ -36,16 +36,16 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const candidateCode = parseCandidateCode(
     request.cookies.get(CANDIDATE_COOKIE)?.value,
   );
-  const candidateExists =
+  const candidateActive =
     !isAdmin && candidateCode !== null
-      ? (await backend().get(`cand:${candidateCode}`)) !== null
+      ? await candidateHasAccess(candidateCode)
       : false;
 
   const decision = gateDecision({
     gateEnabled,
     isAdmin,
     candidateCode,
-    candidateExists,
+    candidateActive,
     pathname: request.nextUrl.pathname,
   });
 
