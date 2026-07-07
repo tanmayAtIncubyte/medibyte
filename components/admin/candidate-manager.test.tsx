@@ -116,7 +116,8 @@ describe("rendering", () => {
     expect(screen.getByText("abc12345")).toBeInTheDocument();
 
     expect(screen.getByText("Active")).toBeInTheDocument();
-    expect(screen.getByText("Attempt 1")).toBeInTheDocument();
+    // "Attempt 1" shows in the status chip AND the history timeline.
+    expect(screen.getAllByText("Attempt 1").length).toBeGreaterThan(0);
     expect(screen.getByText("Not started")).toBeInTheDocument();
     // "Access until" remaining label — far-future expiry never reads "expired".
     expect(screen.getByText(/left$/)).toBeInTheDocument();
@@ -138,7 +139,8 @@ describe("rendering", () => {
     render(<CandidateManager />);
 
     expect(await screen.findByText("Omar Reid")).toBeInTheDocument();
-    expect(screen.getByText(/^Started/)).toBeInTheDocument();
+    // "Started …" appears in the status sub-line AND the history timeline.
+    expect(screen.getAllByText(/^Started/).length).toBeGreaterThan(0);
   });
 
   it("renders a revoked candidate with a Revoked badge and re-grant/remove actions", async () => {
@@ -147,7 +149,8 @@ describe("rendering", () => {
     render(<CandidateManager />);
 
     expect(await screen.findByText("Lena Cho")).toBeInTheDocument();
-    expect(screen.getByText("Revoked")).toBeInTheDocument();
+    // "Revoked" shows in the status badge AND the history (chip + timeline row).
+    expect(screen.getAllByText("Revoked").length).toBeGreaterThan(0);
 
     expect(screen.getByRole("button", { name: "Re-grant" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
