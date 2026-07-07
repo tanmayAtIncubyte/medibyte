@@ -15,8 +15,12 @@ import { cn } from "@/lib/utils";
 type CandidateRecord = {
   code: string;
   name: string;
+  email: string;
+  role?: string;
+  notes?: string;
   createdAt: string;
   expiresAt: string;
+  startedAt?: string;
 };
 
 const DEFAULT_WINDOW_DAYS = 10;
@@ -86,11 +90,19 @@ export function CandidateManager() {
   );
 }
 
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [notes, setNotes] = useState("");
   const [windowDays, setWindowDays] = useState(String(DEFAULT_WINDOW_DAYS));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const canSubmit =
+    name.trim().length > 0 && EMAIL_SHAPE.test(email.trim()) && !submitting;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -100,13 +112,22 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
       const response = await fetch("/api/admin/candidates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), windowDays: Number(windowDays) }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          role: role.trim() || undefined,
+          notes: notes.trim() || undefined,
+          windowDays: Number(windowDays),
+        }),
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? "Failed to create access link");
       }
       setName("");
+      setEmail("");
+      setRole("");
+      setNotes("");
       setWindowDays(String(DEFAULT_WINDOW_DAYS));
       await onMinted();
     } catch (cause) {
@@ -121,7 +142,7 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
       onSubmit={handleSubmit}
       className="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card p-4"
     >
-      <div className="flex min-w-56 flex-1 flex-col gap-1.5">
+      <div className="flex min-w-48 flex-1 flex-col gap-1.5">
         <label htmlFor="candidate-name" className="text-xs font-medium text-muted-foreground">
           Candidate name
         </label>
@@ -132,6 +153,32 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
           placeholder="e.g. Priya Sharma"
           maxLength={80}
           required
+        />
+      </div>
+      <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+        <label htmlFor="candidate-email" className="text-xs font-medium text-muted-foreground">
+          Email
+        </label>
+        <Input
+          id="candidate-email"
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="e.g. priya@example.com"
+          maxLength={120}
+          required
+        />
+      </div>
+      <div className="flex min-w-40 flex-1 flex-col gap-1.5">
+        <label htmlFor="candidate-role" className="text-xs font-medium text-muted-foreground">
+          Role / position <span className="font-normal">(optional)</span>
+        </label>
+        <Input
+          id="candidate-role"
+          value={role}
+          onChange={(event) => setRole(event.target.value)}
+          placeholder="e.g. Senior QA"
+          maxLength={80}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -149,7 +196,21 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
           required
         />
       </div>
-      <Button type="submit" disabled={submitting || name.trim().length === 0}>
+      <div className="flex w-full flex-col gap-1.5">
+        <label htmlFor="candidate-notes" className="text-xs font-medium text-muted-foreground">
+          Internal notes <span className="font-normal">(optional, reviewer-only)</span>
+        </label>
+        <textarea
+          id="candidate-notes"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          placeholder="e.g. Referred by Anita — round 2"
+          maxLength={500}
+          rows={2}
+          className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        />
+      </div>
+      <Button type="submit" disabled={!canSubmit}>
         {submitting ? (
           <Loader2 className="animate-spin" aria-hidden />
         ) : (
@@ -179,8 +240,9 @@ function CandidateTable({
         <thead>
           <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
             <th className="px-4 py-2.5">Name</th>
+            <th className="px-4 py-2.5">Email</th>
+            <th className="px-4 py-2.5">Status</th>
             <th className="px-4 py-2.5">Code</th>
-            <th className="px-4 py-2.5">Created</th>
             <th className="px-4 py-2.5">Expires</th>
             <th className="px-4 py-2.5">Start link</th>
             <th className="px-4 py-2.5 text-right">Actions</th>
@@ -238,23 +300,37 @@ function CandidateRow({
 
   return (
     <tr>
-      <td className="px-4 py-3 font-medium text-foreground">{candidate.name}</td>
-      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+      <td className="px-4 py-3 align-top">
+        <div className="font-medium text-foreground">{candidate.name}</div>
+        {candidate.role && (
+          <div className="text-xs text-muted-foreground">{candidate.role}</div>
+        )}
+        {candidate.notes && (
+          <div
+            className="mt-0.5 max-w-52 truncate text-xs text-muted-foreground/80"
+            title={candidate.notes}
+          >
+            {candidate.notes}
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-3 align-top text-muted-foreground">{candidate.email}</td>
+      <td className="px-4 py-3 align-top">
+        <StatusBadge startedAt={candidate.startedAt} />
+      </td>
+      <td className="px-4 py-3 align-top font-mono text-xs text-muted-foreground">
         {candidate.code}
       </td>
-      <td className="px-4 py-3 text-muted-foreground">
-        {formatDate(candidate.createdAt)}
-      </td>
-      <td className="px-4 py-3 text-muted-foreground">
+      <td className="px-4 py-3 align-top text-muted-foreground">
         {formatDate(candidate.expiresAt)}
         <span className="ml-1.5 text-xs text-muted-foreground/80">
           ({daysLeftLabel(candidate.expiresAt)})
         </span>
       </td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 align-top">
         <CopyLinkButton code={candidate.code} />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 align-top">
         <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={extend} disabled={busy}>
             Extend +{EXTEND_DAYS} days
@@ -265,6 +341,24 @@ function CandidateRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+function StatusBadge({ startedAt }: { startedAt?: string }) {
+  if (!startedAt) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        Not started
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+      title={`Started ${formatDateTime(startedAt)}`}
+    >
+      Started {formatDateTime(startedAt)}
+    </span>
   );
 }
 
@@ -305,6 +399,18 @@ function formatDate(iso: string): string {
         year: "numeric",
         month: "short",
         day: "numeric",
+      });
+}
+
+function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
 }
 

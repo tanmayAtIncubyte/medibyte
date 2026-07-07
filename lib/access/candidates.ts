@@ -18,11 +18,25 @@ import { backend } from "@/lib/data/backend";
 
 export type CandidateAccess = {
   name: string;
+  email: string;
+  role?: string;
+  notes?: string;
   createdAt: string;
   expiresAt: string;
+  // Stamped the first time the candidate opens their /start link — the moment
+  // the assignment actually began. Undefined until then ("not started").
+  startedAt?: string;
 };
 
 export type CandidateRecord = CandidateAccess & { code: string };
+
+export type MintCandidateInput = {
+  name: string;
+  email: string;
+  windowDays?: number;
+  role?: string;
+  notes?: string;
+};
 
 // An ACCESS key is exactly `cand:<code>` — no further ":" segments. The same
 // prefix also matches candidate STATE keys (`cand:<code>:sess:…`), which must
@@ -37,21 +51,53 @@ function accessKey(code: string): string {
 
 /**
  * Mint a new time-boxed candidate code. The code is 8 lowercase hex chars (the
- * head of a UUID), which satisfies parseCandidateCode's slug shape.
+ * head of a UUID), which satisfies parseCandidateCode's slug shape. Input is
+ * assumed already validated at the route boundary; `startedAt` begins unset.
  */
 export async function mintCandidate(
-  name: string,
-  windowDays: number = DEFAULT_CANDIDATE_WINDOW_DAYS,
+  input: MintCandidateInput,
 ): Promise<CandidateRecord> {
+  const { name, email, role, notes } = input;
+  const windowDays = input.windowDays ?? DEFAULT_CANDIDATE_WINDOW_DAYS;
   const code = crypto.randomUUID().slice(0, 8).toLowerCase();
   const now = new Date();
   const access: CandidateAccess = {
     name,
+    email,
+    ...(role ? { role } : {}),
+    ...(notes ? { notes } : {}),
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + windowDays * DAY_MS).toISOString(),
   };
   await backend().set(accessKey(code), access, windowDays * 86_400);
   return { code, ...access };
+}
+
+/**
+ * Stamp `startedAt` the first time a candidate opens their /start link. First
+ * open wins — a second open is a no-op. The re-save preserves the REMAINING
+ * TTL (computed from expiresAt) so marking-started never extends the window.
+ */
+export async function markStarted(
+  code: string,
+): Promise<CandidateAccess | null> {
+  const existing = await getCandidate(code);
+  if (!existing) {
+    return null;
+  }
+  if (existing.startedAt) {
+    return existing;
+  }
+  const updated: CandidateAccess = {
+    ...existing,
+    startedAt: new Date().toISOString(),
+  };
+  const ttlSeconds = Math.max(
+    1,
+    Math.floor((Date.parse(existing.expiresAt) - Date.now()) / 1000),
+  );
+  await backend().set(accessKey(code), updated, ttlSeconds);
+  return updated;
 }
 
 /** The live access record for a code, or null (expired, revoked, malformed). */

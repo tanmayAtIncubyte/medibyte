@@ -26,20 +26,26 @@ You enter a name + window (default 10 days). The app generates a random code
 (8 hex chars from a UUID) and writes:
 
 ```
-SET cand:<code>  {name, createdAt, expiresAt}  EX <windowDays × 86400>
+SET cand:<code>  {name, email, role?, notes?, createdAt, expiresAt, startedAt?}  EX <windowDays × 86400>
 ```
 
-`EX` is Redis's native expiry. The code is the only thing the candidate needs.
-(Code: `lib/access/candidates.ts` → `mintCandidate`.)
+`EX` is Redis's native expiry. `email` is required (the reviewer's unique
+identifier for the candidate); `role`/`notes` are optional metadata; `startedAt`
+is unset at mint and stamped on the first `/start` (see below). The code is the
+only thing the candidate needs. (Code: `lib/access/candidates.ts` →
+`mintCandidate`.)
 
 **2. Hand off** — copy the link `https://…/start?code=<code>` and send it to the
 candidate.
 
 **3. Enter** (`/start?code=…`, `app/start/route.ts`)
 - Looks up `cand:<code>`. If it's gone/invalid → redirect to `/closed`.
-- If live → sets an **httpOnly cookie** `mb_cand=<code>`, with the cookie's own
-  `maxAge` set to the exact seconds left until `expiresAt` (so the browser drops
-  it in lockstep with the Redis key).
+- If live → **stamps `startedAt`** on the first open (`markStarted`, first-open
+  wins, remaining TTL preserved) — this is the "assignment started" timestamp
+  shown in the reviewer console.
+- Sets an **httpOnly cookie** `mb_cand=<code>`, with the cookie's own `maxAge`
+  set to the exact seconds left until `expiresAt` (so the browser drops it in
+  lockstep with the Redis key).
 - Redirects to `/login` to register / sign in.
 
 **4. Every request passes through the gate** (`proxy.ts`, runs before any page or
