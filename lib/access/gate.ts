@@ -32,8 +32,8 @@ export type GateInput = {
   isAdmin: boolean;
   /** The parsed mb_cand cookie value, or null when absent/malformed. */
   candidateCode: string | null;
-  /** Whether the `cand:<code>` access key still exists in the KV. */
-  candidateExists: boolean;
+  /** Whether the candidate is active AND unexpired (a revoked/expired candidate still exists but is not active). */
+  candidateActive: boolean;
   pathname: string;
 };
 
@@ -47,7 +47,7 @@ export function gateDecision(input: GateInput): GateDecision {
   if (input.isAdmin) {
     return "pass";
   }
-  if (input.candidateCode !== null && input.candidateExists) {
+  if (input.candidateCode !== null && input.candidateActive) {
     return "pass";
   }
   return "closed";

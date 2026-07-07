@@ -54,27 +54,44 @@ above are for your own verification.
   accepts programmatic reads/writes in local dev.
 
 ### Candidate access — time-boxed links (`/admin/candidates`)
-Candidates don't get the bare URL; you mint each one a **personal, expiring access
-link**. This also fixes the deploy so their cart/orders actually persist (see
-"Why the link matters" below).
+Candidates don't get the bare URL; you mint each one a **personal, time-boxed
+access link** on a **persistent roster**. This also fixes the deploy so their
+cart/orders actually persist (see "Why the link matters" below).
 
 - Go to **`/admin/candidates`** (linked from `/admin`, and from the **Candidates**
   nav item shown to admins).
 - **Create** a link: enter the candidate's **name**, **email** (required — your
   unique identifier for the roster), an optional **role** and **internal notes**
   (reviewer-only, never shown to the candidate), and a **window** in days
-  (default **10**). Click **Create access link**, then **Copy link** — it looks
-  like `https://…/start?code=<code>`. Send that to the candidate.
-- The table shows each candidate's email/role, a **Status** column
-  (**Not started**, or **Started** + the date/time they first opened the link),
-  the code, expiry (with days left), the copy-link button, and Extend/Revoke.
+  (default **10**). Windows accept **fractions** — `0.5` = 12h, `0.25` = 6h. Click
+  **Create access link**, then **Copy link** (`https://…/start?code=<code>`) and
+  send it to the candidate. **Duplicate email is blocked** — if that email is
+  already on the roster, mint fails (409); re-grant or remove the existing entry
+  instead.
 - The candidate opens the link once; it drops a cookie and lands them on `/login`
   to register/sign in. Everything they do lives in an isolated `cand:<code>`
-  namespace with the window's TTL.
-- **Auto-expiry:** when the window lapses the code (and all their state) is gone —
-  the next page load shows **`/closed`**. No cleanup needed.
-- **Revoke** locks a candidate out immediately; **Extend +10 days** lengthens the
-  window. You (admin) never need a code — your admin session always passes the gate.
+  namespace.
+- The table shows each candidate's email/role plus:
+  - **Status** — **Active**, **Revoked**, or **Expired**, with the current
+    **Attempt N** (a returning/re-granted candidate reads as Attempt 2, 3, …).
+  - **Access until** — the current window's expiry date/time and the remaining
+    time (or how long ago it lapsed).
+  - **History** — a per-candidate log of attempts (each grant, when they started,
+    any revoke), so you can see the candidate's full access story.
+  - the code, the copy-link button, and the lifecycle actions below.
+- **Lifecycle actions** (all keep the candidate on the roster except Remove):
+  - **Revoke** — locks them out **immediately** on their next request. It's
+    **reversible**: the candidate stays listed as **Revoked** (not deleted).
+  - **Re-grant** — brings a revoked/expired candidate back as a **new attempt**
+    with a fresh, typed window (fractions OK). Their prior work **resumes** if it's
+    still within the state retention window.
+  - **Extend** — pushes the current window's expiry out by the extra days.
+  - **Remove** — **permanently deletes** the roster entry and purges all their
+    state; this **frees the email** for reuse. Use it when you truly want them gone.
+- **Auto-expiry:** when the window lapses the candidate reads as **Expired** and
+  the next page load shows **`/closed`** — but the roster entry **remains** and can
+  be re-granted. You (admin) never need a code — your admin session always passes
+  the gate.
 
 > **Why the link matters (not optional on the deploy):** Vercel is serverless, so
 > in-memory state doesn't survive between requests — without the Redis-backed
@@ -783,8 +800,11 @@ if `redisOk:false` with an error, the URL/token is wrong.
   (open the app directly, no link). Tests always run offline against the in-memory
   store.
 
-No cron or cleanup job is needed — candidate namespaces carry a TTL and Redis
-evicts them when the window lapses.
+No cron or cleanup job is needed. The small access record is a **persistent
+roster entry** (access is a computed check on its status + window, not a key that
+expires); the heavier per-candidate **state** keys carry a generous fixed TTL as
+an auto-cleanup safety net, and **Remove** is the explicit hard delete. See
+`docs/ACCESS-CONTROL.md`.
 
 **Vercel note:** the deployed app must be publicly reachable (candidates aren't Vercel
 users), so leave **Deployment Protection → Vercel Authentication** off for the public

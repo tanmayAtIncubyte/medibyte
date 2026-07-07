@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_CANDIDATE_WINDOW_DAYS,
+  CANDIDATE_STATE_TTL_DAYS,
   currentScope,
   parseCandidateCode,
   scopeTtlSeconds,
@@ -52,9 +52,9 @@ describe("currentScope", () => {
 });
 
 describe("scopeTtlSeconds", () => {
-  it("gives candidate scopes the access-window ttl", () => {
+  it("gives candidate scopes the generous state-cleanup ttl (decoupled from the access window)", () => {
     expect(scopeTtlSeconds("cand:pat-2026")).toBe(
-      DEFAULT_CANDIDATE_WINDOW_DAYS * 86_400,
+      CANDIDATE_STATE_TTL_DAYS * 86_400,
     );
   });
 
