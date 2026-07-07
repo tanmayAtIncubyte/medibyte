@@ -25,13 +25,14 @@ describe("gate disabled (no Redis env — local dev/demo)", () => {
 });
 
 describe("allowlist paths (no cookies required even when gated)", () => {
-  it("covers /start, /closed, /login and the auth API endpoints", () => {
+  it("covers /start, /closed, /login, the auth API endpoints and /api/health", () => {
     expect(OPEN_PATHS).toEqual([
       "/start",
       "/closed",
       "/login",
       "/api/auth/login",
       "/api/auth/logout",
+      "/api/health",
     ]);
   });
 
