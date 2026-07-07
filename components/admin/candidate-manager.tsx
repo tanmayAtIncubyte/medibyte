@@ -464,7 +464,9 @@ function StatusCell({
         >
           {label}
         </span>
-        <span className="text-xs text-muted-foreground">Attempt {attemptCount}</span>
+        <span className="inline-flex items-center rounded-full border border-border px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+          Attempt {attemptCount}
+        </span>
       </div>
       <span className="text-xs text-muted-foreground/80">
         {startedAt ? `Started ${formatDateTime(startedAt)}` : "Not started"}
@@ -474,21 +476,61 @@ function StatusCell({
 }
 
 function AttemptHistory({ attempts }: { attempts: Attempt[] }) {
+  const count = attempts.length;
+  const lastIndex = count - 1;
+
   return (
-    <details className="mt-1 text-xs text-muted-foreground/80">
-      <summary className="cursor-pointer select-none">
-        History ({attempts.length} attempts)
+    <details className="mt-1.5 text-xs">
+      <summary className="cursor-pointer select-none text-muted-foreground transition-colors hover:text-foreground">
+        History · {count} attempt{count === 1 ? "" : "s"}
       </summary>
-      <ul className="mt-1 space-y-0.5">
-        {attempts.map((attempt) => (
-          <li key={attempt.attempt}>
-            Attempt {attempt.attempt} · granted {formatDateTime(attempt.grantedAt)} ·
-            started {attempt.startedAt ? formatDateTime(attempt.startedAt) : "—"} ·
-            revoked {attempt.revokedAt ? formatDateTime(attempt.revokedAt) : "—"}
-          </li>
-        ))}
-      </ul>
+      <ol className="mt-2 space-y-3">
+        {attempts.map((attempt, index) => {
+          const chip = attempt.revokedAt
+            ? { label: "Revoked", cls: "bg-destructive/10 text-destructive" }
+            : index === lastIndex
+              ? { label: "Current", cls: "bg-primary/10 text-primary" }
+              : { label: "Ended", cls: "bg-muted text-muted-foreground" };
+          return (
+            <li key={attempt.attempt} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground">Attempt {attempt.attempt}</span>
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-1.5 py-px text-[10px] font-medium",
+                    chip.cls,
+                  )}
+                >
+                  {chip.label}
+                </span>
+              </div>
+              <div className="space-y-1 pl-0.5">
+                <TimelineRow tone="bg-muted-foreground/50" label="Granted" time={attempt.grantedAt} />
+                {attempt.startedAt && (
+                  <TimelineRow tone="bg-primary" label="Started" time={attempt.startedAt} />
+                )}
+                {attempt.revokedAt && (
+                  <TimelineRow tone="bg-destructive" label="Revoked" time={attempt.revokedAt} />
+                )}
+                {!attempt.startedAt && !attempt.revokedAt && (
+                  <p className="pl-3.5 text-muted-foreground/60 italic">Not started yet</p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </details>
+  );
+}
+
+function TimelineRow({ tone, label, time }: { tone: string; label: string; time: string }) {
+  return (
+    <div className="flex items-center gap-2 text-muted-foreground">
+      <span className={cn("inline-block size-1.5 shrink-0 rounded-full", tone)} />
+      <span className="w-14 shrink-0">{label}</span>
+      <span className="tabular-nums text-muted-foreground/90">{formatDateTime(time)}</span>
+    </div>
   );
 }
 
