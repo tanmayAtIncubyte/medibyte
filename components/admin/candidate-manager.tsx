@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, Copy, Loader2, Plus } from "lucide-react";
+import { Check, Copy, History, Loader2, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 // Reviewer console for time-boxed candidate access: mint a code, copy its
@@ -368,12 +369,7 @@ function CandidateRow({
       </td>
       <td className="px-4 py-3 align-top text-muted-foreground">{candidate.email}</td>
       <td className="px-4 py-3 align-top">
-        <StatusCell
-          displayStatus={displayStatus}
-          attemptCount={candidate.attempts.length}
-          startedAt={currentAttempt.startedAt}
-        />
-        <AttemptHistory attempts={candidate.attempts} />
+        <StatusCell displayStatus={displayStatus} attempts={candidate.attempts} />
       </td>
       <td className="px-4 py-3 align-top text-muted-foreground">
         <div>{formatDateTime(effectiveExpiresAt)}</div>
@@ -433,13 +429,13 @@ function CandidateRow({
 
 function StatusCell({
   displayStatus,
-  attemptCount,
-  startedAt,
+  attempts,
 }: {
   displayStatus: DisplayStatus;
-  attemptCount: number;
-  startedAt?: string;
+  attempts: Attempt[];
 }) {
+  const attemptCount = attempts.length;
+  const startedAt = attempts[attemptCount - 1]?.startedAt;
   const badgeClass =
     displayStatus === "active"
       ? "bg-primary/10 text-primary"
@@ -467,6 +463,7 @@ function StatusCell({
         <span className="inline-flex items-center rounded-full border border-border px-1.5 py-px text-[10px] font-medium text-muted-foreground">
           Attempt {attemptCount}
         </span>
+        <HistoryPopover attempts={attempts} />
       </div>
       <span className="text-xs text-muted-foreground/80">
         {startedAt ? `Started ${formatDateTime(startedAt)}` : "Not started"}
@@ -475,17 +472,39 @@ function StatusCell({
   );
 }
 
-function AttemptHistory({ attempts }: { attempts: Attempt[] }) {
+// ⓘ affordance: hover shows "View history"; click opens a card with the full
+// attempt timeline (matches the bug-reference ⓘ Popover pattern).
+function HistoryPopover({ attempts }: { attempts: Attempt[] }) {
+  const count = attempts.length;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title="View history"
+          aria-label={`View history — ${count} attempt${count === 1 ? "" : "s"}`}
+          className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+        >
+          <History className="size-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72">
+        <p className="mb-2.5 font-heading text-sm font-semibold text-foreground">
+          Access history · {count} attempt{count === 1 ? "" : "s"}
+        </p>
+        <AttemptTimeline attempts={attempts} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function AttemptTimeline({ attempts }: { attempts: Attempt[] }) {
   const count = attempts.length;
   const lastIndex = count - 1;
 
   return (
-    <details className="mt-1.5 text-xs">
-      <summary className="cursor-pointer select-none text-muted-foreground transition-colors hover:text-foreground">
-        History · {count} attempt{count === 1 ? "" : "s"}
-      </summary>
-      <ol className="mt-2 space-y-3">
-        {attempts.map((attempt, index) => {
+    <ol className="space-y-3 text-xs">
+      {attempts.map((attempt, index) => {
           const chip = attempt.revokedAt
             ? { label: "Revoked", cls: "bg-destructive/10 text-destructive" }
             : index === lastIndex
@@ -520,7 +539,6 @@ function AttemptHistory({ attempts }: { attempts: Attempt[] }) {
           );
         })}
       </ol>
-    </details>
   );
 }
 
