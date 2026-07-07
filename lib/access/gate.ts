@@ -12,6 +12,7 @@
  *                      SEC_CREDS_IN_URL bug drives a query-string login — the
  *                      pathname is the same either way)
  * - /api/auth/logout — always allow signing out
+ * - /api/health — unauthenticated config/health probe (booleans only)
  */
 export const OPEN_PATHS: readonly string[] = [
   "/start",
@@ -19,6 +20,7 @@ export const OPEN_PATHS: readonly string[] = [
   "/login",
   "/api/auth/login",
   "/api/auth/logout",
+  "/api/health",
 ];
 
 export type GateDecision = "pass" | "closed";
