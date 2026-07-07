@@ -742,13 +742,33 @@ expire. We use **Upstash Redis** (free tier is plenty).
 
 **One-time setup:**
 1. Create a free database at **console.upstash.com** (Redis → create database).
-2. Copy its **REST URL** and **REST token**.
-3. In the Vercel project → **Settings → Environment Variables**, add (Production +
-   Preview):
+2. Copy its **REST URL** and **REST token** (the `UPSTASH_REDIS_REST_*` pair — NOT
+   the `redis://…` connection string; the app uses the REST client).
+3. In the Vercel project → **Settings → Environment Variables**, add them with
+   **all environments** ticked (Production + Preview + Development):
    - `UPSTASH_REDIS_REST_URL`
    - `UPSTASH_REDIS_REST_TOKEN`
    - `SESSION_SECRET` — a long random string (signs the auth + access cookies).
-4. Redeploy.
+     Generate one with `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`.
+4. **Redeploy** (see the redeploy gotcha below).
+
+> ⚠️ **Two setup gotchas that look like "it's broken":**
+> - **No surrounding quotes.** Upstash's copy snippet shows `KEY="https://…"`. Paste
+>   only the **bare value** into Vercel (`https://…`), never the quotes. Quoted values
+>   pass the "is it set?" check but every Redis call then fails.
+> - **Editing an env var does NOT redeploy.** The running build keeps the old value
+>   until you trigger a **new deployment** (Deployments → ⋯ → Redeploy, or push a commit).
+
+**Verify a deployment picked everything up** — hit **`/api/health`** (public, booleans
+only, no secrets):
+```
+curl https://<your-app>/api/health
+# want: {"ok":true,"redisEnv":true,"sessionSecretSet":true,
+#        "urlStartsWithHttps":true,"urlHasQuotes":false,"redisOk":true,"redisError":null}
+```
+`redisOk:true` means reads/writes actually reach Redis. If `redisEnv` is false the vars
+aren't in that deployment (scope/redeploy); if `urlHasQuotes:true` you pasted the quotes;
+if `redisOk:false` with an error, the URL/token is wrong.
 
 **Behavior by environment:**
 - **Redis env present** (the deploy) → state persists in Redis; the access gate is
@@ -759,6 +779,10 @@ expire. We use **Upstash Redis** (free tier is plenty).
 
 No cron or cleanup job is needed — candidate namespaces carry a TTL and Redis
 evicts them when the window lapses.
+
+**Vercel note:** the deployed app must be publicly reachable (candidates aren't Vercel
+users), so leave **Deployment Protection → Vercel Authentication** off for the public
+instance — the app's own access gate is what secures it.
 
 ---
 
