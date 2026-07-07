@@ -382,14 +382,10 @@ function CandidateRow({
           {displayStatus === "active" ? (
             <>
               <div className="flex items-center gap-1.5">
-                <Input
-                  type="number"
-                  step={0.5}
-                  min={0.5}
+                <DaysField
                   value={extraDays}
-                  onChange={(event) => setExtraDays(event.target.value)}
-                  className="w-20"
-                  aria-label={`Extend days for ${candidate.name}`}
+                  onChange={setExtraDays}
+                  ariaLabel={`Extend by (days) for ${candidate.name}`}
                 />
                 <Button variant="outline" size="sm" onClick={extend} disabled={busy}>
                   Extend
@@ -403,14 +399,10 @@ function CandidateRow({
           ) : (
             <>
               <div className="flex items-center gap-1.5">
-                <Input
-                  type="number"
-                  step={0.5}
-                  min={0.5}
+                <DaysField
                   value={regrantDays}
-                  onChange={(event) => setRegrantDays(event.target.value)}
-                  className="w-20"
-                  aria-label={`Re-grant window for ${candidate.name}`}
+                  onChange={setRegrantDays}
+                  ariaLabel={`Re-grant window (days) for ${candidate.name}`}
                 />
                 <Button variant="outline" size="sm" onClick={regrant} disabled={busy}>
                   Re-grant
@@ -548,6 +540,35 @@ function TimelineRow({ tone, label, time }: { tone: string; label: string; time:
       <span className={cn("inline-block size-1.5 shrink-0 rounded-full", tone)} />
       <span className="w-14 shrink-0">{label}</span>
       <span className="tabular-nums text-muted-foreground/90">{formatDateTime(time)}</span>
+    </div>
+  );
+}
+
+// A days input with an inline "days" unit suffix, so the number's meaning is
+// explicit (supports fractional windows, e.g. 0.5 = 12h).
+function DaysField({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="relative">
+      <Input
+        type="number"
+        step={0.5}
+        min={0.5}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-24 pr-11"
+        aria-label={ariaLabel}
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-muted-foreground">
+        days
+      </span>
     </div>
   );
 }
