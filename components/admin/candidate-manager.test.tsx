@@ -133,6 +133,25 @@ describe("rendering", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("disables Extend for an invalid (negative/zero/out-of-range) days value", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ candidates: [activeCandidate] }));
+
+    render(<CandidateManager />);
+    await screen.findByText("Priya Sharma");
+
+    const input = screen.getByLabelText(/Extend by \(days\)/);
+    const extend = screen.getByRole("button", { name: "Extend" });
+    expect(extend).toBeEnabled(); // default 5 is valid
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "-6");
+    expect(extend).toBeDisabled();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "3");
+    expect(extend).toBeEnabled();
+  });
+
   it("shows a Started sub-line once the candidate has begun", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ candidates: [startedCandidate] }));
 

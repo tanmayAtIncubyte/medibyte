@@ -38,6 +38,16 @@ type DisplayStatus = "active" | "revoked" | "expired";
 
 const DEFAULT_WINDOW_DAYS = 10;
 const DEFAULT_EXTEND_DAYS = 5;
+const MIN_WINDOW_DAYS = 0.5;
+const MAX_WINDOW_DAYS = 60;
+
+// A window/extend amount is valid only as a positive number within range
+// (matches the server). Guards against typed negatives/zero — the input's
+// `min` attribute only constrains the spinner arrows, not typed values.
+function isValidDays(value: string): boolean {
+  const days = Number(value);
+  return Number.isFinite(days) && days >= MIN_WINDOW_DAYS && days <= MAX_WINDOW_DAYS;
+}
 
 type ListResult = { candidates: CandidateRecord[]; error: string | null };
 
@@ -295,21 +305,30 @@ function CandidateRow({
   onChanged: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const currentAttempt = currentAttemptOf(candidate);
   const effectiveExpiresAt = currentAttempt.expiresAt;
   const displayStatus = displayStatusOf(candidate);
 
   const [extraDays, setExtraDays] = useState(String(DEFAULT_EXTEND_DAYS));
   const [regrantDays, setRegrantDays] = useState(String(currentAttempt.windowDays));
+  const extendValid = isValidDays(extraDays);
+  const regrantValid = isValidDays(regrantDays);
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true);
+    setError(null);
     try {
-      await fetch(`/api/admin/candidates/${candidate.code}`, {
+      const response = await fetch(`/api/admin/candidates/${candidate.code}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "That action could not be completed.");
+        return;
+      }
       await onChanged();
     } finally {
       setBusy(false);
@@ -317,10 +336,16 @@ function CandidateRow({
   }
 
   async function extend() {
+    if (!extendValid) {
+      return;
+    }
     await patch({ action: "extend", extraDays: Number(extraDays) });
   }
 
   async function regrant() {
+    if (!regrantValid) {
+      return;
+    }
     await patch({ action: "regrant", windowDays: Number(regrantDays) });
   }
 
@@ -382,16 +407,18 @@ function CandidateRow({
           {displayStatus === "active" ? (
             <>
               <div className="flex items-center gap-1.5">
-                <Input
-                  type="number"
-                  step={0.5}
-                  min={0.5}
+                <DaysField
                   value={extraDays}
-                  onChange={(event) => setExtraDays(event.target.value)}
-                  className="w-20"
-                  aria-label={`Extend days for ${candidate.name}`}
+                  onChange={setExtraDays}
+                  invalid={!extendValid}
+                  ariaLabel={`Extend by (days) for ${candidate.name}`}
                 />
-                <Button variant="outline" size="sm" onClick={extend} disabled={busy}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={extend}
+                  disabled={busy || !extendValid}
+                >
                   Extend
                 </Button>
               </div>
@@ -403,16 +430,18 @@ function CandidateRow({
           ) : (
             <>
               <div className="flex items-center gap-1.5">
-                <Input
-                  type="number"
-                  step={0.5}
-                  min={0.5}
+                <DaysField
                   value={regrantDays}
-                  onChange={(event) => setRegrantDays(event.target.value)}
-                  className="w-20"
-                  aria-label={`Re-grant window for ${candidate.name}`}
+                  onChange={setRegrantDays}
+                  invalid={!regrantValid}
+                  ariaLabel={`Re-grant window (days) for ${candidate.name}`}
                 />
-                <Button variant="outline" size="sm" onClick={regrant} disabled={busy}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={regrant}
+                  disabled={busy || !regrantValid}
+                >
                   Re-grant
                 </Button>
               </div>
@@ -422,6 +451,11 @@ function CandidateRow({
             </>
           )}
         </div>
+        {error && (
+          <p role="alert" className="mt-1.5 text-right text-xs text-destructive">
+            {error}
+          </p>
+        )}
       </td>
     </tr>
   );
@@ -548,6 +582,47 @@ function TimelineRow({ tone, label, time }: { tone: string; label: string; time:
       <span className={cn("inline-block size-1.5 shrink-0 rounded-full", tone)} />
       <span className="w-14 shrink-0">{label}</span>
       <span className="tabular-nums text-muted-foreground/90">{formatDateTime(time)}</span>
+    </div>
+  );
+}
+
+// A days input with an inline "days" unit suffix, so the number's meaning is
+// explicit (supports fractional windows, e.g. 0.5 = 12h).
+function DaysField({
+  value,
+  onChange,
+  ariaLabel,
+  invalid = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+  invalid?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <Input
+        type="number"
+        step={0.5}
+        min={0.5}
+        max={60}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-invalid={invalid}
+        aria-label={ariaLabel}
+        className={cn(
+          "w-24 pr-11",
+          invalid && "border-destructive focus-visible:ring-destructive/40",
+        )}
+      />
+      <span
+        className={cn(
+          "pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs",
+          invalid ? "text-destructive" : "text-muted-foreground",
+        )}
+      >
+        days
+      </span>
     </div>
   );
 }
