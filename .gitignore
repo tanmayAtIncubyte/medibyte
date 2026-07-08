@@ -34,3 +34,9 @@ next-env.d.ts
 
 # editor swap files
 *.swp
+
+# Candidate submissions — PII, never commit
+/submissions/
+
+# Packaged assessor skill (regenerate with zip)
+assessor-skill/*.zip
