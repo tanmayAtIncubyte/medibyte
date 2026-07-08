@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { TestAppTile } from "@/components/layout/test-app-tile";
 import { brand } from "@/lib/brand";
 import "./globals.css";
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         <SiteHeader />
         {children}
         <SiteFooter />
+        <TestAppTile />
       </body>
     </html>
   );
