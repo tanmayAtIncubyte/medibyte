@@ -60,9 +60,6 @@ flows have content to work with.
 | `dana@example.test`  | `dana1234` |
 | `omar@example.test`  | `omar1234` |
 
-You may also **register a brand-new account** at `/register` and test as a fresh
-customer if you prefer.
-
 ### Promo codes
 
 These promo codes can be applied in the cart while you test. They are provided as
@@ -76,21 +73,5 @@ test data — use them to exercise the discount and checkout flows.
 | `MEGA50`     | $50 off your order      | none          |                             |
 | `SPRING2023` | 20% off (spring promo)  | none          | expired on 2023-05-31       |
 
-## How to report a defect
-
-A good bug report lets your reviewer reproduce the issue without guessing. For
-each defect, include:
-
-- **Title** — a short, specific summary.
-- **Area** — functional / accessibility / performance / security / UI / UX.
-- **Steps to reproduce** — numbered, starting from a known state (e.g. "signed in
-  as `dana@example.test`, on `/cart` with 2 items").
-- **Expected result** — what a correct app should do.
-- **Actual result** — what actually happens (include the on-screen value, the
-  Network request/response, the console error, or the a11y finding that shows
-  it).
-- **Evidence** — a screenshot, a copied value, or the relevant Network entry
-  where it helps.
-
-Quality and clarity matter more than raw count. A few well-documented,
-reproducible reports are worth more than a long list of vague ones.
+Document what you find and how you'd verify it in whatever form best shows your
+thinking — the quality and clarity of your write-up is part of what we assess.

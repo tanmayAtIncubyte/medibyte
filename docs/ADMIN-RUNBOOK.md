@@ -15,13 +15,14 @@
 ## 1. Purpose
 
 MediByte is a deliberately-buggy pharmacy storefront used to assess QA candidates.
-Every defect is a **toggleable flag**:
+Every defect is a **flag**:
 
-- The **admin** always sees the **clean, correct app** plus a **bug-control panel**.
-- A **customer** sees a bug **only when that bug's flag is turned ON**.
+- The **admin** always sees the **clean, correct app** plus a read-only **bug reference**.
+- A **customer** sees a bug **only when that bug's flag is ON** (the deploy runs with all 45 ON).
 
-You (the reviewer) pick a set of flags to enable, hand the candidate a URL + brief,
-and grade what they find against this runbook and the live admin reference.
+You (the reviewer) set which flags are on in `data/bug-flags.json`, hand the
+candidate a **time-boxed access link** + brief, and grade what they find against
+this runbook and the live admin reference.
 
 The canonical list of flags lives in `lib/bug-registry.ts`; per-bug repro detail
 lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
@@ -37,8 +38,11 @@ lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
 | Customer (test) | `dana@example.test` | `dana1234` | Bugs whose flags are ON |
 | Customer (test) | `omar@example.test` | `omar1234` | Bugs whose flags are ON |
 
-Candidates **self-register** their own customer accounts; the two seeded customers
-above are for your own verification.
+Candidates sign in with a seeded customer login (given in their brief) — each
+candidate's `/start` link isolates their state, so sharing a seeded login across
+candidates is safe. Self-registration is hidden from the UI (the `/register`
+route + code are kept for future use). The seeded customers are also for your
+own verification.
 
 ### The bug reference (`/admin`)
 - Log in as admin and go to **`/admin`**.
@@ -125,7 +129,8 @@ deployed instance, edit the file, commit, and redeploy.
    brief (the brief is candidate-facing and must NOT reference flags, keys, or this
    runbook — describe the app and the task only). On local dev (no Redis) just share
    the URL — no link needed.
-4. Candidate opens the link, **self-registers** a customer account, and works the app.
+4. Candidate opens the link and signs in with the seeded customer login (the
+   self-register link is hidden), then works the app.
 5. **Grade** their bug reports against this runbook + the answer key, using your own
    **admin login as the live "correct" reference** (clean app side-by-side).
 6. When done, **Revoke** the link (or let it expire).
