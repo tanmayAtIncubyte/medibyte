@@ -28,7 +28,7 @@ import { signSession, type SessionPayload } from "@/lib/auth/session";
 // fixture is resolved in beforeAll rather than at module load.
 let adminUser: SessionUser;
 beforeAll(async () => {
-  adminUser = (await authenticate("admin@medibyte.test", "admin1234"))!;
+  adminUser = (await authenticate("admin@medibyte.test", "admin.incu123"))!;
 });
 
 function setCookieValue(value: string | undefined): void {

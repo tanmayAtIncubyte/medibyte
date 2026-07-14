@@ -38,7 +38,7 @@ describe("POST /api/auth/login", () => {
     const response = await login(
       jsonRequest("http://localhost/api/auth/login", {
         email: "admin@medibyte.test",
-        password: "admin1234",
+        password: "admin.incu123",
       }),
     );
 

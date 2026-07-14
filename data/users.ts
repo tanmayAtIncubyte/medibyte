@@ -12,13 +12,13 @@ export type SeedUser = {
 // acceptable for this assessment app. Auth itself stays clean; security bugs
 // are introduced behind the toggle infrastructure in Phase 4.
 //
-// Fixed admin login for reviewers: admin@medibyte.test / admin1234
+// Fixed admin login for reviewers: admin@medibyte.test / admin.incu123
 export const users: readonly SeedUser[] = [
   {
     id: "user-admin",
     name: "MediByte Admin",
     email: "admin@medibyte.test",
-    password: "admin1234",
+    password: "admin.incu123",
     role: "admin",
   },
   {

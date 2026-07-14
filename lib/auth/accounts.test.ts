@@ -5,9 +5,11 @@ import {
   registerCustomer,
   sessionUserFromPayload,
   toSessionPayload,
+  ADMIN_PASSWORD_KEY,
   DuplicateEmailError,
 } from "@/lib/auth/accounts";
 import { resetRegistrations } from "@/lib/data/registrations";
+import { backend } from "@/lib/data/backend";
 
 // Slice 4 — account logic over the seed users plus stored registrations.
 // AC 1/2: valid seed credentials authenticate with the correct role.
@@ -16,17 +18,35 @@ import { resetRegistrations } from "@/lib/data/registrations";
 //        rejected (a stale/forged claim cannot impersonate a user).
 // AC 10: registration creates a customer-role account; duplicates are rejected.
 
-// Registrations live in the KV-backed store; isolate every test.
+// Registrations live in the KV-backed store; isolate every test. The admin
+// password override also lives in the KV store — clear it between tests.
 afterEach(async () => {
   await resetRegistrations();
+  await backend().del(ADMIN_PASSWORD_KEY);
 });
 
 describe("authenticate", () => {
   it("returns an admin-role user for valid admin credentials", async () => {
-    const user = await authenticate("admin@medibyte.test", "admin1234");
+    const user = await authenticate("admin@medibyte.test", "admin.incu123");
 
     expect(user?.role).toBe("admin");
     expect(user?.email).toBe("admin@medibyte.test");
+  });
+
+  it("uses the seed default admin password when no override is stored", async () => {
+    expect(await authenticate("admin@medibyte.test", "admin.incu123")).not.toBeNull();
+    expect(await authenticate("admin@medibyte.test", "admin1234")).toBeNull();
+  });
+
+  it("honors an admin:password override from the KV store (rotate without a code change)", async () => {
+    await backend().set(ADMIN_PASSWORD_KEY, "rotated.pw.999");
+
+    // the override wins…
+    expect(await authenticate("admin@medibyte.test", "rotated.pw.999")).not.toBeNull();
+    // …and the old default no longer works
+    expect(await authenticate("admin@medibyte.test", "admin.incu123")).toBeNull();
+    // the override is admin-only; customers are unaffected
+    expect(await authenticate("dana@example.test", "dana1234")).not.toBeNull();
   });
 
   it("returns a customer-role user for valid customer credentials", async () => {
@@ -131,7 +151,7 @@ describe("sessionUserFromPayload (impersonation guard)", () => {
 
 describe("toSessionPayload", () => {
   it("carries only id, email, and role (never the name or password)", async () => {
-    const user = (await authenticate("admin@medibyte.test", "admin1234"))!;
+    const user = (await authenticate("admin@medibyte.test", "admin.incu123"))!;
 
     expect(toSessionPayload(user)).toEqual({
       userId: "user-admin",

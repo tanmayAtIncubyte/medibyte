@@ -5,6 +5,26 @@ import {
   findRegisteredByEmail,
 } from "@/lib/data/registrations";
 import type { SessionPayload } from "@/lib/auth/session";
+import { backend } from "@/lib/data/backend";
+
+// The admin password can be rotated WITHOUT a code change: it's resolved at
+// login from the `admin:password` key in the KV store (Redis on the deploy),
+// then the ADMIN_PASSWORD env var, then the seed default in data/users.ts.
+// Only the admin account uses this override; customer passwords stay in the
+// seed / registration store.
+export const ADMIN_PASSWORD_KEY = "admin:password";
+
+async function resolveAdminPassword(seedPassword: string): Promise<string> {
+  const fromDb = await backend().get<string>(ADMIN_PASSWORD_KEY);
+  if (typeof fromDb === "string" && fromDb.length > 0) {
+    return fromDb;
+  }
+  const fromEnv = process.env.ADMIN_PASSWORD;
+  if (fromEnv && fromEnv.length > 0) {
+    return fromEnv;
+  }
+  return seedPassword;
+}
 
 // The shape server code consumes — never includes the password.
 export type SessionUser = {
@@ -43,7 +63,14 @@ export async function authenticate(
   password: string,
 ): Promise<SessionUser | null> {
   const account = await findAccountByEmail(email);
-  if (!account || account.password !== password) {
+  if (!account) {
+    return null;
+  }
+  const expected =
+    account.role === "admin"
+      ? await resolveAdminPassword(account.password)
+      : account.password;
+  if (expected !== password) {
     return null;
   }
   return toSessionUser(account);
