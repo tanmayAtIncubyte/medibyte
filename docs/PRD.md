@@ -1,5 +1,12 @@
 # PRD: MediByte — A Deliberately-Buggy Pharmacy Store for Candidate Assessment
 
+> **Note (historical planning doc).** This PRD captures the original plan. Two
+> things evolved since: (1) the runtime admin *toggle* panel was replaced by a
+> read-only bug reference — the active flag set is edited in `data/bug-flags.json`
+> and redeployed (deploy profile = all 45 ON); (2) runtime state is Redis-backed
+> on the deploy (persists), not in-memory-only. See `docs/ADMIN-RUNBOOK.md` and
+> `docs/ACCESS-CONTROL.md` for current behavior.
+
 ## Overview & Problem
 
 We hire QA and developer candidates and need a reliable way to judge whether they can actually *find* problems in software. Our current take-home assessments (a salary-management build exercise and a "test craftsperson" exercise) no longer give us that signal. Because candidates lean on AI tools, submissions have converged: the test cases all look the same, generic and templated, and we cannot tell who has genuine testing instinct from who pasted a prompt.
