@@ -35,7 +35,7 @@ npm run build
 Local dev needs **no environment variables**: it uses the in-memory store and the
 candidate-access gate is disabled (open the app directly).
 
-Seeded logins (local): admin `admin@medibyte.test` / `admin1234`;
+Seeded logins (local): admin `admin@medibyte.test` / `admin.incu123`;
 customers `dana@example.test` / `dana1234`, `omar@example.test` / `omar1234`.
 
 ## Deploy

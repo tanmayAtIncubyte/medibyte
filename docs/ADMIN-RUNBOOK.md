@@ -34,7 +34,7 @@ lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
 ### Logins
 | Role | Email | Password | Sees |
 |---|---|---|---|
-| Admin / reviewer | `admin@medibyte.test` | `admin1234` | Clean app + bug-control panel at `/admin` |
+| Admin / reviewer | `admin@medibyte.test` | `admin.incu123` | Clean app + bug-control panel at `/admin` |
 | Customer (test) | `dana@example.test` | `dana1234` | Bugs whose flags are ON |
 | Customer (test) | `omar@example.test` | `omar1234` | Bugs whose flags are ON |
 

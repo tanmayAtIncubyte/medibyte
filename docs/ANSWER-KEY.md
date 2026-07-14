@@ -2,7 +2,7 @@
 
 > ⚠️ **PRIVATE — reviewer only.** Never share with candidates. Lists every seeded bug, how to trigger it, and the expected-vs-actual behavior. This is server-side/internal only — it is not part of any candidate-facing build. The canonical source is `lib/bug-registry.ts`; this doc adds repro detail.
 
-The committed deploy profile in `data/bug-flags.json` has **all 45 flags ON** — every candidate faces the full set. To change the active set, edit `data/bug-flags.json` and redeploy; there is **no live toggle** (`/admin` is a read-only bug reference). Admin login: `admin@medibyte.test` / `admin1234`. **Admin always sees correct behavior**; bugs only manifest for customer logins (`dana@example.test` / `dana1234`, `omar@example.test` / `omar1234`).
+The committed deploy profile in `data/bug-flags.json` has **all 45 flags ON** — every candidate faces the full set. To change the active set, edit `data/bug-flags.json` and redeploy; there is **no live toggle** (`/admin` is a read-only bug reference). Admin login: `admin@medibyte.test` / `admin.incu123`. **Admin always sees correct behavior**; bugs only manifest for customer logins (`dana@example.test` / `dana1234`, `omar@example.test` / `omar1234`).
 
 Entry format:
 ```
