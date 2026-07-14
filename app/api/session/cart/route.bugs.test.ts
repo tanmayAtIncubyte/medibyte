@@ -37,7 +37,7 @@ let CUSTOMER_COOKIE: string;
 let ADMIN_COOKIE: string;
 beforeAll(async () => {
   CUSTOMER_COOKIE = await sessionCookie("dana@example.test", "dana1234");
-  ADMIN_COOKIE = await sessionCookie("admin@medibyte.test", "admin1234");
+  ADMIN_COOKIE = await sessionCookie("admin@medibyte.test", "admin.incu123");
 });
 
 function request(
