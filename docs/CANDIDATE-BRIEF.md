@@ -25,10 +25,7 @@ Pharmacies sell two kinds of product, and the distinction matters as you test:
   prescription exists, and it handles the associated patient/health information
   as sensitive data.
 
-The catalog labels which products are OTC and which are Rx. As a tester, it is
-worth asking whether each type is presented and handled in a way that makes sense
-for what it is — the difference above is the real-world expectation to measure the
-app against.
+Every product in the catalog is labelled as either OTC or Rx.
 
 Your reviewer will send you a **personal access link** (it looks like
 `https://…/start?code=…`). Open it once to begin — it gives you access to the app
