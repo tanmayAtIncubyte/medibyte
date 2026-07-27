@@ -48,6 +48,43 @@ describe("validateAddress", () => {
     expect(errors).toHaveProperty("address.label");
     expect(errors).toHaveProperty("shipping.street");
   });
+
+  it("rejects a non-numeric US postal code but accepts a valid ZIP / ZIP+4", () => {
+    expect(validateAddress({ ...newAddress, postalCode: "abcde" })).toHaveProperty(
+      "shipping.postalCode",
+    );
+    expect(validateAddress({ ...newAddress, postalCode: "9720" })).toHaveProperty(
+      "shipping.postalCode",
+    );
+    expect(validateAddress({ ...newAddress, postalCode: "97204" })).not.toHaveProperty(
+      "shipping.postalCode",
+    );
+    expect(
+      validateAddress({ ...newAddress, postalCode: "97204-1234" }),
+    ).not.toHaveProperty("shipping.postalCode");
+  });
+
+  it("allows alphanumeric postal codes for non-US countries", () => {
+    expect(
+      validateAddress({ ...newAddress, country: "UK", postalCode: "SW1A 1AA" }),
+    ).not.toHaveProperty("shipping.postalCode");
+  });
+
+  it("rejects a full name with digits and does not double up with the required error", () => {
+    expect(validateAddress({ ...newAddress, fullName: "Dana123" })).toHaveProperty(
+      "shipping.fullName",
+    );
+    // blank name → only the required error, never a format error
+    expect(validateAddress({ ...newAddress, fullName: "" })["shipping.fullName"]).toBe(
+      "Full name is required.",
+    );
+  });
+
+  it("rejects an over-long label", () => {
+    expect(
+      validateAddress({ ...newAddress, label: "x".repeat(41) }),
+    ).toHaveProperty("address.label");
+  });
 });
 
 describe("saveAddress", () => {
@@ -107,6 +144,29 @@ describe("validateInsurance / saveInsurance (PHI)", () => {
 
   it("rejects incomplete insurance", () => {
     expect(saveInsurance(state(), { provider: "Aetna" }).ok).toBe(false);
+  });
+
+  it("rejects a member id / group number with illegal characters", () => {
+    expect(
+      validateInsurance({ provider: "Aetna", memberId: "bad id!", groupNumber: "G-9" }),
+    ).toHaveProperty("insurance.memberId");
+    expect(
+      validateInsurance({ provider: "Aetna", memberId: "A-9", groupNumber: "??" }),
+    ).toHaveProperty("insurance.groupNumber");
+  });
+
+  it("accepts identifier-like member id / group number (letters, digits, hyphens)", () => {
+    expect(
+      validateInsurance({ provider: "Aetna", memberId: "BCBS-4471209", groupNumber: "GRP-88210" }),
+    ).toEqual({});
+  });
+
+  it("keeps exactly the three required-field errors for empty insurance (no format noise)", () => {
+    expect(Object.keys(validateInsurance({}))).toEqual([
+      "insurance.provider",
+      "insurance.memberId",
+      "insurance.groupNumber",
+    ]);
   });
 });
 

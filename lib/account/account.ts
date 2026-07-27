@@ -25,12 +25,53 @@ export type AddressResult =
   | { ok: true; state: AccountState }
   | { ok: false; errors: FieldErrors };
 
-/** Validates an address input — label plus all shipping fields are required. */
+// Account-scoped format rules. These live HERE (not in the shared
+// `validateShipping`) on purpose: checkout must keep its seeded postal behavior
+// (FN_POSTAL_UNVALIDATED) untouched, so the stricter format checks apply only to
+// account address edits. Each check runs only when the field is non-blank — the
+// required-field errors from `validateShipping` already cover empties, so we
+// never stack a "required" and a "format" error on the same field.
+const NAME_RE = /^[\p{L}][\p{L} .'-]*$/u; // letters (any script), space . ' -
+const US_ZIP_RE = /^\d{5}(-\d{4})?$/;
+const INTL_POSTAL_RE = /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/;
+const MAX_LABEL = 40;
+
+function isUsCountry(country: string): boolean {
+  const c = country.trim().toUpperCase();
+  return c === "" || c === "USA" || c === "US" || c === "UNITED STATES";
+}
+
+/**
+ * Validates an address input — label plus all shipping fields are required
+ * (via `validateShipping`), and, additionally, name / postal-code FORMAT are
+ * checked (account-only; see the note on the format constants above).
+ */
 export function validateAddress(input: AddressInput): FieldErrors {
   const errors = validateShipping(input);
-  if (!input.label || input.label.trim().length === 0) {
+
+  const label = (input.label ?? "").trim();
+  if (label.length === 0) {
     errors["address.label"] = "Label is required.";
+  } else if (label.length > MAX_LABEL) {
+    errors["address.label"] = `Label must be ${MAX_LABEL} characters or fewer.`;
   }
+
+  const fullName = (input.fullName ?? "").trim();
+  if (fullName && !NAME_RE.test(fullName)) {
+    errors["shipping.fullName"] = "Enter a valid name (letters, spaces, . ' - only).";
+  }
+
+  const postalCode = (input.postalCode ?? "").trim();
+  if (postalCode && !errors["shipping.postalCode"]) {
+    if (isUsCountry(input.country ?? "")) {
+      if (!US_ZIP_RE.test(postalCode)) {
+        errors["shipping.postalCode"] = "Enter a valid US ZIP code (e.g. 97201 or 97201-1234).";
+      }
+    } else if (!INTL_POSTAL_RE.test(postalCode)) {
+      errors["shipping.postalCode"] = "Enter a valid postal code.";
+    }
+  }
+
   return errors;
 }
 
@@ -93,7 +134,14 @@ const INSURANCE_FIELDS: { key: keyof InsuranceInfo; label: string }[] = [
   { key: "groupNumber", label: "Group number" },
 ];
 
-/** Validates insurance — all three fields required. */
+// Member ID / group number are identifier-like: letters, digits and hyphens,
+// at least 3 chars. Provider is free text (name-like) and stays required-only.
+const INSURANCE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9-]{2,}$/;
+
+/**
+ * Validates insurance — all three fields required, plus a format check on the
+ * member ID and group number so obvious garbage is rejected.
+ */
 export function validateInsurance(input: InsuranceInput): FieldErrors {
   const errors: FieldErrors = {};
   for (const { key, label } of INSURANCE_FIELDS) {
@@ -102,6 +150,15 @@ export function validateInsurance(input: InsuranceInput): FieldErrors {
       errors[`insurance.${key}`] = `${label} is required.`;
     }
   }
+
+  for (const key of ["memberId", "groupNumber"] as const) {
+    const value = (input[key] ?? "").trim();
+    if (value && !errors[`insurance.${key}`] && !INSURANCE_ID_RE.test(value)) {
+      const label = key === "memberId" ? "Member ID" : "Group number";
+      errors[`insurance.${key}`] = `${label} may use letters, numbers, and hyphens.`;
+    }
+  }
+
   return errors;
 }
 
