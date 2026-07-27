@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  clearInsurance,
+  removeAddress,
   saveAddress,
   saveInsurance,
   validateAddress,
@@ -105,5 +107,35 @@ describe("validateInsurance / saveInsurance (PHI)", () => {
 
   it("rejects incomplete insurance", () => {
     expect(saveInsurance(state(), { provider: "Aetna" }).ok).toBe(false);
+  });
+});
+
+describe("removeAddress", () => {
+  it("removes the matching address without mutating the input state", () => {
+    const before = state();
+    const next = removeAddress(before, "addr-home");
+    expect(next.addresses).toHaveLength(0);
+    expect(before.addresses).toHaveLength(1); // unchanged
+  });
+
+  it("is a no-op for an unknown id (idempotent)", () => {
+    const next = removeAddress(state(), "addr-does-not-exist");
+    expect(next.addresses).toHaveLength(1);
+  });
+
+  it("leaves other addresses intact", () => {
+    const two = saveAddress(state(), newAddress, 2);
+    if (!two.ok) throw new Error("setup failed");
+    const next = removeAddress(two.state, "addr-home");
+    expect(next.addresses.map((a) => a.id)).toEqual(["addr-2"]);
+  });
+});
+
+describe("clearInsurance (PHI)", () => {
+  it("blanks all insurance fields without running required-field validation", () => {
+    const before = state();
+    const next = clearInsurance(before);
+    expect(next.insurance).toEqual({ provider: "", memberId: "", groupNumber: "" });
+    expect(before.insurance.provider).toBe("BCBS"); // unchanged
   });
 });

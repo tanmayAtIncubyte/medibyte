@@ -69,6 +69,18 @@ export function saveAddress(
   return { ok: true, state: { ...state, addresses } };
 }
 
+/**
+ * Removes a saved address by id, returning a NEW state. A no-op (returns an
+ * equivalent new state) if the id isn't present — deleting an absent address is
+ * idempotent, not an error.
+ */
+export function removeAddress(state: AccountState, addressId: string): AccountState {
+  return {
+    ...state,
+    addresses: state.addresses.filter((address) => address.id !== addressId),
+  };
+}
+
 export type InsuranceInput = Partial<InsuranceInfo>;
 
 export type InsuranceResult =
@@ -91,6 +103,18 @@ export function validateInsurance(input: InsuranceInput): FieldErrors {
     }
   }
   return errors;
+}
+
+/**
+ * Clears insurance (PHI) back to empty, returning a NEW state. This is a
+ * deliberate "remove" action, so — unlike `saveInsurance` — it does NOT run the
+ * all-fields-required validation; blank is the intended result.
+ */
+export function clearInsurance(state: AccountState): AccountState {
+  return {
+    ...state,
+    insurance: { provider: "", memberId: "", groupNumber: "" },
+  };
 }
 
 /** Updates insurance (PHI). Returns a new account state on success. */

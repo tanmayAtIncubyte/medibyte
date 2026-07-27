@@ -3,7 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isBugActive } from "@/lib/bugs";
 import {
+  deleteAddress,
   readAccountForApi,
+  removeInsurance,
   updateAddress,
   updateInsurance,
 } from "@/lib/account/account-service";
@@ -36,12 +38,24 @@ export async function PATCH(request: NextRequest) {
 
   const body = (await request.json()) as
     | { kind: "address"; address: Record<string, string> }
-    | { kind: "insurance"; insurance: Record<string, string> };
+    | { kind: "insurance"; insurance: Record<string, string> }
+    | { kind: "deleteAddress"; addressId: string }
+    | { kind: "clearInsurance" };
 
-  const result =
-    body.kind === "insurance"
-      ? await updateInsurance(user.id, body.insurance ?? {})
-      : await updateAddress(user.id, body.address ?? {});
+  let result;
+  switch (body.kind) {
+    case "insurance":
+      result = await updateInsurance(user.id, body.insurance ?? {});
+      break;
+    case "deleteAddress":
+      result = await deleteAddress(user.id, String(body.addressId ?? ""));
+      break;
+    case "clearInsurance":
+      result = await removeInsurance(user.id);
+      break;
+    default:
+      result = await updateAddress(user.id, body.address ?? {});
+  }
 
   if (!result.ok) {
     return NextResponse.json(

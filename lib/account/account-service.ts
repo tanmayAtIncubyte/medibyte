@@ -4,6 +4,8 @@ import {
   setAccountState,
 } from "@/lib/data/account-store";
 import {
+  clearInsurance,
+  removeAddress,
   saveAddress,
   saveInsurance,
   type AddressInput,
@@ -97,4 +99,23 @@ export async function updateInsurance(
   }
   await setAccountState(userId, result.state);
   return { ok: true, state: result.state };
+}
+
+// Delete a saved address (PII). Owner resolved from the session by the caller;
+// the client never supplies a userId, so this can only ever affect the signed-in
+// user's own addresses. Idempotent — deleting an unknown id succeeds as a no-op.
+export async function deleteAddress(
+  userId: string,
+  addressId: string,
+): Promise<AccountUpdateResult> {
+  const state = removeAddress(await getAccountState(userId), addressId);
+  await setAccountState(userId, state);
+  return { ok: true, state };
+}
+
+// Clear insurance (PHI) back to empty. Same own-account-only guarantee as above.
+export async function removeInsurance(userId: string): Promise<AccountUpdateResult> {
+  const state = clearInsurance(await getAccountState(userId));
+  await setAccountState(userId, state);
+  return { ok: true, state };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Pencil, Plus, ShieldPlus } from "lucide-react";
+import { MapPin, Pencil, Plus, ShieldPlus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,34 @@ export function AccountManager({
     };
     return { ok: res.ok, account: data.account, errors: data.errors };
   }
+
+  async function handleDeleteAddress(address: SavedAddress) {
+    if (!window.confirm(`Remove the “${address.label}” address?`)) {
+      return;
+    }
+    const result = await patchAccount({ kind: "deleteAddress", addressId: address.id });
+    if (result.ok && result.account) {
+      setAddresses(result.account.addresses);
+      if (editingAddressId === address.id) {
+        setEditingAddressId(null);
+      }
+    }
+  }
+
+  async function handleRemoveInsurance() {
+    if (!window.confirm("Remove your insurance details?")) {
+      return;
+    }
+    const result = await patchAccount({ kind: "clearInsurance" });
+    if (result.ok && result.account) {
+      setInsurance(result.account.insurance);
+      setEditingInsurance(false);
+    }
+  }
+
+  const hasInsurance = Boolean(
+    insurance.provider || insurance.memberId || insurance.groupNumber,
+  );
 
   return (
     <>
@@ -109,16 +137,29 @@ export function AccountManager({
                     {address.country}
                   </address>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditingAddressId(address.id)}
-                  aria-label={`Edit ${address.label} address`}
-                >
-                  <Pencil aria-hidden className="size-4" />
-                  Edit
-                </Button>
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingAddressId(address.id)}
+                    aria-label={`Edit ${address.label} address`}
+                  >
+                    <Pencil aria-hidden className="size-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteAddress(address)}
+                    aria-label={`Delete ${address.label} address`}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 aria-hidden className="size-4" />
+                    Delete
+                  </Button>
+                </div>
               </div>
             ),
           )}
@@ -148,15 +189,30 @@ export function AccountManager({
             <h2 className="font-heading text-lg font-semibold text-foreground">Insurance</h2>
           </div>
           {!editingInsurance && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setEditingInsurance(true)}
-            >
-              <Pencil aria-hidden className="size-4" />
-              Edit
-            </Button>
+            <div className="flex shrink-0 gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingInsurance(true)}
+              >
+                <Pencil aria-hidden className="size-4" />
+                Edit
+              </Button>
+              {hasInsurance && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveInsurance}
+                  aria-label="Remove insurance details"
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 aria-hidden className="size-4" />
+                  Remove
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
