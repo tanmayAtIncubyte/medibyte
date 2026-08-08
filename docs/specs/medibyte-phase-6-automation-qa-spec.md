@@ -60,13 +60,13 @@ Defines the 3 assignment flows, all reachable from Steve's single login (no self
 
 ---
 
-### Slice 4: Tiered candidate assignment briefs [ ]
+### Slice 4: Tiered candidate assignment briefs [x]
 Three new candidate-facing docs, one per flow/tier, matching `docs/CANDIDATE-BRIEF.md`'s tone and structure.
 
-- [ ] `docs/automation-qa/assignment-easy.md` (1-3y, Flow 1), `docs/automation-qa/assignment-medium.md` (4-6y, Flow 2), `docs/automation-qa/assignment-hard.md` (6+y, Flow 3) each exist
-- [ ] Each brief includes: app description, the one assigned flow (described candidate-facing, not by internal flow/tier name), Steve's login credentials, and requirements — BDD required, tool choice free (Selenium/Playwright/Cypress preferred), a test-reporting setup required, and explicit "must run on any machine" setup/run instructions with no machine-specific paths or credentials baked in
-- [ ] None of the three briefs reference bug flags, keys, the runbook, or the answer key (matches the existing candidate brief's rule)
-- [ ] Each brief's structure (disclaimer, about-the-app, task, test data, submission expectations) mirrors `docs/CANDIDATE-BRIEF.md`'s section order
+- [x] `docs/automation-qa/assignment-easy.md` (1-3y, Flow 1), `docs/automation-qa/assignment-medium.md` (4-6y, Flow 2), `docs/automation-qa/assignment-hard.md` (6+y, Flow 3) each exist
+- [x] Each brief includes: app description, the one assigned flow (described candidate-facing, not by internal flow/tier name), Steve's login credentials, and requirements — BDD required, tool choice free (Selenium/Playwright/Cypress preferred), a test-reporting setup required, and explicit "must run on any machine" setup/run instructions with no machine-specific paths or credentials baked in
+- [x] None of the three briefs reference bug flags, keys, the runbook, or the answer key (matches the existing candidate brief's rule)
+- [x] Each brief's structure (disclaimer, about-the-app, task, test data, submission expectations) mirrors `docs/CANDIDATE-BRIEF.md`'s section order
 
 ---
 
