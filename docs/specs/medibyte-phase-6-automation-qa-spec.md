@@ -47,16 +47,16 @@ Removes guessable, hand-authored `id`s and the `htmlFor`/`id` pairs that expose 
 
 ---
 
-### Slice 3: Flow definitions, test-case catalog & seed data [ ]
+### Slice 3: Flow definitions, test-case catalog & seed data [x]
 Defines the 3 assignment flows, all reachable from Steve's single login (no self-registration for this track), each mapped to a years-of-experience tier and matching Slice 2's difficulty tiers.
 
-- [ ] A new doc `docs/automation-qa/flows-and-test-cases.md` exists, enumerating:
+- [x] A new doc `docs/automation-qa/flows-and-test-cases.md` exists, enumerating:
   - **Flow 1 — Discovery & Purchase (Tier 1 / 1-3y):** log in as Steve → search/filter/sort the product catalog → open a product detail page → add to cart → verify cart contents/total. 3-5 test cases (e.g. search returns matching results, filter narrows results, add-to-cart updates the cart badge, cart total matches line items).
   - **Flow 2 — Cart & Coupon Management (Tier 2 / 4-6y):** from a multi-line cart → adjust quantities and remove a line via duplicate-named controls → apply, replace, and remove a coupon → confirm recalculated totals → submit the checkout shipping/prescription form. 5-7 test cases (duplicate-control scoping, coupon apply/replace/remove, async total recalculation, pending-state submit button).
   - **Flow 3 — Account & Order-History Verification (Tier 3 / 6+y):** update address + insurance on `/account` → place an order (chained from Flow 2's cart) → open the order's detail page from `/orders` → cross-verify shipping/insurance data matches what was entered on `/account` and at checkout. 5-7 test cases (nested/positional disambiguation, cross-page data consistency, list-to-detail navigation).
-- [ ] Each flow's test cases are concrete enough to automate (named preconditions, steps, expected result) without referencing internal bug flags, keys, or the runbook
-- [ ] Steve's seed data (from Slice 1) is sufficient to complete Flow 3 end-to-end (existing address/insurance to update, existing order history to cross-verify against)
-- [ ] Manual walkthrough of all 3 flows as Steve confirms each is completable exactly as written
+- [x] Each flow's test cases are concrete enough to automate (named preconditions, steps, expected result) without referencing internal bug flags, keys, or the runbook
+- [x] Steve's seed data (from Slice 1) is sufficient to complete Flow 3 end-to-end (existing address/insurance to update, existing order history to cross-verify against)
+- [x] Manual walkthrough of all 3 flows as Steve confirms each is completable exactly as written
 
 ---
 
