@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Tag, X } from "lucide-react";
 
@@ -30,6 +30,7 @@ export function CouponForm({
   noLabel?: boolean;
 }) {
   const router = useRouter();
+  const errorId = useId();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -82,30 +83,37 @@ export function CouponForm({
     );
   }
 
+  const codeField = (
+    <div className="flex gap-2">
+      <Input
+        name="code"
+        value={code}
+        onChange={(event) => setCode(event.target.value)}
+        placeholder="e.g. SAVE10"
+        autoComplete="off"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+      />
+      <Button type="submit" variant="outline" disabled={pending || !code.trim()}>
+        Apply
+      </Button>
+    </div>
+  );
+
   return (
     <form onSubmit={apply} className="space-y-2" noValidate>
-      {!noLabel && (
-        <label htmlFor="coupon-code" className="block text-sm font-medium text-foreground">
+      {/* Tier 1 (locator-hardening): implicit label-wrapping when noLabel is false; the
+          aria-describedby link uses useId() instead of a guessable literal string. */}
+      {noLabel ? (
+        codeField
+      ) : (
+        <label className="block text-sm font-medium text-foreground">
           Coupon code
+          <div className="mt-1.5">{codeField}</div>
         </label>
       )}
-      <div className="flex gap-2">
-        <Input
-          id="coupon-code"
-          name="code"
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-          placeholder="e.g. SAVE10"
-          autoComplete="off"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "coupon-error" : undefined}
-        />
-        <Button type="submit" variant="outline" disabled={pending || !code.trim()}>
-          Apply
-        </Button>
-      </div>
       {error && (
-        <p id="coupon-error" role="alert" className="text-xs text-destructive">
+        <p id={errorId} role="alert" className="text-xs text-destructive">
           {error}
         </p>
       )}

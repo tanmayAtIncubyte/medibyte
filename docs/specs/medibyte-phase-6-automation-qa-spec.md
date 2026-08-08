@@ -34,16 +34,16 @@ Decouples "sees a clean app" from "has admin-panel access" so a non-admin accoun
 
 ---
 
-### Slice 2: Locator-hardening framework [ ]
+### Slice 2: Locator-hardening framework [x]
 Removes guessable, hand-authored `id`s and the `htmlFor`/`id` pairs that expose them, across the storefront pages the 3 flows exercise (home/products/cart/checkout/orders/account). `/login`, `/register`, `/admin` are unchanged. Every element keeps a real, correct accessible name/role — hardening is structural, never at the expense of WCAG.
 
-- [ ] `components/products/catalog-toolbar.tsx`'s literal ids (`catalog-search`, `catalog-category`, `catalog-type`, `catalog-sort`) and their `htmlFor` pairs are removed; inputs remain correctly labeled via implicit label-wrapping (the pattern already used in `components/auth/credentials-form.tsx`) or, where an id-based relationship (`aria-describedby`) is structurally required, via React's `useId()` rather than a static readable string
-- [ ] `components/cart/coupon-form.tsx`'s literal ids (`coupon-code`, `coupon-error`) are removed/replaced the same way, preserving the `aria-describedby` link between the coupon input and its error message
-- [ ] A documented 3-tier structural-difficulty pattern exists (in the flow catalog from Slice 3, or inline as code comments where applied): Tier 1 = no id/data-testid, unique accessible names only; Tier 2 = duplicate/non-unique accessible names among repeated components (e.g. multiple cart-line "Remove" controls) plus async-appearing state requiring waits; Tier 3 = nested/layered UI (dialog/tab patterns) and positionally-disambiguated elements, still fully accessible
-- [ ] Cart-line controls (`components/cart/cart-line-controls.tsx`) demonstrate Tier 2: quantity/remove controls across multiple lines are only disambiguated by scoping to their parent line, not by a global unique id
-- [ ] shadcn/Radix internals (`data-slot`, `data-variant`, `data-state` in `components/ui/*.tsx`) are left untouched — out of scope, unrelated to the bug-seeding pattern
-- [ ] Manual keyboard/screen-reader walkthrough of every touched form confirms no label association was silently broken by the id removal
-- [ ] `npm run test` and `npm run lint` pass
+- [x] `components/products/catalog-toolbar.tsx`'s literal ids (`catalog-search`, `catalog-category`, `catalog-type`, `catalog-sort`) and their `htmlFor` pairs are removed; inputs remain correctly labeled via implicit label-wrapping (the pattern already used in `components/auth/credentials-form.tsx`) or, where an id-based relationship (`aria-describedby`) is structurally required, via React's `useId()` rather than a static readable string
+- [x] `components/cart/coupon-form.tsx`'s literal ids (`coupon-code`, `coupon-error`) are removed/replaced the same way, preserving the `aria-describedby` link between the coupon input and its error message
+- [x] A documented 3-tier structural-difficulty pattern exists (in the flow catalog from Slice 3, or inline as code comments where applied): Tier 1 = no id/data-testid, unique accessible names only; Tier 2 = duplicate/non-unique accessible names among repeated components (e.g. multiple cart-line "Remove" controls) plus async-appearing state requiring waits; Tier 3 = nested/layered UI (dialog/tab patterns) and positionally-disambiguated elements, still fully accessible — Tier 1 documented inline in both touched files; full Tier 2/3 write-up deferred to Slice 3's flow catalog per this AC's own wording
+- [x] Cart-line controls (`components/cart/cart-line-controls.tsx`) demonstrate Tier 2: quantity/remove controls across multiple lines are only disambiguated by scoping to their parent line, not by a global unique id — verified unchanged/pre-existing, already scoped via per-line `aria-label` + `role="group"`, no global id
+- [x] shadcn/Radix internals (`data-slot`, `data-variant`, `data-state` in `components/ui/*.tsx`) are left untouched — out of scope, unrelated to the bug-seeding pattern — confirmed via `git diff`, zero changes
+- [x] Manual keyboard/screen-reader walkthrough of every touched form confirms no label association was silently broken by the id removal — no e2e/manual-walkthrough tooling exists in this repo; equivalent confidence from Testing Library's accessible-name/role queries (`getByLabelText`, `getByRole(..., { name })`, `toHaveAccessibleName`) in both new test files, which compute the same accessibility tree a screen reader would use
+- [x] `npm run test` and `npm run lint` pass — tests: 926 passed / 5 pre-existing Redis skips (all new). Lint: still fails on the same pre-existing, unrelated `components/layout/test-app-tile.tsx` error noted in Slice 1 (confirmed via `git stash -u`, identical failure with none of this slice's changes present) — not caused by or fixed in this slice
 
 ---
 
