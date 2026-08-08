@@ -44,6 +44,15 @@ const customer: SessionUser = {
   role: "customer",
 };
 
+// Slice 1 (Phase 6): Steve's qa_automation role bypasses seeded bugs but must
+// NOT reach the admin bug-flags panel — this inline guard stays admin-only.
+const qaAutomation: SessionUser = {
+  id: "user-qa-steve",
+  name: "Steve QA",
+  email: "steve@example.test",
+  role: "qa_automation",
+};
+
 // A real registered key used as the sample flag toggled in these route tests.
 const PROBE = "FN_PRICE_DECIMALS";
 
@@ -116,6 +125,13 @@ describe("GET /api/admin/bug-flags — guard", () => {
 
   it("returns 403 for a logged-out visitor", async () => {
     getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await loadRoute();
+
+    expect((await GET()).status).toBe(403);
+  });
+
+  it("returns 403 for a qa_automation session (bug-bypass role is still not admin)", async () => {
+    getCurrentUserMock.mockResolvedValue(qaAutomation);
     const { GET } = await loadRoute();
 
     expect((await GET()).status).toBe(403);

@@ -1,4 +1,5 @@
 import { seedOrders } from "@/data/orders";
+import type { UserRole } from "@/data/users";
 import { allCreatedOrders } from "@/lib/data/orders-store";
 import {
   findOrderForViewer,
@@ -30,7 +31,7 @@ export async function listOrdersForUser(userId: string): Promise<Order[]> {
  */
 export async function getOrderForViewer(
   orderId: string,
-  viewer: { id: string; role: "admin" | "customer" },
+  viewer: { id: string; role: UserRole },
   bugs: FindOrderBugs = {},
 ): Promise<Order | null> {
   return findOrderForViewer(

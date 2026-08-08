@@ -1,3 +1,4 @@
+import type { UserRole } from "@/data/users";
 import type { CartView } from "@/lib/cart/cart-service";
 import type { CartLine } from "@/lib/cart/totals";
 import type {
@@ -102,7 +103,7 @@ export type FindOrderBugs = {
 export function findOrderForViewer(
   orders: readonly Order[],
   orderId: string,
-  viewer: { id: string; role: "admin" | "customer" },
+  viewer: { id: string; role: UserRole },
   bugs: FindOrderBugs = {},
 ): Order | null {
   const order = orders.find((candidate) => candidate.id === orderId);

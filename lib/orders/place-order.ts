@@ -1,3 +1,4 @@
+import type { UserRole } from "@/data/users";
 import { getCartView } from "@/lib/cart/cart-service";
 import { clearCart } from "@/lib/data/session-store";
 import { appendOrder, nextOrderSequence } from "@/lib/data/orders-store";
@@ -64,7 +65,7 @@ export type PlaceOrderDeps = {
 
 export async function placeOrder(
   sessionId: string,
-  user: { id: string; role: "admin" | "customer" },
+  user: { id: string; role: UserRole },
   input: CheckoutInput,
   deps: PlaceOrderDeps = {},
 ): Promise<PlaceOrderResult> {

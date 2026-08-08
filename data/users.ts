@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "customer";
+export type UserRole = "admin" | "customer" | "qa_automation";
 
 export type SeedUser = {
   id: string;
@@ -34,5 +34,12 @@ export const users: readonly SeedUser[] = [
     email: "omar@example.test",
     password: "omar1234",
     role: "customer",
+  },
+  {
+    id: "user-qa-steve",
+    name: "Steve QA",
+    email: "steve@example.test",
+    password: "steve1234",
+    role: "qa_automation",
   },
 ];

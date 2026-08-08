@@ -17,20 +17,20 @@ No Linear epic exists for this track yet, so slices below skip the `(MED-xx)` su
 
 ---
 
-### Slice 1: Steve account & role architecture [ ]
+### Slice 1: Steve account & role architecture [x]
 Decouples "sees a clean app" from "has admin-panel access" so a non-admin account can bypass bugs without gaining admin privileges.
 
-- [ ] `data/users.ts`'s `UserRole` widens to `"admin" | "customer" | "qa_automation"`; a new seed user `steve@example.test` / `steve1234`, role `qa_automation`, is added
-- [ ] `data/accounts.ts` has a Steve `AccountState` (address + insurance) and `data/orders.ts` has at least one seed order for Steve, so Slice 3's account/order-history flow has real data to display
-- [ ] `lib/bugs.ts`'s `isBugActiveWith` bypass condition changes from `role === "admin"` to `role !== "customer"` — a single choke point covering both admin and `qa_automation`, with zero per-bug rewiring
-- [ ] `lib/bugs.ts`'s `GatingUser` type imports `UserRole` from `data/users.ts` instead of hand-duplicating the literal union
-- [ ] `lib/auth/session.ts`'s `isSessionPayload` role allowlist accepts `"qa_automation"` (currently a hard 2-value check — the guaranteed breakage point if left unfixed)
-- [ ] `lib/orders/order.ts`, `lib/data/orders.ts`, `lib/orders/place-order.ts` import `UserRole` instead of their own hand-duplicated `"admin" | "customer"` literal unions
-- [ ] `lib/auth/guards.ts` (`requireAdmin`, `getAdminOrNull`) and `app/api/admin/bug-flags/route.ts`'s inline admin check are **unchanged** — both still require `role === "admin"` exactly, so Steve cannot reach `/admin` or `/api/admin/bug-flags`
-- [ ] Logging in as `dana@example.test`/`omar@example.test` still shows all 45 bugs behaving exactly as before (regression check on the bypass-condition change)
-- [ ] Logging in as `steve@example.test` shows the app behaving clean/bug-free everywhere admin does, and `/admin` + `/api/admin/bug-flags` reject Steve the same way they reject a customer
-- [ ] `docs/ADMIN-RUNBOOK.md`'s logins table and "the one rule that matters" section, and `docs/ANSWER-KEY.md`'s header block, mention Steve/`qa_automation` as a second clean-app account alongside admin
-- [ ] `npm run test` and `npm run lint` pass
+- [x] `data/users.ts`'s `UserRole` widens to `"admin" | "customer" | "qa_automation"`; a new seed user `steve@example.test` / `steve1234`, role `qa_automation`, is added
+- [x] `data/accounts.ts` has a Steve `AccountState` (address + insurance) and `data/orders.ts` has at least one seed order for Steve, so Slice 3's account/order-history flow has real data to display
+- [x] `lib/bugs.ts`'s `isBugActiveWith` bypass condition changes from `role === "admin"` to `user && user.role !== "customer"` (the bare `role !== "customer"` form was tried and rejected during verification — it incorrectly bypassed anonymous/logged-out requests too, breaking `SEC_MISSING_ADMIN_AUTH`) — a single choke point covering both admin and `qa_automation`, with zero per-bug rewiring
+- [x] `lib/bugs.ts`'s `GatingUser` type imports `UserRole` from `data/users.ts` instead of hand-duplicating the literal union
+- [x] `lib/auth/session.ts`'s `isSessionPayload` role allowlist accepts `"qa_automation"` (currently a hard 2-value check — the guaranteed breakage point if left unfixed)
+- [x] `lib/orders/order.ts`, `lib/data/orders.ts`, `lib/orders/place-order.ts` import `UserRole` instead of their own hand-duplicated `"admin" | "customer"` literal unions
+- [x] `lib/auth/guards.ts` (`requireAdmin`, `getAdminOrNull`) and `app/api/admin/bug-flags/route.ts`'s inline admin check are **unchanged** — both still require `role === "admin"` exactly, so Steve cannot reach `/admin` or `/api/admin/bug-flags`
+- [x] Logging in as `dana@example.test`/`omar@example.test` still shows all 45 bugs behaving exactly as before (regression check on the bypass-condition change) — verified via all 26 `.bugs.test.ts(x)` suites (94 tests) passing unchanged
+- [x] Logging in as `steve@example.test` shows the app behaving clean/bug-free everywhere admin does, and `/admin` + `/api/admin/bug-flags` reject Steve the same way they reject a customer
+- [x] `docs/ADMIN-RUNBOOK.md`'s logins table and "the one rule that matters" section, and `docs/ANSWER-KEY.md`'s header block, mention Steve/`qa_automation` as a second clean-app account alongside admin
+- [x] `npm run test` passes (918 passed, 5 pre-existing Redis-backend skips). `npm run lint` still fails on a pre-existing, unrelated error in `components/layout/test-app-tile.tsx` (confirmed present before this slice via `git stash`) — not caused by or fixed in this slice
 
 ---
 

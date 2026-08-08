@@ -149,4 +149,46 @@ export const seedOrders: readonly Order[] = [
       },
     ],
   },
+
+  // --- Steve (qa_automation): an OTC-only order for Flow 3's order-history checks ---
+  {
+    id: "MB-20260401-0001",
+    userId: "user-qa-steve",
+    placedAt: "2026-04-01T13:20:00.000Z",
+    status: "delivered",
+    items: [
+      {
+        productId: "prod-ibuprofen-200",
+        name: "Ibuprofen 200mg Tablets (50 ct)",
+        type: "OTC",
+        unitPrice: 6.99,
+        quantity: 1,
+        lineTotal: 6.99,
+      },
+      {
+        productId: "prod-acetaminophen-500",
+        name: "Acetaminophen 500mg Caplets (100 ct)",
+        type: "OTC",
+        unitPrice: 8.49,
+        quantity: 1,
+        lineTotal: 8.49,
+      },
+    ],
+    totals: {
+      subtotal: 15.48,
+      discount: 0,
+      tax: 1.24,
+      total: 16.72,
+      couponCode: null,
+    },
+    shipping: {
+      fullName: "Steve QA",
+      street: "215 Maple Avenue",
+      city: "Denver",
+      region: "CO",
+      postalCode: "80202",
+      country: "USA",
+    },
+    prescriptions: [],
+  },
 ];
