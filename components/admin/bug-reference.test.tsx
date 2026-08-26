@@ -246,10 +246,11 @@ describe("preview control — per row + opens the modal (MED-29)", () => {
   });
 });
 
-// MED-9 — after Phase-4 cleanup the registry holds exactly the 45 real
-// assessment bugs with no internal/probe entries; listAssessmentBugs still
-// filters internal entries (defensively) so the panel only ever shows real bugs.
-describe("assessment-bug filtering — exactly 45 real bugs, no internal entries (MED-9)", () => {
+// MED-9 — after Phase-4 cleanup plus the Batch-7 additions the registry holds
+// exactly the 50 real assessment bugs with no internal/probe entries;
+// listAssessmentBugs still filters internal entries (defensively) so the panel
+// only ever shows real bugs.
+describe("assessment-bug filtering — exactly 50 real bugs, no internal entries (MED-9)", () => {
   it("contains no internal entries and never surfaces the removed PROBE_NOOP probe", () => {
     const keys = listAssessmentBugs().map((bug) => bug.key);
 
