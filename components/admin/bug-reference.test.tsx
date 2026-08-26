@@ -258,12 +258,12 @@ describe("assessment-bug filtering — exactly 45 real bugs, no internal entries
     expect(listBugs().some((bug) => bug.internal === true)).toBe(false);
   });
 
-  it("the assessment list is exactly the 45 real bugs (registry == assessment)", () => {
+  it("the assessment list is exactly the 50 real bugs (registry == assessment)", () => {
     const all = listBugs();
     const assessment = listAssessmentBugs();
 
-    expect(all).toHaveLength(45);
-    expect(assessment).toHaveLength(45);
+    expect(all).toHaveLength(50);
+    expect(assessment).toHaveLength(50);
     expect(assessment).toHaveLength(all.length);
   });
 
