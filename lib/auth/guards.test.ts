@@ -35,6 +35,15 @@ const customer: SessionUser = {
   role: "customer",
 };
 
+// Slice 1 (Phase 6): Steve's qa_automation role bypasses seeded bugs but must
+// NOT gain admin-panel access — these guards stay literal-admin-only.
+const qaAutomation: SessionUser = {
+  id: "user-qa-steve",
+  name: "Steve QA",
+  email: "steve@example.test",
+  role: "qa_automation",
+};
+
 afterEach(() => {
   vi.clearAllMocks();
 });
@@ -85,6 +94,13 @@ describe("requireAdmin (page guard)", () => {
     await expect(requireAdmin()).rejects.toThrow("REDIRECT:/login");
     expect(redirectMock).toHaveBeenCalledWith("/login");
   });
+
+  it("redirects a qa_automation user to login (bug-bypass role is still not admin)", async () => {
+    getCurrentUserMock.mockResolvedValue(qaAutomation);
+
+    await expect(requireAdmin()).rejects.toThrow("REDIRECT:/login");
+    expect(redirectMock).toHaveBeenCalledWith("/login");
+  });
 });
 
 describe("getAdminOrNull (API guard)", () => {
@@ -102,6 +118,12 @@ describe("getAdminOrNull (API guard)", () => {
 
   it("returns null for a customer session (never lets a customer through)", async () => {
     getCurrentUserMock.mockResolvedValue(customer);
+
+    await expect(getAdminOrNull()).resolves.toBeNull();
+  });
+
+  it("returns null for a qa_automation session (bug-bypass role is still not admin)", async () => {
+    getCurrentUserMock.mockResolvedValue(qaAutomation);
 
     await expect(getAdminOrNull()).resolves.toBeNull();
   });

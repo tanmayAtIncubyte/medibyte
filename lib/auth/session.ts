@@ -71,7 +71,7 @@ function isSessionPayload(value: unknown): value is SessionPayload {
   return (
     typeof candidate.userId === "string" &&
     typeof candidate.email === "string" &&
-    (candidate.role === "admin" || candidate.role === "customer")
+    (candidate.role === "admin" || candidate.role === "customer" || candidate.role === "qa_automation")
   );
 }
 

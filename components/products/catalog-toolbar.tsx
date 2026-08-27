@@ -33,92 +33,77 @@ export function CatalogToolbar({
       action="/products"
       className="rounded-xl border border-border bg-card p-4 shadow-sm"
     >
+      {/* Tier 1 (locator-hardening): labels wrap their controls implicitly, no id/htmlFor. */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="lg:col-span-2">
-          <label
-            htmlFor="catalog-search"
-            className="mb-1.5 block text-xs font-medium text-foreground"
-          >
+          <label className="mb-1.5 block text-xs font-medium text-foreground">
             Search products
+            <div className="relative mt-1.5">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                name="q"
+                type="search"
+                defaultValue={query.search ?? ""}
+                placeholder="e.g. ibuprofen"
+                className="pl-9"
+              />
+            </div>
           </label>
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              id="catalog-search"
-              name="q"
-              type="search"
-              defaultValue={query.search ?? ""}
-              placeholder="e.g. ibuprofen"
-              className="pl-9"
-            />
-          </div>
         </div>
 
         <div>
-          <label
-            htmlFor="catalog-category"
-            className="mb-1.5 block text-xs font-medium text-foreground"
-          >
+          <label className="mb-1.5 block text-xs font-medium text-foreground">
             Category
+            <select
+              name="category"
+              defaultValue={query.category ?? ""}
+              className={`mt-1.5 ${selectClass}`}
+            >
+              <option value="">All categories</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
           </label>
-          <select
-            id="catalog-category"
-            name="category"
-            defaultValue={query.category ?? ""}
-            className={selectClass}
-          >
-            <option value="">All categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div>
-          <label
-            htmlFor="catalog-type"
-            className="mb-1.5 block text-xs font-medium text-foreground"
-          >
+          <label className="mb-1.5 block text-xs font-medium text-foreground">
             Type
+            <select
+              name="type"
+              defaultValue={query.type ?? ""}
+              className={`mt-1.5 ${selectClass}`}
+            >
+              <option value="">All types</option>
+              <option value="OTC">Over the counter</option>
+              <option value="Rx">Prescription</option>
+            </select>
           </label>
-          <select
-            id="catalog-type"
-            name="type"
-            defaultValue={query.type ?? ""}
-            className={selectClass}
-          >
-            <option value="">All types</option>
-            <option value="OTC">Over the counter</option>
-            <option value="Rx">Prescription</option>
-          </select>
         </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="sm:max-w-xs sm:flex-1">
-          <label
-            htmlFor="catalog-sort"
-            className="mb-1.5 block text-xs font-medium text-foreground"
-          >
+          <label className="mb-1.5 block text-xs font-medium text-foreground">
             Sort by
+            <select
+              name="sort"
+              defaultValue={query.sort ?? "relevance"}
+              className={`mt-1.5 ${selectClass}`}
+            >
+              {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => (
+                <option key={option} value={option}>
+                  {SORT_LABELS[option]}
+                </option>
+              ))}
+            </select>
           </label>
-          <select
-            id="catalog-sort"
-            name="sort"
-            defaultValue={query.sort ?? "relevance"}
-            className={selectClass}
-          >
-            {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => (
-              <option key={option} value={option}>
-                {SORT_LABELS[option]}
-              </option>
-            ))}
-          </select>
         </div>
         <Button type="submit" size="lg">
           Apply

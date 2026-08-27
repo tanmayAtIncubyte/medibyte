@@ -1,9 +1,10 @@
 import { findBugByKey, type BugKey } from "@/lib/bug-registry";
 import { loadBugFlags, type BugFlags } from "@/lib/bug-flags";
+import type { UserRole } from "@/data/users";
 
 // Minimal shape of the current user that gating needs. Slice 4 supplies the
 // real signed-cookie session user; null means unauthenticated / no user.
-export type GatingUser = { role: "admin" | "customer" } | null;
+export type GatingUser = { role: UserRole } | null;
 
 // Pure core of the gating contract — a function of (flags, key, user) only, so
 // it is trivially unit-testable without touching the filesystem.
@@ -11,8 +12,9 @@ export type GatingUser = { role: "admin" | "customer" } | null;
 // A bug is active ONLY when ALL hold:
 //   - the key exists in the registry (unknown keys are never active),
 //   - its flag is enabled, AND
-//   - the user is not an admin (admins always see the clean reference app;
-//     a null/unauthenticated user is treated as non-admin and may see bugs).
+//   - the user is not an authenticated admin/qa_automation account (those
+//     always see the clean reference app; a null/unauthenticated user is
+//     treated as non-admin and may see bugs, same as a customer).
 export function isBugActiveWith(flags: BugFlags, key: string, user: GatingUser): boolean {
   if (!findBugByKey(key)) {
     return false;
@@ -20,7 +22,7 @@ export function isBugActiveWith(flags: BugFlags, key: string, user: GatingUser):
   if (flags[key] !== true) {
     return false;
   }
-  if (user?.role === "admin") {
+  if (user && user.role !== "customer") {
     return false;
   }
   return true;

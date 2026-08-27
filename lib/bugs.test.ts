@@ -18,6 +18,7 @@ import type { BugFlags } from "@/lib/bug-flags";
 // isBugActive is the flag-file-loading wrapper over that core.
 
 const ADMIN: GatingUser = { role: "admin" };
+const QA_AUTOMATION: GatingUser = { role: "qa_automation" };
 const CUSTOMER: GatingUser = { role: "customer" };
 const NO_USER: GatingUser = null;
 
@@ -41,6 +42,12 @@ describe("isBugActiveWith — enabled flag", () => {
     expect(isBugActiveWith(enabled, KNOWN_KEY, ADMIN)).toBe(false);
   });
 
+  // Slice 1 (Phase 6): the bypass choke point now covers qa_automation too —
+  // Steve must see the clean app exactly like admin, without becoming admin.
+  it("returns false for a qa_automation user even when the flag is enabled (Slice 1 AC)", () => {
+    expect(isBugActiveWith(enabled, KNOWN_KEY, QA_AUTOMATION)).toBe(false);
+  });
+
   // AC 8: a null/unauthenticated user is treated as non-admin and follows the flag.
   it("returns true for a null user when the flag is enabled (AC 8: null is non-admin)", () => {
     expect(isBugActiveWith(enabled, KNOWN_KEY, NO_USER)).toBe(true);
@@ -52,6 +59,7 @@ describe("isBugActiveWith — disabled flag", () => {
   it.each([
     ["a customer", CUSTOMER],
     ["an admin", ADMIN],
+    ["a qa_automation user", QA_AUTOMATION],
     ["a null user", NO_USER],
   ])("returns false for %s when the flag is disabled (AC 7)", (_label, user) => {
     expect(isBugActiveWith(disabled, KNOWN_KEY, user)).toBe(false);
@@ -81,6 +89,7 @@ describe("isBugActiveWith — unknown key", () => {
   it.each([
     ["a customer", CUSTOMER],
     ["an admin", ADMIN],
+    ["a qa_automation user", QA_AUTOMATION],
     ["a null user", NO_USER],
   ])("returns false for an unknown key with %s (AC 9)", (_label, user) => {
     expect(isBugActiveWith(enabled, UNKNOWN_KEY, user)).toBe(false);
@@ -109,6 +118,7 @@ describe("isBugActive — flag-file-loading wrapper", () => {
   it.each([
     ["a customer", CUSTOMER],
     ["an admin", ADMIN],
+    ["a qa_automation user", QA_AUTOMATION],
     ["a null user", NO_USER],
   ])("returns false for a real bug key with %s when its flag is off", (_label, user) => {
     fileFlags = { [KNOWN_KEY]: false };
@@ -123,6 +133,11 @@ describe("isBugActive — flag-file-loading wrapper", () => {
   it("returns false for an admin even when the file enables the flag", () => {
     fileFlags = { [KNOWN_KEY]: true };
     expect(isBugActive(KNOWN_KEY, ADMIN)).toBe(false);
+  });
+
+  it("returns false for a qa_automation user even when the file enables the flag", () => {
+    fileFlags = { [KNOWN_KEY]: true };
+    expect(isBugActive(KNOWN_KEY, QA_AUTOMATION)).toBe(false);
   });
 });
 
@@ -142,6 +157,10 @@ describe("the documented gating pattern switches behavior", () => {
 
   it("takes the correct branch for an admin even when the flag is enabled", () => {
     expect(render(enabled, ADMIN)).toBe("correct");
+  });
+
+  it("takes the correct branch for a qa_automation user even when the flag is enabled", () => {
+    expect(render(enabled, QA_AUTOMATION)).toBe("correct");
   });
 
   it("takes the correct branch for a customer when the flag is disabled", () => {

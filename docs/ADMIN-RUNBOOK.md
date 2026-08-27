@@ -37,6 +37,7 @@ lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
 | Admin / reviewer | `admin@medibyte.test` | `admin.incu123` | Clean app + bug-control panel at `/admin` |
 | Customer (test) | `dana@example.test` | `dana1234` | Bugs whose flags are ON |
 | Customer (test) | `omar@example.test` | `omar1234` | Bugs whose flags are ON |
+| QA automation (test) | `steve@example.test` | `steve1234` | Clean app, same as admin, but **no** `/admin` or `/api/admin/bug-flags` access |
 
 Candidates sign in with a seeded customer login (given in their brief) — each
 candidate's `/start` link isolates their state, so sharing a seeded login across
@@ -105,10 +106,11 @@ cart/orders actually persist (see "Why the link matters" below).
 > **disabled** (local dev / demos are unaffected and need no link).
 
 ### The one rule that matters
-> **Admin always sees the clean app. Bugs only manifest for customer logins.**
-> If you're verifying a bug and don't see it, confirm you're logged in as a
-> **customer** (`dana@example.test`), not as admin. This is enforced server-side by
-> `isBugActive(key, user)` — the buggy branch never runs for admin.
+> **Admin and Steve (`qa_automation`) always see the clean app. Bugs only manifest for
+> customer logins.** If you're verifying a bug and don't see it, confirm you're logged
+> in as a **customer** (`dana@example.test`), not as admin or Steve. This is enforced
+> server-side by `isBugActive(key, user)` — the buggy branch never runs for admin or
+> `qa_automation`. Steve is for the automation-QA track only and has no `/admin` access.
 
 ### Deploy-time flags (Vercel)
 The deployed instance runs on Vercel, whose filesystem is **read-only** — the
