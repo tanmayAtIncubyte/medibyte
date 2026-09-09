@@ -3,6 +3,8 @@
 // adapter that gathers the inputs (env, cookies, KV existence) and applies
 // this ruling.
 
+import type { UserRole } from "@/data/users";
+
 /**
  * Paths reachable with NO cookies at all, gate or not:
  * - /start   — the candidate's entry point (it MINTS the cookie)
@@ -30,6 +32,15 @@ export type GateInput = {
   gateEnabled: boolean;
   /** True when a verified admin session cookie is present. */
   isAdmin: boolean;
+  /**
+   * The verified session role, or null when unauthenticated. Lets the
+   * `qa_automation` account (Steve) bypass the candidate gate the same way an
+   * admin does, so automation suites can drive the clean app on the deploy.
+   * This does NOT grant admin access — `/admin` and `/api/admin/*` are guarded
+   * separately by `role === "admin"`. It is an explicit allowlist by role: a
+   * null/unknown role never bypasses.
+   */
+  role: UserRole | null;
   /** The parsed mb_cand cookie value, or null when absent/malformed. */
   candidateCode: string | null;
   /** Whether the candidate is active AND unexpired (a revoked/expired candidate still exists but is not active). */
@@ -45,6 +56,12 @@ export function gateDecision(input: GateInput): GateDecision {
     return "pass";
   }
   if (input.isAdmin) {
+    return "pass";
+  }
+  // qa_automation (Steve) bypasses the candidate gate like admin — a separate,
+  // explicit role allowlist (never `role !== "customer"`), so a null/unknown
+  // role is never let through. Admin authorization stays a distinct check.
+  if (input.role === "qa_automation") {
     return "pass";
   }
   if (input.candidateCode !== null && input.candidateActive) {

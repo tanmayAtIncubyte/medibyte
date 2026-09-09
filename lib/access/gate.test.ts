@@ -9,6 +9,7 @@ function input(overrides: Partial<GateInput> = {}): GateInput {
   return {
     gateEnabled: true,
     isAdmin: false,
+    role: null,
     candidateCode: null,
     candidateActive: false,
     pathname: "/products",
@@ -65,6 +66,37 @@ describe("admin session", () => {
         input({ isAdmin: true, candidateCode: "deadbeef", candidateActive: false }),
       ),
     ).toBe("pass");
+  });
+});
+
+describe("qa_automation session (Steve) — clean-app automation login", () => {
+  it.each(["/", "/products", "/cart", "/checkout", "/orders", "/account", "/api/cart"])(
+    "passes %s with NO candidate cookie",
+    (pathname) => {
+      expect(gateDecision(input({ role: "qa_automation", pathname }))).toBe("pass");
+    },
+  );
+
+  it("passes even with a stale/absent candidate cookie (bypass is by role)", () => {
+    expect(
+      gateDecision(
+        input({ role: "qa_automation", candidateCode: "deadbeef", candidateActive: false }),
+      ),
+    ).toBe("pass");
+  });
+});
+
+describe("no bypass for unauthenticated / customer roles (explicit allowlist)", () => {
+  it("closes a null (anonymous) role with no candidate cookie", () => {
+    expect(gateDecision(input({ role: null }))).toBe("closed");
+  });
+
+  it("closes a customer role with no candidate cookie", () => {
+    expect(gateDecision(input({ role: "customer" }))).toBe("closed");
+  });
+
+  it("closes an API path for a customer role", () => {
+    expect(gateDecision(input({ role: "customer", pathname: "/api/cart" }))).toBe("closed");
   });
 });
 
