@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { resetAccounts } from "@/lib/data/account-store";
 import {
+  deleteAddress,
   readAccount,
+  removeInsurance,
   updateAddress,
   updateInsurance,
 } from "@/lib/account/account-service";
@@ -55,5 +57,37 @@ describe("account service (per-session, per-user)", () => {
     expect(result.ok).toBe(false);
     // unchanged
     expect((await readAccount("user-customer-dana")).insurance.provider).toBe("BlueCross BlueShield");
+  });
+
+  it("deletes a saved address and persists the removal", async () => {
+    const added = await updateAddress("user-customer-dana", validAddress);
+    if (!added.ok) throw new Error("setup failed");
+    const newId = added.state.addresses.find((a) => a.label === "Work")!.id;
+    const result = await deleteAddress("user-customer-dana", newId);
+    expect(result.ok).toBe(true);
+    const after = await readAccount("user-customer-dana");
+    expect(after.addresses.some((a) => a.id === newId)).toBe(false);
+    expect(after.addresses).toHaveLength(1);
+  });
+
+  it("deleting an unknown address id is a no-op success", async () => {
+    const result = await deleteAddress("user-customer-dana", "addr-nope");
+    expect(result.ok).toBe(true);
+    expect((await readAccount("user-customer-dana")).addresses).toHaveLength(1);
+  });
+
+  it("removes (clears) insurance without validation and persists it", async () => {
+    const result = await removeInsurance("user-customer-dana");
+    expect(result.ok).toBe(true);
+    expect((await readAccount("user-customer-dana")).insurance).toEqual({
+      provider: "",
+      memberId: "",
+      groupNumber: "",
+    });
+  });
+
+  it("one user's delete does not touch another user's addresses", async () => {
+    await deleteAddress("user-customer-dana", (await readAccount("user-customer-dana")).addresses[0].id);
+    expect((await readAccount("user-customer-omar")).addresses).toHaveLength(1);
   });
 });
