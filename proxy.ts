@@ -6,6 +6,9 @@
 // - admin         = HMAC-verified mb_session cookie whose signed role is
 //   "admin" (node:crypto — fine here: Next 16's proxy runs on the Node
 //   runtime by default).
+// - automation    = HMAC-verified mb_session whose role is "qa_automation"
+//   (Steve); bypasses the candidate gate like admin, but has NO admin access
+//   (the /admin guards check role === "admin" separately).
 // - candidate     = mb_cand cookie whose roster entry is active AND unexpired
 //   (candidateHasAccess). A revoked/expired candidate still EXISTS but is denied.
 //
@@ -44,6 +47,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const decision = gateDecision({
     gateEnabled,
     isAdmin,
+    role: session?.role ?? null,
     candidateCode,
     candidateActive,
     pathname: request.nextUrl.pathname,
