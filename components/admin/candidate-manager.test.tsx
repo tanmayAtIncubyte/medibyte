@@ -221,12 +221,41 @@ describe("minting", () => {
         body: JSON.stringify({
           name: "Priya Sharma",
           email: "priya@example.com",
+          track: "manual",
           windowDays: 10,
         }),
       }),
     );
     expect(await screen.findByText("Priya Sharma")).toBeInTheDocument();
     expect(screen.getByText("abc12345")).toBeInTheDocument();
+  });
+
+  it("mints an automation-track candidate when Automation is selected", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ candidates: [] }))
+      .mockResolvedValueOnce(jsonResponse({ candidate: activeCandidate }, 201))
+      .mockResolvedValueOnce(jsonResponse({ candidates: [activeCandidate] }));
+
+    render(<CandidateManager />);
+    await screen.findByText(/No candidates yet/);
+
+    await userEvent.type(screen.getByLabelText("Candidate name"), "Auto Bot");
+    await userEvent.type(screen.getByLabelText("Email"), "auto@example.com");
+    await userEvent.selectOptions(screen.getByLabelText("Track"), "automation");
+    await userEvent.click(screen.getByRole("button", { name: "Create access link" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/candidates",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          name: "Auto Bot",
+          email: "auto@example.com",
+          track: "automation",
+          windowDays: 10,
+        }),
+      }),
+    );
   });
 
   it("surfaces the server error text on a 409 duplicate email", async () => {

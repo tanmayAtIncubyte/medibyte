@@ -33,15 +33,28 @@ export type Attempt = {
 export type CandidateStatus = "active" | "revoked";
 export type CandidateDisplayStatus = "active" | "revoked" | "expired";
 
+// Which assessment track a candidate's link is for. Manual candidates sign in
+// as a customer (dana/omar) and see the seeded bugs; automation candidates sign
+// in as Steve (qa_automation) and see the clean app. The track binds which
+// account the link may sign into (enforced at login). Older records predate this
+// field — read it via candidateTrack(), which defaults missing to "manual".
+export type CandidateTrack = "manual" | "automation";
+
 export type CandidateAccess = {
   name: string;
   email: string;
   role?: string;
   notes?: string;
+  track?: CandidateTrack; // absent on pre-track records → treated as "manual"
   createdAt: string; // == attempts[0].grantedAt
   status: CandidateStatus; // "expired" is DERIVED, never stored
   attempts: Attempt[]; // full history; current = last
 };
+
+/** The track for a record, defaulting a missing/legacy value to "manual". */
+export function candidateTrack(record: Pick<CandidateAccess, "track">): CandidateTrack {
+  return record.track ?? "manual";
+}
 
 export type CandidateRecord = CandidateAccess & { code: string };
 
@@ -51,6 +64,7 @@ export type MintCandidateInput = {
   windowDays?: number;
   role?: string;
   notes?: string;
+  track?: CandidateTrack;
 };
 
 // An ACCESS key is exactly `cand:<code>` — no further ":" segments. The same
@@ -93,6 +107,7 @@ export function displayStatus(record: CandidateAccess): CandidateDisplayStatus {
  */
 export async function mintCandidate(input: MintCandidateInput): Promise<CandidateRecord> {
   const { name, email, role, notes } = input;
+  const track = input.track ?? "manual";
   const windowDays = input.windowDays ?? DEFAULT_CANDIDATE_WINDOW_DAYS;
   const code = crypto.randomUUID().slice(0, 8).toLowerCase();
   const now = Date.now();
@@ -102,6 +117,7 @@ export async function mintCandidate(input: MintCandidateInput): Promise<Candidat
     email,
     ...(role ? { role } : {}),
     ...(notes ? { notes } : {}),
+    track,
     createdAt: grantedAt,
     status: "active",
     attempts: [{ attempt: 1, grantedAt, windowDays, expiresAt: windowExpiry(now, windowDays) }],

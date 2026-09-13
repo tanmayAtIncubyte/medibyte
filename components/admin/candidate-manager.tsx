@@ -23,12 +23,15 @@ type Attempt = {
   revokedAt?: string;
 };
 
+type CandidateTrack = "manual" | "automation";
+
 type CandidateRecord = {
   code: string;
   name: string;
   email: string;
   role?: string;
   notes?: string;
+  track?: CandidateTrack;
   createdAt: string;
   status: "active" | "revoked";
   attempts: Attempt[];
@@ -120,6 +123,7 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [notes, setNotes] = useState("");
+  const [track, setTrack] = useState<CandidateTrack>("manual");
   const [windowDays, setWindowDays] = useState(String(DEFAULT_WINDOW_DAYS));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +144,7 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
           email: email.trim(),
           role: role.trim() || undefined,
           notes: notes.trim() || undefined,
+          track,
           windowDays: Number(windowDays),
         }),
       });
@@ -153,6 +158,7 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
       setEmail("");
       setRole("");
       setNotes("");
+      setTrack("manual");
       setWindowDays(String(DEFAULT_WINDOW_DAYS));
       await onMinted();
     } catch (cause) {
@@ -205,6 +211,20 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
           placeholder="e.g. Senior QA"
           maxLength={80}
         />
+      </div>
+      <div className="flex min-w-40 flex-col gap-1.5">
+        <label htmlFor="candidate-track" className="text-xs font-medium text-muted-foreground">
+          Track
+        </label>
+        <select
+          id="candidate-track"
+          value={track}
+          onChange={(event) => setTrack(event.target.value as CandidateTrack)}
+          className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <option value="manual">Manual (bug hunting — dana/omar)</option>
+          <option value="automation">Automation (clean app — Steve)</option>
+        </select>
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="candidate-window" className="text-xs font-medium text-muted-foreground">
@@ -282,6 +302,26 @@ function CandidateTable({
         </tbody>
       </table>
     </section>
+  );
+}
+
+function TrackBadge({ track }: { track: CandidateTrack }) {
+  const isAuto = track === "automation";
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+        isAuto
+          ? "bg-primary/10 text-primary"
+          : "bg-muted text-muted-foreground"
+      }`}
+      title={
+        isAuto
+          ? "Automation track — signs in as Steve, sees the clean app"
+          : "Manual track — signs in as dana/omar, sees the seeded bugs"
+      }
+    >
+      {isAuto ? "Automation" : "Manual"}
+    </span>
   );
 }
 
@@ -378,7 +418,10 @@ function CandidateRow({
   return (
     <tr>
       <td className="px-4 py-3 align-top">
-        <div className="font-medium text-foreground">{candidate.name}</div>
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-foreground">{candidate.name}</span>
+          <TrackBadge track={candidate.track ?? "manual"} />
+        </div>
         {candidate.role && (
           <div className="text-xs text-muted-foreground">{candidate.role}</div>
         )}

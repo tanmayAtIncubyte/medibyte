@@ -87,6 +87,10 @@ total or coupon state finishes updating after an action.
 
 ## Test data
 
+Your reviewer will send you a **personal access link** (it looks like
+`https://…/start?code=…`). Open it once — in the browser your suite drives — to
+unlock the app for a limited window before you sign in.
+
 Sign in with this account. It comes with saved account data and order
 history so the app has content to work with.
 

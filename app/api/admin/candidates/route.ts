@@ -59,6 +59,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     return badRequest(`windowDays must be a number greater than 0 and at most ${MAX_WINDOW_DAYS}`);
   }
 
+  // Track: which assessment track the link is for (defaults to manual). Only the
+  // two known values are accepted; the login flow binds the link to the matching
+  // account (manual → customer, automation → Steve).
+  if (body.track !== undefined && body.track !== "manual" && body.track !== "automation") {
+    return badRequest('track must be "manual" or "automation"');
+  }
+  const track = body.track === "automation" ? "automation" : "manual";
+
   const dup = await findCandidateByEmail(email);
   if (dup) {
     return conflict(
@@ -72,6 +80,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     windowDays,
     role: role || undefined,
     notes: notes || undefined,
+    track,
   });
   return NextResponse.json({ candidate }, { status: 201 });
 }

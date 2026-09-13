@@ -67,15 +67,22 @@ cart/orders actually persist (see "Why the link matters" below).
   nav item shown to admins).
 - **Create** a link: enter the candidate's **name**, **email** (required — your
   unique identifier for the roster), an optional **role** and **internal notes**
-  (reviewer-only, never shown to the candidate), and a **window** in days
-  (default **10**). Windows accept **fractions** — `0.5` = 12h, `0.25` = 6h. Click
-  **Create access link**, then **Copy link** (`https://…/start?code=<code>`) and
-  send it to the candidate. **Duplicate email is blocked** — if that email is
+  (reviewer-only, never shown to the candidate), a **track**, and a **window** in
+  days (default **10**). Windows accept **fractions** — `0.5` = 12h, `0.25` = 6h.
+  Click **Create access link**, then **Copy link** (`https://…/start?code=<code>`)
+  and send it to the candidate. **Duplicate email is blocked** — if that email is
   already on the roster, mint fails (409); re-grant or remove the existing entry
   instead.
+- **Track** picks which assessment the link is for, and **binds the login**:
+  - **Manual** (default) → the candidate signs in as a **customer** (dana/omar)
+    and sees the **seeded bugs**. Signing in as Steve on a manual link is rejected.
+  - **Automation** → the candidate signs in as **Steve** (`steve@example.test`)
+    and sees the **clean app**. Signing in as a customer on an automation link is
+    rejected. Give automation candidates the automation brief (`docs/automation-qa/`).
+  The roster shows a **Manual/Automation** badge per row.
 - The candidate opens the link once; it drops a cookie and lands them on `/login`
-  to register/sign in. Everything they do lives in an isolated `cand:<code>`
-  namespace.
+  to sign in with the account for their track. Everything they do lives in an
+  isolated `cand:<code>` namespace, so candidates on either track never collide.
 - The table shows each candidate's email/role plus:
   - **Status** — **Active**, **Revoked**, or **Expired**, with the current
     **Attempt N** (a returning/re-granted candidate reads as Attempt 2, 3, …).
