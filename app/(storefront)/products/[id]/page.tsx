@@ -43,45 +43,60 @@ export default async function ProductDetailPage({
       </Link>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-2">
-        <div className="flex aspect-square items-center justify-center rounded-2xl border border-border bg-secondary/60">
-          <Pill className="size-24 text-primary/70" aria-hidden />
+        <div
+          className={cn(
+            "flex aspect-square items-center justify-center rounded-lg border border-border",
+            product.requiresPrescription ? "bg-rx/5" : "bg-secondary/70",
+          )}
+        >
+          <Pill
+            className={cn(
+              "size-20",
+              product.requiresPrescription ? "text-rx/50" : "text-primary/45",
+            )}
+            aria-hidden
+          />
         </div>
 
         <div className="flex flex-col">
           <ProductTypeBadge type={product.type} />
-          <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="mt-3.5 font-heading text-[2rem] font-bold leading-[1.12] tracking-tight text-foreground">
             {product.name}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{product.category}</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">{product.category}</p>
 
-          <p className="mt-6 font-heading text-3xl font-bold tabular-nums text-foreground">
-            {formatPrice(product.price, { dropDecimal })}
-          </p>
+          {/* Same dispensing-label device as the catalog card: a rule, then the
+              hard figures — price on the left, availability on the right. */}
+          <div className="mt-6 flex items-baseline justify-between gap-4 border-t border-border pt-5">
+            <p className="font-heading text-[2rem] font-bold tabular-nums tracking-tight text-foreground">
+              {formatPrice(product.price, { dropDecimal })}
+            </p>
 
-          <p
-            className={cn(
-              "mt-2 text-sm font-medium",
-              // FN_INSTOCK_AT_ZERO recolors a 0-stock item as available.
-              (inStockAtZero && product.stock <= 0
-                ? "in-stock"
-                : status) === "out-of-stock"
-                ? "text-destructive"
-                : (inStockAtZero && product.stock <= 0 ? "in-stock" : status) ===
-                    "low-stock"
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-muted-foreground",
-            )}
-          >
-            {stockLabel(product.stock, { inStockAtZero })}
-          </p>
+            <p
+              className={cn(
+                "text-sm font-medium",
+                // FN_INSTOCK_AT_ZERO recolors a 0-stock item as available.
+                (inStockAtZero && product.stock <= 0
+                  ? "in-stock"
+                  : status) === "out-of-stock"
+                  ? "text-destructive"
+                  : (inStockAtZero && product.stock <= 0 ? "in-stock" : status) ===
+                      "low-stock"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground",
+              )}
+            >
+              {stockLabel(product.stock, { inStockAtZero })}
+            </p>
+          </div>
 
           {product.requiresPrescription && (
             <div
-              className="mt-5 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary"
+              className="mt-5 rounded-lg border border-rx/25 bg-rx/5 px-4 py-3 text-sm text-rx"
               role="note"
             >
               <p className="font-semibold">Prescription required</p>
-              <p className="mt-0.5 text-primary/80">
+              <p className="mt-0.5 text-rx/80">
                 A pharmacist will verify a valid prescription before this item ships.
               </p>
             </div>
