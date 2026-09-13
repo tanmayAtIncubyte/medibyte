@@ -334,13 +334,15 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <section className="rounded-lg border border-border bg-card p-6">
       <div className="flex items-center gap-2 text-primary">
         {icon}
         <h2 className="font-heading text-lg font-semibold text-foreground">{title}</h2>
       </div>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-      <div className="mt-5">{children}</div>
+      {description && (
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{description}</p>
+      )}
+      <div className="mt-6 border-t border-border pt-6">{children}</div>
     </section>
   );
 }

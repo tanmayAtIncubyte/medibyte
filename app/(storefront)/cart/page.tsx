@@ -51,7 +51,7 @@ export default async function CartPage() {
 
   return (
     <PageContainer>
-      <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+      <h1 className="font-heading text-[2rem] font-bold leading-tight tracking-tight text-foreground">
         Your cart
       </h1>
 
@@ -64,7 +64,7 @@ export default async function CartPage() {
             {cart.lines.map((line) => (
               <li
                 key={line.product.id}
-                className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <ProductTypeBadge type={line.product.type} />
@@ -98,7 +98,7 @@ export default async function CartPage() {
           </ul>
 
           <aside className="lg:col-span-1">
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-6 lg:sticky lg:top-20">
               <h2 className="font-heading text-lg font-semibold text-foreground">
                 Order summary
               </h2>
