@@ -12,24 +12,22 @@ export default function HomePage() {
 
   return (
     <PageContainer>
-      {/* Slim branded hero */}
-      <section className="rounded-2xl bg-secondary px-6 py-10 sm:px-10 sm:py-12">
-        <p className="font-heading text-sm font-semibold uppercase tracking-wide text-primary">
-          {brand.name}
-        </p>
-        <h1 className="mt-3 max-w-2xl font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+      {/* Type-led hero: the promise carries the page, closed by a hairline
+          rather than boxed in a tinted panel. */}
+      <section className="border-b border-border pb-10 pt-2 sm:pb-12">
+        <h1 className="max-w-3xl font-heading text-[2.5rem] font-bold leading-[1.06] tracking-[-0.02em] text-foreground sm:text-[3.25rem]">
           {brand.tagline}
         </h1>
-        <p className="mt-3 max-w-xl text-base text-muted-foreground sm:text-lg">
+        <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
           {brand.description}
         </p>
-        <div className="mt-6">
+        <div className="mt-7">
           <RefillReminder />
         </div>
       </section>
 
       {/* Featured products — server-rendered, visible without clicking "Browse" */}
-      <section className="mt-10" aria-labelledby="featured-heading">
+      <section className="mt-12" aria-labelledby="featured-heading">
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2

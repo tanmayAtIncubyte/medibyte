@@ -11,7 +11,12 @@ describe("HomePage branded content", () => {
   it("renders the MediByte brand name from the brand source of truth", () => {
     render(<HomePage />);
 
-    expect(screen.getAllByText(brand.name).length).toBeGreaterThan(0);
+    // Matched as a substring rather than a standalone node: the hero is
+    // type-led (tagline + description) and no longer repeats the wordmark as an
+    // eyebrow above it, since the header already carries the wordmark. The
+    // brand name still has to come from lib/brand.ts for this to pass — a
+    // default starter page would fail it.
+    expect(screen.getAllByText(new RegExp(brand.name)).length).toBeGreaterThan(0);
   });
 
   it("renders the brand tagline as the page heading", () => {

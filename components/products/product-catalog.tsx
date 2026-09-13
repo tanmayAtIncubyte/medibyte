@@ -31,34 +31,37 @@ export function ProductCatalog({
     );
   }
 
+  // The card is built like a dispensing label: descriptive copy up top, then a
+  // rule, then the hard figures (price, availability) below it. The rule is
+  // structure, not decoration — it separates prose from data.
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((product) => (
         <li key={product.id} className="flex">
           <Link
             href={`/products/${product.id}`}
-            className="group flex w-full flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="group flex w-full flex-col rounded-lg border border-border bg-card p-5 transition-[border-color,box-shadow] hover:border-primary/50 hover:shadow-[0_2px_8px_rgba(20,33,31,0.06)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <ProductTypeBadge type={product.type} />
-            <h2 className="mt-3 font-heading text-base font-semibold text-foreground group-hover:text-primary">
+            <h2 className="mt-3.5 font-heading text-base font-semibold leading-snug text-foreground group-hover:text-primary">
               {product.name}
             </h2>
-            <p className="mt-2 flex-1 text-sm text-muted-foreground">
+            <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted-foreground">
               {product.description}
             </p>
             {product.requiresPrescription && (
-              <p className="mt-3 text-xs font-medium text-primary">
+              <p className="mt-3 text-xs font-medium text-rx">
                 Requires a valid prescription
               </p>
             )}
-            <div className="mt-4 flex items-end justify-between">
+            <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-border pt-3.5">
               {/* A11Y_LOW_CONTRAST: when set, the price text is rendered in a
                   near-background gray (well below WCAG AA 4.5:1) instead of the
                   accessible foreground token. The page resolves the flag and
                   passes the boolean in, keeping the component clean for admins. */}
               <p
                 className={cn(
-                  "font-heading text-lg font-bold tabular-nums",
+                  "font-heading text-xl font-bold tabular-nums tracking-tight",
                   lowContrast ? "text-muted-foreground/40" : "text-foreground",
                 )}
               >
