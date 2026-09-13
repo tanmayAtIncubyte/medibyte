@@ -23,10 +23,12 @@ export async function SiteHeader() {
     : 0;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6 px-4 sm:px-6">
         <Logo />
-        <nav className="flex items-center gap-2" aria-label="Primary">
+        {/* The nav is grouped, not a flat row: shopping on the left of the
+            hairline, who-you-are on the right. The rule encodes that split. */}
+        <nav className="flex items-center gap-1" aria-label="Primary">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/products">Browse</Link>
           </Button>
@@ -46,6 +48,7 @@ export async function SiteHeader() {
           </Button>
           {user ? (
             <>
+              <span aria-hidden className="mx-2 h-5 w-px shrink-0 bg-border" />
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/orders">Orders</Link>
               </Button>
@@ -54,6 +57,7 @@ export async function SiteHeader() {
               </Button>
               {user.role === "admin" && (
                 <>
+                  <span aria-hidden className="mx-2 h-5 w-px shrink-0 bg-border" />
                   <Button variant="ghost" size="sm" asChild>
                     <Link href="/admin">Admin</Link>
                   </Button>
@@ -62,7 +66,9 @@ export async function SiteHeader() {
                   </Button>
                 </>
               )}
-              <span className="text-sm text-muted-foreground">{user.name}</span>
+              <span className="ml-2 hidden text-sm font-medium text-muted-foreground sm:inline">
+                {user.name}
+              </span>
               <LogoutButton />
             </>
           ) : (
