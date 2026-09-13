@@ -28,7 +28,7 @@ export default async function OrdersPage() {
 
   return (
     <PageContainer>
-      <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+      <h1 className="font-heading text-[2rem] font-bold leading-tight tracking-tight text-foreground">
         {isAdmin ? "All orders" : "Your orders"}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -45,7 +45,7 @@ export default async function OrdersPage() {
             <li key={order.id}>
               <Link
                 href={`/orders/${encodeURIComponent(order.id)}`}
-                className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-3">
@@ -90,7 +90,7 @@ function formatOrderDate(iso: string): string {
 
 function EmptyOrders() {
   return (
-    <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
+    <div className="mt-10 flex flex-col items-center rounded-lg border border-dashed border-border bg-card p-12 text-center">
       <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-primary">
         <Package className="size-6" aria-hidden />
       </span>

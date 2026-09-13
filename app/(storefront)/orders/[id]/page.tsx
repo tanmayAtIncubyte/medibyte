@@ -54,7 +54,7 @@ export default async function OrderDetailPage({
       {justPlaced && (
         <div
           role="status"
-          className="mt-4 flex items-start gap-3 rounded-xl border border-primary/30 bg-secondary/60 p-4"
+          className="mt-4 flex items-start gap-3 rounded-lg border border-primary/30 bg-secondary/60 p-4"
         >
           <CheckCircle2 className="mt-0.5 size-5 text-primary" aria-hidden />
           <div>
@@ -70,7 +70,7 @@ export default async function OrderDetailPage({
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="font-heading text-[2rem] font-bold leading-tight tracking-tight text-foreground">
             Order {order.id}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -82,7 +82,7 @@ export default async function OrderDetailPage({
 
       <div className="mt-8 grid gap-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-card p-6">
             <h2 className="font-heading text-lg font-semibold text-foreground">Items</h2>
             <ul className="mt-4 divide-y divide-border">
               {order.items.map((item) => (
@@ -106,7 +106,7 @@ export default async function OrderDetailPage({
           </section>
 
           {order.prescriptions.length > 0 && (
-            <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <section className="rounded-lg border border-border bg-card p-6">
               <div className="flex items-center gap-2 text-primary">
                 <FileText className="size-5" aria-hidden />
                 <h2 className="font-heading text-lg font-semibold text-foreground">
@@ -134,7 +134,7 @@ export default async function OrderDetailPage({
             </section>
           )}
 
-          <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <section className="rounded-lg border border-border bg-card p-6">
             <div className="flex items-center gap-2 text-primary">
               <MapPin className="size-5" aria-hidden />
               <h2 className="font-heading text-lg font-semibold text-foreground">
@@ -154,7 +154,7 @@ export default async function OrderDetailPage({
         </div>
 
         <aside className="lg:col-span-1">
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="rounded-lg border border-border bg-card p-6">
             <h2 className="font-heading text-lg font-semibold text-foreground">Order total</h2>
             <dl className="mt-4 space-y-2 text-sm">
               <SummaryRow label="Subtotal" value={formatPrice(order.totals.subtotal)} />

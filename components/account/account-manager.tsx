@@ -77,7 +77,7 @@ export function AccountManager({
 
   return (
     <>
-      <section className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+      <section className="mt-6 rounded-lg border border-border bg-card p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-primary">
             <MapPin className="size-5" aria-hidden />
@@ -182,7 +182,7 @@ export function AccountManager({
         </div>
       </section>
 
-      <section className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+      <section className="mt-6 rounded-lg border border-border bg-card p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-primary">
             <ShieldPlus className="size-5" aria-hidden />
