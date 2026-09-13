@@ -8,6 +8,8 @@ import { SESSION_COOKIE } from "@/lib/auth/current-user";
 import { getSessionSecret } from "@/lib/auth/secret";
 import { verifySession } from "@/lib/auth/session";
 import { resetRegistrations } from "@/lib/data/registrations";
+import { mintCandidate } from "@/lib/access/candidates";
+import { CANDIDATE_COOKIE } from "@/lib/access/scope";
 
 // Slice 4 — auth endpoints over real HTTP (route handlers set/clear the cookie
 // on the response directly, so no next/headers runtime is needed here).
@@ -32,6 +34,60 @@ function jsonRequest(url: string, body: unknown): Request {
 function sessionCookie(response: NextResponse) {
   return response.cookies.get(SESSION_COOKIE);
 }
+
+function loginRequest(body: unknown, candidateCode?: string): Request {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (candidateCode) {
+    headers.cookie = `${CANDIDATE_COOKIE}=${candidateCode}`;
+  }
+  return new Request("http://localhost/api/auth/login", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
+const STEVE = { email: "steve@example.test", password: "steve1234" };
+const DANA = { email: "dana@example.test", password: "dana1234" };
+const ADMIN = { email: "admin@medibyte.test", password: "admin.incu123" };
+
+describe("POST /api/auth/login — candidate track binding", () => {
+  it("rejects signing in as Steve on a MANUAL link (403, no session)", async () => {
+    const { code } = await mintCandidate({ name: "M", email: "m1@x.test", track: "manual" });
+    const response = await login(loginRequest(STEVE, code));
+    expect(response.status).toBe(403);
+    expect(sessionCookie(response)).toBeUndefined();
+  });
+
+  it("allows a customer on a MANUAL link (200)", async () => {
+    const { code } = await mintCandidate({ name: "M", email: "m2@x.test", track: "manual" });
+    const response = await login(loginRequest(DANA, code));
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects a customer on an AUTOMATION link (403)", async () => {
+    const { code } = await mintCandidate({ name: "A", email: "a1@x.test", track: "automation" });
+    const response = await login(loginRequest(DANA, code));
+    expect(response.status).toBe(403);
+  });
+
+  it("allows Steve on an AUTOMATION link (200)", async () => {
+    const { code } = await mintCandidate({ name: "A", email: "a2@x.test", track: "automation" });
+    const response = await login(loginRequest(STEVE, code));
+    expect(response.status).toBe(200);
+  });
+
+  it("does not bind admin — admins aren't candidates (200 even on a manual link)", async () => {
+    const { code } = await mintCandidate({ name: "M", email: "m3@x.test", track: "manual" });
+    const response = await login(loginRequest(ADMIN, code));
+    expect(response.status).toBe(200);
+  });
+
+  it("does not bind when there is no candidate cookie (the gate governs access)", async () => {
+    const response = await login(loginRequest(STEVE));
+    expect(response.status).toBe(200);
+  });
+});
 
 describe("POST /api/auth/login", () => {
   it("returns 200 and a verifiable admin session cookie for valid admin creds", async () => {

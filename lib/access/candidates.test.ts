@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   candidateHasAccess,
+  candidateTrack,
   currentAttempt,
   displayStatus,
   effectiveExpiresAt,
@@ -60,6 +61,26 @@ describe("mintCandidate", () => {
     });
 
     expect(await getCandidate(minted.code)).toMatchObject({ role: "Senior QA", notes: "Referred by Anita" });
+  });
+
+  it("defaults the track to manual when unspecified", async () => {
+    const minted = await mintCandidate({ name: "Priya", email: "priya2@example.com" });
+    expect(minted.track).toBe("manual");
+    expect(candidateTrack(minted)).toBe("manual");
+  });
+
+  it("stores an automation track when requested", async () => {
+    const minted = await mintCandidate({
+      name: "Auto",
+      email: "auto@example.com",
+      track: "automation",
+    });
+    expect(minted.track).toBe("automation");
+    expect(await getCandidate(minted.code)).toMatchObject({ track: "automation" });
+  });
+
+  it("candidateTrack treats a legacy record with no track as manual", () => {
+    expect(candidateTrack({ track: undefined })).toBe("manual");
   });
 
   it("honors a FRACTIONAL window (0.5 day = 12h)", async () => {
