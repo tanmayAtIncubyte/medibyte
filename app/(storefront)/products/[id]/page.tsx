@@ -45,7 +45,7 @@ export default async function ProductDetailPage({
       <div className="mt-6 grid gap-8 lg:grid-cols-2">
         <div
           className={cn(
-            "flex aspect-square items-center justify-center rounded-lg border border-border",
+            "flex aspect-[5/4] max-h-80 items-center justify-center rounded-lg border border-border",
             product.requiresPrescription ? "bg-rx/5" : "bg-secondary/70",
           )}
         >
