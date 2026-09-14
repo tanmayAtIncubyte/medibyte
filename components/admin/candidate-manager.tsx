@@ -106,7 +106,7 @@ export function CandidateManager() {
           Loading candidates…
         </p>
       ) : candidates.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
           No candidates yet. Mint an access link above to invite one.
         </p>
       ) : (
@@ -171,7 +171,7 @@ function MintForm({ onMinted }: { onMinted: () => Promise<void> }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card p-4"
+      className="flex flex-wrap items-end gap-4 rounded-2xl border border-border bg-card p-4"
     >
       <div className="flex min-w-48 flex-1 flex-col gap-1.5">
         <label htmlFor="candidate-name" className="text-xs font-medium text-muted-foreground">
@@ -280,7 +280,7 @@ function CandidateTable({
   onChanged: () => Promise<void>;
 }) {
   return (
-    <section className="overflow-x-auto rounded-xl border border-border bg-card">
+    <section className="overflow-x-auto rounded-2xl border border-border bg-card">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">

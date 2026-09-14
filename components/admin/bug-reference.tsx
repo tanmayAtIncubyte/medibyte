@@ -104,7 +104,7 @@ function Toolbar({
   onGroupByChange: (value: GroupBy) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card p-4">
+    <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-border bg-card p-4">
       <SelectField
         label="Category"
         value={category}
@@ -171,7 +171,7 @@ function SelectField({
 
 function BugGroup({ label, bugs }: { label: string; bugs: BugDefinition[] }) {
   return (
-    <section className="rounded-xl border border-border bg-card">
+    <section className="rounded-2xl border border-border bg-card">
       {label !== UNGROUPED && (
         <h2 className="border-b border-border px-4 py-2.5 font-heading text-sm font-semibold text-foreground">
           {label}
@@ -435,7 +435,7 @@ function Badge({ children }: { children: string }) {
 
 function EmptyState() {
   return (
-    <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+    <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
       No bugs match the current filters.
     </p>
   );
