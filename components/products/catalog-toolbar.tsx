@@ -13,7 +13,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 const selectClass =
-  "h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+  "h-11 w-full rounded-full border border-border bg-card px-4 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /**
  * URL-driven catalog refinement controls. Renders as a plain GET form posting to
@@ -31,12 +31,12 @@ export function CatalogToolbar({
     <form
       method="GET"
       action="/products"
-      className="rounded-xl border border-border bg-card p-4 shadow-sm"
+      className="rounded-2xl border border-border bg-card p-5 sm:p-6"
     >
       {/* Tier 1 (locator-hardening): labels wrap their controls implicitly, no id/htmlFor. */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="lg:col-span-2">
-          <label className="mb-1.5 block text-xs font-medium text-foreground">
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
             Search products
             <div className="relative mt-1.5">
               <Search
@@ -55,7 +55,7 @@ export function CatalogToolbar({
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-foreground">
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
             Category
             <select
               name="category"
@@ -73,7 +73,7 @@ export function CatalogToolbar({
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-foreground">
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
             Type
             <select
               name="type"
@@ -90,7 +90,7 @@ export function CatalogToolbar({
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="sm:max-w-xs sm:flex-1">
-          <label className="mb-1.5 block text-xs font-medium text-foreground">
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
             Sort by
             <select
               name="sort"

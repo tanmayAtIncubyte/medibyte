@@ -43,18 +43,31 @@ export default async function ProductDetailPage({
       </Link>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-2">
-        <div className="flex aspect-square items-center justify-center rounded-2xl border border-border bg-secondary/60">
-          <Pill className="size-24 text-primary/70" aria-hidden />
+        <div
+          className={cn(
+            "flex aspect-[5/4] max-h-80 items-center justify-center rounded-2xl border border-border",
+            product.requiresPrescription ? "bg-rx" : "bg-otc",
+          )}
+        >
+          <Pill
+            className={cn(
+              "size-20",
+              product.requiresPrescription
+                ? "text-rx-foreground/35"
+                : "text-otc-foreground/35",
+            )}
+            aria-hidden
+          />
         </div>
 
         <div className="flex flex-col">
           <ProductTypeBadge type={product.type} />
-          <h1 className="mt-3 font-heading text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="mt-4 font-heading text-[2.5rem] font-semibold leading-[1.08] tracking-tight text-foreground">
             {product.name}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{product.category}</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">{product.category}</p>
 
-          <p className="mt-6 font-heading text-3xl font-bold tabular-nums text-foreground">
+          <p className="mt-6 border-t border-border pt-6 font-heading text-[2.25rem] font-semibold tabular-nums tracking-tight text-foreground">
             {formatPrice(product.price, { dropDecimal })}
           </p>
 
@@ -77,11 +90,11 @@ export default async function ProductDetailPage({
 
           {product.requiresPrescription && (
             <div
-              className="mt-5 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary"
+              className="mt-5 rounded-2xl border border-rx-foreground/20 bg-rx px-5 py-4 text-sm text-rx-foreground"
               role="note"
             >
               <p className="font-semibold">Prescription required</p>
-              <p className="mt-0.5 text-primary/80">
+              <p className="mt-1 text-rx-foreground/80">
                 A pharmacist will verify a valid prescription before this item ships.
               </p>
             </div>
