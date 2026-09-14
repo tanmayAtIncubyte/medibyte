@@ -32,33 +32,33 @@ export function ProductCatalog({
   }
 
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((product) => (
         <li key={product.id} className="flex">
           <Link
             href={`/products/${product.id}`}
-            className="group flex w-full flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="group flex w-full flex-col rounded-xl border border-border bg-card p-6 transition-[border-color,box-shadow] hover:border-primary/40 hover:shadow-[0_10px_30px_rgba(1,77,67,0.08)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <ProductTypeBadge type={product.type} />
-            <h2 className="mt-3 font-heading text-base font-semibold text-foreground group-hover:text-primary">
+            <h2 className="mt-4 font-heading text-[1.25rem] font-semibold leading-snug text-foreground group-hover:text-primary">
               {product.name}
             </h2>
-            <p className="mt-2 flex-1 text-sm text-muted-foreground">
+            <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
               {product.description}
             </p>
             {product.requiresPrescription && (
-              <p className="mt-3 text-xs font-medium text-primary">
+              <p className="mt-3 text-xs font-medium text-rx-foreground">
                 Requires a valid prescription
               </p>
             )}
-            <div className="mt-4 flex items-end justify-between">
+            <div className="mt-5 flex items-baseline justify-between gap-3 border-t border-border pt-4">
               {/* A11Y_LOW_CONTRAST: when set, the price text is rendered in a
                   near-background gray (well below WCAG AA 4.5:1) instead of the
                   accessible foreground token. The page resolves the flag and
                   passes the boolean in, keeping the component clean for admins. */}
               <p
                 className={cn(
-                  "font-heading text-lg font-bold tabular-nums",
+                  "font-heading text-2xl font-semibold tabular-nums tracking-tight",
                   lowContrast ? "text-muted-foreground/40" : "text-foreground",
                 )}
               >

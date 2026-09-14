@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
-import { RefillReminder } from "@/components/home/refill-reminder";
+import { PromoPanel } from "@/components/home/promo-panel";
 import { PageContainer } from "@/components/layout/page-container";
 import { ProductCatalog } from "@/components/products/product-catalog";
 import { brand } from "@/lib/brand";
@@ -12,56 +11,52 @@ export default function HomePage() {
 
   return (
     <PageContainer>
-      {/* Slim branded hero */}
-      <section className="rounded-2xl bg-secondary px-6 py-10 sm:px-10 sm:py-12">
-        <p className="font-heading text-sm font-semibold uppercase tracking-wide text-primary">
-          {brand.name}
-        </p>
-        <h1 className="mt-3 max-w-2xl font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+      {/* Type-led hero: a big green serif on the mint page — the move that makes
+          this read as one family with incubyte.co. */}
+      <section className="pt-8 pb-12 sm:pt-14">
+        <p className="text-sm font-medium text-primary">{brand.name}</p>
+        <h1 className="mt-4 max-w-3xl font-heading text-[3.25rem] font-semibold leading-[1.02] tracking-[-0.01em] text-primary sm:text-[5rem]">
           {brand.tagline}
         </h1>
-        <p className="mt-3 max-w-xl text-base text-muted-foreground sm:text-lg">
+        <p className="mt-6 max-w-xl text-base leading-relaxed text-foreground/75 sm:text-lg">
           {brand.description}
         </p>
-        <div className="mt-6">
-          <RefillReminder />
-        </div>
       </section>
 
+      <PromoPanel />
+
       {/* Featured products — server-rendered, visible without clicking "Browse" */}
-      <section className="mt-10" aria-labelledby="featured-heading">
+      <section className="mt-16" aria-labelledby="featured-heading">
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2
               id="featured-heading"
-              className="font-heading text-2xl font-bold tracking-tight text-foreground"
+              className="font-heading text-[2rem] font-semibold leading-[1.08] tracking-tight text-foreground"
             >
               Featured products
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               A hand-picked mix of everyday essentials and prescription care.
             </p>
           </div>
           <Link
             href="/products"
-            className="hidden shrink-0 items-center gap-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 rounded sm:inline-flex"
+            className="hidden shrink-0 rounded text-sm font-medium text-primary underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:inline-flex"
           >
             View all products
-            <ArrowRight className="size-4" aria-hidden />
           </Link>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-8">
           <ProductCatalog products={featured} />
         </div>
 
-        <div className="mt-8 flex justify-center sm:hidden">
+        <div className="mt-10 flex justify-center sm:hidden">
           <Link
             href="/products"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 rounded"
+            className="rounded text-sm font-medium text-primary underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             View all products
-            <ArrowRight className="size-4" aria-hidden />
           </Link>
         </div>
       </section>
