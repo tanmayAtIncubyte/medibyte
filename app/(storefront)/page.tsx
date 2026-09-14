@@ -11,9 +11,13 @@ export default function HomePage() {
 
   return (
     <PageContainer>
-      {/* Type-led hero: a big green serif on the mint page — the move that makes
-          this read as one family with incubyte.co. */}
-      <section className="pt-8 pb-12 sm:pt-14">
+      {/* Type-led hero on a full-bleed mint band — incubyte.co's top region. The
+          band is a pseudo-element stretched to the viewport width and pulled up
+          behind the floating nav, so the page itself stays white and the mint
+          reads as an accent rather than a wash. `isolate` keeps the -z-10 band
+          inside this section's stacking context (above the body, behind the
+          copy). */}
+      <section className="relative isolate -mt-10 pt-20 pb-14 before:pointer-events-none before:absolute before:-top-20 before:bottom-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-secondary sm:pt-28 sm:pb-16">
         <p className="text-sm font-medium text-primary">{brand.name}</p>
         <h1 className="mt-4 max-w-3xl font-heading text-[3.25rem] font-semibold leading-[1.02] tracking-[-0.01em] text-primary sm:text-[5rem]">
           {brand.tagline}

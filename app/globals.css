@@ -69,7 +69,11 @@
    on a white card and MUST stay below WCAG AA (it lands ~1.8:1), while plain
    muted text must stay above it (~5.0:1). See docs/Mods/ui-incubyte-redesign-plan.md §3.3. */
 :root {
-  --background: #ebfff6; /* mint page */
+  /* White is incubyte.co's dominant ground (63 uses vs 40 for mint); the mint
+     appears there only as the hero band behind the nav and headline, which the
+     home page reproduces with --secondary. Painting every page mint read as a
+     heavy wash — this is the neat version. */
+  --background: #ffffff;
   --foreground: #0a0a0d;
   --card: #ffffff;
   --card-foreground: #0a0a0d;
