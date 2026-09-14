@@ -244,7 +244,7 @@ export function AccountManager({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="text-foreground">{value || "—"}</dd>
     </div>
   );

@@ -180,7 +180,7 @@ export function CheckoutForm({
         </p>
       )}
 
-      <Section icon={<Truck aria-hidden className="size-5" />} title="Shipping address">
+      <Section step={1} icon={<Truck aria-hidden className="size-5" />} title="Shipping address">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             name="shipping.fullName"
@@ -222,6 +222,7 @@ export function CheckoutForm({
 
       {rxItems.length > 0 && (
         <Section
+          step={2}
           icon={<FileText aria-hidden className="size-5" />}
           title="Prescription information"
           description="Required for the prescription items in your order. Kept private and used only to fill your prescription."
@@ -279,6 +280,7 @@ export function CheckoutForm({
       )}
 
       <Section
+        step={rxItems.length > 0 ? 3 : 2}
         icon={<CreditCard aria-hidden className="size-5" />}
         title="Payment"
         description="This is a demo store — no real payment is processed and no card data is stored."
@@ -322,12 +324,18 @@ export function CheckoutForm({
   );
 }
 
+// Checkout is a genuine sequence — shipping, then (for Rx items) prescription
+// details, then payment — so each section carries its step number. The numeral
+// is presentational chrome (aria-hidden) so the heading's accessible name stays
+// exactly the title.
 function Section({
+  step,
   icon,
   title,
   description,
   children,
 }: {
+  step: number;
   icon: React.ReactNode;
   title: string;
   description?: string;
@@ -335,12 +343,22 @@ function Section({
 }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-6 sm:p-8">
-      <div className="flex items-center gap-2 text-primary">
-        {icon}
-        <h2 className="font-heading text-lg font-semibold text-foreground">{title}</h2>
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-lime font-heading text-base font-semibold text-lime-foreground tabular-nums"
+        >
+          {step}
+        </span>
+        <span className="text-primary">{icon}</span>
+        <h2 className="font-heading text-xl font-semibold text-foreground">{title}</h2>
       </div>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-      <div className="mt-5">{children}</div>
+      {description && (
+        <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
+          {description}
+        </p>
+      )}
+      <div className="mt-6 border-t border-border pt-6">{children}</div>
     </section>
   );
 }

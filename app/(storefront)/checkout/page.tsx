@@ -90,7 +90,7 @@ export default async function CheckoutPage() {
         </div>
 
         <aside className="lg:col-span-1">
-          <div className="rounded-2xl border border-border bg-card p-6 lg:sticky lg:top-24">
+          <div className="rounded-2xl bg-secondary p-6 lg:sticky lg:top-24 sm:p-7">
             <h2 className="font-heading text-xl font-semibold text-foreground">
               Order summary
             </h2>
@@ -103,7 +103,7 @@ export default async function CheckoutPage() {
                       {line.product.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Qty {line.quantity} · {formatPrice(line.product.price)} each
+                      Qty {line.quantity} × {formatPrice(line.product.price)}
                     </p>
                   </div>
                   <span className="font-heading text-sm font-semibold tabular-nums text-foreground">
@@ -113,7 +113,7 @@ export default async function CheckoutPage() {
               ))}
             </ul>
 
-            <dl className="mt-5 space-y-2 border-t border-border pt-4 text-sm">
+            <dl className="mt-5 space-y-2 border-t border-primary/15 pt-4 text-sm">
               <SummaryRow
                 label={`Subtotal (${cart.itemCount} ${cart.itemCount === 1 ? "item" : "items"})`}
                 value={formatPrice(cart.subtotal)}
@@ -126,7 +126,7 @@ export default async function CheckoutPage() {
                 />
               )}
               <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
-              <div className="border-t border-border pt-3">
+              <div className="border-t border-primary/15 pt-3">
                 <SummaryRow label="Total" value={formatPrice(cart.total)} emphasized />
               </div>
             </dl>

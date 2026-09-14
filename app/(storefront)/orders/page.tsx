@@ -40,27 +40,32 @@ export default async function OrdersPage() {
       {orders.length === 0 ? (
         <EmptyOrders />
       ) : (
-        <ul className="mt-8 space-y-4">
+        // A ledger, not a stack of cards: one container, ruled rows, and the
+        // date / item count as their own quiet columns rather than a
+        // dot-joined meta string.
+        <ul className="mt-8 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
           {orders.map((order) => (
             <li key={order.id}>
               <Link
                 href={`/orders/${encodeURIComponent(order.id)}`}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="flex items-center justify-between gap-6 px-6 py-5 transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/50"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1 sm:grid sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,0.6fr)] sm:items-center sm:gap-6">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="font-heading text-base font-semibold text-foreground">
+                    <span className="font-heading text-lg font-semibold text-foreground">
                       {order.id}
                     </span>
                     <OrderStatusBadge status={order.status} />
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {(rawDate ? order.placedAt : formatOrderDate(order.placedAt))} ·{" "}
+                  <span className="mt-1.5 block text-sm text-muted-foreground sm:mt-0">
+                    {(rawDate ? order.placedAt : formatOrderDate(order.placedAt))}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-muted-foreground sm:mt-0">
                     {itemSummary(order)}
-                  </p>
+                  </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="font-heading text-base font-bold tabular-nums text-foreground">
+                  <span className="font-heading text-lg font-semibold tabular-nums text-foreground">
                     {formatPrice(order.totals.total)}
                   </span>
                   <ChevronRight className="size-5 text-muted-foreground" aria-hidden />

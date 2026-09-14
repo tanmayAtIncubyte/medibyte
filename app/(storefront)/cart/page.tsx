@@ -98,7 +98,7 @@ export default async function CartPage() {
           </ul>
 
           <aside className="lg:col-span-1">
-            <div className="rounded-2xl border border-border bg-card p-6 lg:sticky lg:top-24">
+            <div className="rounded-2xl bg-secondary p-6 lg:sticky lg:top-24 sm:p-7">
               <h2 className="font-heading text-xl font-semibold text-foreground">
                 Order summary
               </h2>
@@ -117,7 +117,7 @@ export default async function CartPage() {
                 {!hideTaxOnCart && (
                   <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
                 )}
-                <div className="border-t border-border pt-3">
+                <div className="border-t border-primary/15 pt-3">
                   <SummaryRow
                     label={hideTaxOnCart ? "Subtotal" : "Total"}
                     value={formatPrice(hideTaxOnCart ? cart.subtotal - cart.discount : cart.total)}
@@ -126,7 +126,7 @@ export default async function CartPage() {
                 </div>
               </dl>
 
-              <div className="mt-5 border-t border-border pt-5">
+              <div className="mt-5 border-t border-primary/15 pt-5">
                 <CouponForm
                   applied={
                     applied

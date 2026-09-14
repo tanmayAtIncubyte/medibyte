@@ -20,21 +20,17 @@ export default async function AccountPage() {
         Your account
       </h1>
 
-      <section className="mt-8 rounded-2xl border border-border bg-card p-6">
+      {/* The profile is the customer's identity card: the name carries it, set
+          in the display face on the mint ground; the email sits beneath. */}
+      <section className="mt-8 rounded-2xl bg-secondary p-6 sm:p-8">
         <div className="flex items-center gap-2 text-primary">
           <UserRound className="size-5" aria-hidden />
           <h2 className="font-heading text-xl font-semibold text-foreground">Profile</h2>
         </div>
-        <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Name</dt>
-            <dd className="text-foreground">{user.name}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
-            <dd className="text-foreground">{user.email}</dd>
-          </div>
-        </dl>
+        <p className="mt-6 font-heading text-[2rem] font-semibold leading-tight tracking-tight text-primary sm:text-[2.5rem]">
+          {user.name}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{user.email}</p>
       </section>
 
       <AccountManager
