@@ -5,6 +5,7 @@ import { ArrowLeft, Pill } from "lucide-react";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { PageContainer } from "@/components/layout/page-container";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
+import { CtaChip } from "@/components/ui/cta-chip";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isBugActive } from "@/lib/bugs";
 import { findProductById } from "@/lib/data/products";
@@ -42,38 +43,60 @@ export default async function ProductDetailPage({
         Back to products
       </Link>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-2">
-        <div
+      <div className="mt-6 grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-12">
+        {/* The pack face. There is no product photography in this catalogue, so
+            the panel is the product's box front instead of an empty image slot:
+            the type, the name at display size, the category — on the pastel that
+            already tells OTC from Rx apart. The pill is a corner stamp, not the
+            subject. */}
+        <section
+          aria-label="Product"
           className={cn(
-            "flex aspect-[5/4] max-h-80 items-center justify-center rounded-2xl border border-border",
+            "flex min-h-[22rem] flex-col justify-between rounded-2xl p-8 sm:min-h-[24rem] sm:p-10",
             product.requiresPrescription ? "bg-rx" : "bg-otc",
           )}
         >
-          <Pill
-            className={cn(
-              "size-20",
-              product.requiresPrescription
-                ? "text-rx-foreground/35"
-                : "text-otc-foreground/35",
-            )}
-            aria-hidden
-          />
-        </div>
+          <ProductTypeBadge type={product.type} className="bg-white/70" />
 
-        <div className="flex flex-col">
-          <ProductTypeBadge type={product.type} />
-          <h1 className="mt-4 font-heading text-[2.5rem] font-semibold leading-[1.08] tracking-tight text-foreground">
+          <h1
+            className={cn(
+              "my-8 text-balance font-heading text-[2.75rem] font-semibold leading-[1.04] tracking-tight sm:text-[3.5rem]",
+              product.requiresPrescription ? "text-rx-foreground" : "text-primary",
+            )}
+          >
             {product.name}
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">{product.category}</p>
 
-          <p className="mt-6 border-t border-border pt-6 font-heading text-[2.25rem] font-semibold tabular-nums tracking-tight text-foreground">
-            {formatPrice(product.price, { dropDecimal })}
-          </p>
+          <div className="flex items-end justify-between gap-4">
+            <p
+              className={cn(
+                "text-sm font-medium",
+                product.requiresPrescription ? "text-rx-foreground/80" : "text-primary/80",
+              )}
+            >
+              {product.category}
+            </p>
+            <Pill
+              className={cn(
+                "size-8 shrink-0 -rotate-45",
+                product.requiresPrescription ? "text-rx-foreground/40" : "text-primary/40",
+              )}
+              aria-hidden
+            />
+          </div>
+        </section>
+
+        {/* The counter: price and availability on the label rule, then the action,
+            then what the product is. */}
+        <div className="flex flex-col lg:self-center">
+          <div className="flex items-baseline justify-between gap-4 border-b border-border pb-5">
+            <p className="font-heading text-[2.5rem] font-semibold tabular-nums tracking-tight text-foreground">
+              {formatPrice(product.price, { dropDecimal })}
+            </p>
 
           <p
             className={cn(
-              "mt-2 text-sm font-medium",
+              "text-sm font-medium",
               // FN_INSTOCK_AT_ZERO recolors a 0-stock item as available.
               (inStockAtZero && product.stock <= 0
                 ? "in-stock"
@@ -87,6 +110,7 @@ export default async function ProductDetailPage({
           >
             {stockLabel(product.stock, { inStockAtZero })}
           </p>
+          </div>
 
           {product.requiresPrescription && (
             <div
@@ -101,10 +125,13 @@ export default async function ProductDetailPage({
           )}
 
           <div className="mt-6">
-            <AddToCartButton
-              productId={product.id}
-              disabled={status === "out-of-stock"}
-            />
+            <span className="inline-flex items-center gap-1">
+              <AddToCartButton
+                productId={product.id}
+                disabled={status === "out-of-stock"}
+              />
+              {status !== "out-of-stock" && <CtaChip />}
+            </span>
             {status === "out-of-stock" && (
               <p className="mt-2 text-xs text-muted-foreground">
                 This item is currently unavailable.
@@ -112,7 +139,7 @@ export default async function ProductDetailPage({
             )}
           </div>
 
-          <p className="mt-6 leading-relaxed text-foreground">
+          <p className="mt-8 max-w-prose text-base leading-relaxed text-foreground">
             {product.description}
           </p>
 
