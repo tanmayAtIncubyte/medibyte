@@ -51,7 +51,7 @@ export default async function CartPage() {
 
   return (
     <PageContainer>
-      <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+      <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
         Your cart
       </h1>
 
@@ -64,7 +64,7 @@ export default async function CartPage() {
             {cart.lines.map((line) => (
               <li
                 key={line.product.id}
-                className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <ProductTypeBadge type={line.product.type} />
@@ -98,8 +98,8 @@ export default async function CartPage() {
           </ul>
 
           <aside className="lg:col-span-1">
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <h2 className="font-heading text-lg font-semibold text-foreground">
+            <div className="rounded-2xl border border-border bg-card p-6 lg:sticky lg:top-24">
+              <h2 className="font-heading text-xl font-semibold text-foreground">
                 Order summary
               </h2>
               <dl className="mt-4 space-y-2 text-sm">
@@ -192,7 +192,7 @@ function SummaryRow({
 
 function EmptyCart() {
   return (
-    <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
+    <div className="mt-10 flex flex-col items-center rounded-2xl border border-dashed border-border bg-card p-12 text-center">
       <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-primary">
         <ShoppingCart className="size-6" aria-hidden />
       </span>

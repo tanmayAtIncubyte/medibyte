@@ -30,10 +30,10 @@ export default async function CheckoutPage() {
   if (cart.lines.length === 0) {
     return (
       <PageContainer>
-        <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+        <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
           Checkout
         </h1>
-        <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
+        <div className="mt-10 flex flex-col items-center rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-primary">
             <ShoppingCart className="size-6" aria-hidden />
           </span>
@@ -68,7 +68,7 @@ export default async function CheckoutPage() {
 
   return (
     <PageContainer>
-      <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+      <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
         Checkout
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -90,8 +90,8 @@ export default async function CheckoutPage() {
         </div>
 
         <aside className="lg:col-span-1">
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="font-heading text-lg font-semibold text-foreground">
+          <div className="rounded-2xl border border-border bg-card p-6 lg:sticky lg:top-24">
+            <h2 className="font-heading text-xl font-semibold text-foreground">
               Order summary
             </h2>
             <ul className="mt-4 space-y-3">
