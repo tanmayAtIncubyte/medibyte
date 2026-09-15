@@ -5,8 +5,10 @@ import { CartLineControls } from "@/components/cart/cart-line-controls";
 import { CartLinePrefetch } from "@/components/cart/cart-line-prefetch";
 import { CouponForm } from "@/components/cart/coupon-form";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageRail } from "@/components/layout/page-rail";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
+import { CtaChip } from "@/components/ui/cta-chip";
 import { getCartView } from "@/lib/cart/cart-service";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isBugActive } from "@/lib/bugs";
@@ -51,7 +53,7 @@ export default async function CartPage() {
 
   return (
     <PageContainer>
-      <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+      <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
         Your cart
       </h1>
 
@@ -59,12 +61,26 @@ export default async function CartPage() {
         <EmptyCart />
       ) : (
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
+          <PageRail
+            ordered
+            label="Checkout steps"
+            items={[
+              {
+                label: "Cart",
+                current: true,
+                note: `${cart.lines.length} line${cart.lines.length === 1 ? "" : "s"}`,
+              },
+              { label: "Shipping address" },
+              { label: "Payment" },
+            ]}
+            footer={[{ label: "Continue shopping", href: "/products" }]}
+          />
           <CartLinePrefetch productIds={lineProductIds} waterfall={cartWaterfall} />
-          <ul className="space-y-4 lg:col-span-2">
+          <ul className="divide-y divide-border self-start overflow-hidden rounded-2xl border border-border bg-card lg:col-span-2">
             {cart.lines.map((line) => (
               <li
                 key={line.product.id}
-                className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <ProductTypeBadge type={line.product.type} />
@@ -98,8 +114,8 @@ export default async function CartPage() {
           </ul>
 
           <aside className="lg:col-span-1">
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <h2 className="font-heading text-lg font-semibold text-foreground">
+            <div className="rounded-2xl bg-secondary p-6 lg:sticky lg:top-24 sm:p-7">
+              <h2 className="font-heading text-xl font-semibold text-foreground">
                 Order summary
               </h2>
               <dl className="mt-4 space-y-2 text-sm">
@@ -117,7 +133,7 @@ export default async function CartPage() {
                 {!hideTaxOnCart && (
                   <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
                 )}
-                <div className="border-t border-border pt-3">
+                <div className="border-t border-primary/15 pt-3">
                   <SummaryRow
                     label={hideTaxOnCart ? "Subtotal" : "Total"}
                     value={formatPrice(hideTaxOnCart ? cart.subtotal - cart.discount : cart.total)}
@@ -126,7 +142,7 @@ export default async function CartPage() {
                 </div>
               </dl>
 
-              <div className="mt-5 border-t border-border pt-5">
+              <div className="mt-5 border-t border-primary/15 pt-5">
                 <CouponForm
                   applied={
                     applied
@@ -140,9 +156,12 @@ export default async function CartPage() {
                 />
               </div>
 
-              <Button asChild size="lg" className="mt-5 w-full">
-                <Link href="/checkout">Proceed to checkout</Link>
-              </Button>
+              <span className="mt-5 inline-flex items-center gap-1">
+                <Button asChild size="lg">
+                  <Link href="/checkout">Proceed to checkout</Link>
+                </Button>
+                <CtaChip />
+              </span>
             </div>
           </aside>
         </div>
@@ -192,7 +211,7 @@ function SummaryRow({
 
 function EmptyCart() {
   return (
-    <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
+    <div className="mt-10 flex flex-col items-center rounded-2xl border border-dashed border-border bg-card p-12 text-center">
       <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-primary">
         <ShoppingCart className="size-6" aria-hidden />
       </span>

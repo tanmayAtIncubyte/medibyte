@@ -17,7 +17,7 @@ export default async function AdminCandidatesPage() {
       <header className="mb-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
               Candidate access
             </h1>
             <p className="mt-2 text-muted-foreground">

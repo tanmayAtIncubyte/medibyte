@@ -4,6 +4,7 @@ import { ShoppingCart } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Button } from "@/components/ui/button";
+import { CtaChip } from "@/components/ui/cta-chip";
 import { getCartView } from "@/lib/cart/cart-service";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isBugActive } from "@/lib/bugs";
@@ -23,10 +24,13 @@ export async function SiteHeader() {
     : 0;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+    // A floating white pill that rides over the mint page, inset from the
+    // viewport edges — Incubyte's nav treatment. The nav is grouped rather than
+    // a flat row: shopping, then who-you-are, then admin, split by hairlines.
+    <header className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-6 rounded-full border border-border/70 bg-card pl-5 pr-2 shadow-[0_8px_30px_rgba(1,77,67,0.08)]">
         <Logo />
-        <nav className="flex items-center gap-2" aria-label="Primary">
+        <nav className="flex items-center gap-1" aria-label="Primary">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/products">Browse</Link>
           </Button>
@@ -46,6 +50,7 @@ export async function SiteHeader() {
           </Button>
           {user ? (
             <>
+              <span aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-border" />
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/orders">Orders</Link>
               </Button>
@@ -54,6 +59,7 @@ export async function SiteHeader() {
               </Button>
               {user.role === "admin" && (
                 <>
+                  <span aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-border" />
                   <Button variant="ghost" size="sm" asChild>
                     <Link href="/admin">Admin</Link>
                   </Button>
@@ -62,13 +68,18 @@ export async function SiteHeader() {
                   </Button>
                 </>
               )}
-              <span className="text-sm text-muted-foreground">{user.name}</span>
+              <span className="ml-2 hidden text-sm text-muted-foreground sm:inline">
+                {user.name}
+              </span>
               <LogoutButton />
             </>
           ) : (
-            <Button size="sm" asChild>
-              <Link href="/login">Sign in</Link>
-            </Button>
+            <span className="inline-flex items-center gap-1">
+              <Button asChild>
+                <Link href="/login">Sign in</Link>
+              </Button>
+              <CtaChip size="sm" />
+            </span>
           )}
         </nav>
       </div>

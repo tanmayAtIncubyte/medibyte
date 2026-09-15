@@ -3,6 +3,7 @@ import { ShoppingCart } from "lucide-react";
 
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageRail } from "@/components/layout/page-rail";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -30,10 +31,10 @@ export default async function CheckoutPage() {
   if (cart.lines.length === 0) {
     return (
       <PageContainer>
-        <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+        <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
           Checkout
         </h1>
-        <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
+        <div className="mt-10 flex flex-col items-center rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-primary">
             <ShoppingCart className="size-6" aria-hidden />
           </span>
@@ -68,7 +69,19 @@ export default async function CheckoutPage() {
 
   return (
     <PageContainer>
-      <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+      <PageRail
+        ordered
+        label="Checkout steps"
+        items={[
+          { label: "Shipping address", current: true },
+          ...(rx.length > 0 ? [{ label: "Prescription information" }] : []),
+          { label: "Payment" },
+          { label: "Place order" },
+        ]}
+        footer={[{ label: "Back to cart", href: "/cart" }]}
+      />
+
+      <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
         Checkout
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -90,8 +103,8 @@ export default async function CheckoutPage() {
         </div>
 
         <aside className="lg:col-span-1">
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="font-heading text-lg font-semibold text-foreground">
+          <div className="rounded-2xl bg-secondary p-6 lg:sticky lg:top-24 sm:p-7">
+            <h2 className="font-heading text-xl font-semibold text-foreground">
               Order summary
             </h2>
             <ul className="mt-4 space-y-3">
@@ -103,7 +116,7 @@ export default async function CheckoutPage() {
                       {line.product.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Qty {line.quantity} · {formatPrice(line.product.price)} each
+                      Qty {line.quantity} × {formatPrice(line.product.price)}
                     </p>
                   </div>
                   <span className="font-heading text-sm font-semibold tabular-nums text-foreground">
@@ -113,7 +126,7 @@ export default async function CheckoutPage() {
               ))}
             </ul>
 
-            <dl className="mt-5 space-y-2 border-t border-border pt-4 text-sm">
+            <dl className="mt-5 space-y-2 border-t border-primary/15 pt-4 text-sm">
               <SummaryRow
                 label={`Subtotal (${cart.itemCount} ${cart.itemCount === 1 ? "item" : "items"})`}
                 value={formatPrice(cart.subtotal)}
@@ -126,7 +139,7 @@ export default async function CheckoutPage() {
                 />
               )}
               <SummaryRow label="Tax (8%)" value={formatPrice(cart.tax)} />
-              <div className="border-t border-border pt-3">
+              <div className="border-t border-primary/15 pt-3">
                 <SummaryRow label="Total" value={formatPrice(cart.total)} emphasized />
               </div>
             </dl>

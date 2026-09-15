@@ -76,12 +76,14 @@ export function AccountManager({
   );
 
   return (
-    <>
-      <section className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+    // Addresses and insurance are one record of the customer's details, so they
+    // share a single sheet with a rule between them rather than two cards.
+    <div className="mt-6 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+      <section id="addresses" className="p-6 sm:p-7">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-primary">
             <MapPin className="size-5" aria-hidden />
-            <h2 className="font-heading text-lg font-semibold text-foreground">Saved addresses</h2>
+            <h2 className="font-heading text-xl font-semibold text-foreground">Saved addresses</h2>
           </div>
           {!addingAddress && editingAddressId === null && (
             <Button
@@ -182,11 +184,11 @@ export function AccountManager({
         </div>
       </section>
 
-      <section className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+      <section id="insurance" className="p-6 sm:p-7">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-primary">
             <ShieldPlus className="size-5" aria-hidden />
-            <h2 className="font-heading text-lg font-semibold text-foreground">Insurance</h2>
+            <h2 className="font-heading text-xl font-semibold text-foreground">Insurance</h2>
           </div>
           {!editingInsurance && (
             <div className="flex shrink-0 gap-1">
@@ -237,14 +239,14 @@ export function AccountManager({
           </dl>
         )}
       </section>
-    </>
+    </div>
   );
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="text-foreground">{value || "—"}</dd>
     </div>
   );

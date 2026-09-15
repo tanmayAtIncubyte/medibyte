@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CreditCard, FileText, Truck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CtaChip } from "@/components/ui/cta-chip";
 import { Input } from "@/components/ui/input";
 import { validatePrescription, validateShipping } from "@/lib/orders/checkout";
 import { validatePayment } from "@/lib/payments/payment";
@@ -180,167 +181,191 @@ export function CheckoutForm({
         </p>
       )}
 
-      <Section icon={<Truck aria-hidden className="size-5" />} title="Shipping address">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            name="shipping.fullName"
-            label="Full name"
-            defaultValue={defaultFullName}
-            errors={errors}
-            autoComplete="name"
-            className="sm:col-span-2"
-          />
-          <Field
-            name="shipping.street"
-            label="Street address"
-            errors={errors}
-            autoComplete="street-address"
-            className="sm:col-span-2"
-          />
-          <Field name="shipping.city" label="City" errors={errors} autoComplete="address-level2" />
-          <Field
-            name="shipping.region"
-            label="State / region"
-            errors={errors}
-            autoComplete="address-level1"
-          />
-          <Field
-            name="shipping.postalCode"
-            label="Postal code"
-            errors={errors}
-            autoComplete="postal-code"
-          />
-          <Field
-            name="shipping.country"
-            label="Country"
-            defaultValue="USA"
-            errors={errors}
-            autoComplete="country-name"
-          />
-        </div>
-      </Section>
-
-      {rxItems.length > 0 && (
-        <Section
-          icon={<FileText aria-hidden className="size-5" />}
-          title="Prescription information"
-          description="Required for the prescription items in your order. Kept private and used only to fill your prescription."
-        >
-          <div className="space-y-6">
-            {rxItems.map((item) => (
-              <fieldset
-                key={item.productId}
-                className="rounded-lg border border-border p-4"
-              >
-                <legend className="px-1 text-sm font-semibold text-foreground">
-                  {item.productName}
-                </legend>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field
-                    name={`prescription.${item.productId}.patientName`}
-                    label="Patient name"
-                    errors={errors}
-                  />
-                  <Field
-                    name={`prescription.${item.productId}.dateOfBirth`}
-                    label="Date of birth"
-                    type="date"
-                    errors={errors}
-                  />
-                  <Field
-                    name={`prescription.${item.productId}.prescribingDoctor`}
-                    label="Prescribing doctor"
-                    errors={errors}
-                  />
-                  <Field
-                    name={`prescription.${item.productId}.prescriptionNumber`}
-                    label="Prescription number"
-                    errors={errors}
-                  />
-                  <div className="sm:col-span-2">
-                    <label
-                      htmlFor={`prescription.${item.productId}.notes`}
-                      className="block text-sm font-medium text-foreground"
-                    >
-                      Notes <span className="text-muted-foreground">(optional)</span>
-                    </label>
-                    <textarea
-                      id={`prescription.${item.productId}.notes`}
-                      name={`prescription.${item.productId}.notes`}
-                      rows={2}
-                      className="mt-1.5 flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    />
-                  </div>
-                </div>
-              </fieldset>
-            ))}
+      {/* One sheet, ruled between steps, instead of three stacked cards: the
+          sequence reads as a single document the customer works down. */}
+      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+        <Section step={1} icon={<Truck aria-hidden className="size-5" />} title="Shipping address">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              name="shipping.fullName"
+              label="Full name"
+              defaultValue={defaultFullName}
+              errors={errors}
+              autoComplete="name"
+              className="sm:col-span-2"
+            />
+            <Field
+              name="shipping.street"
+              label="Street address"
+              errors={errors}
+              autoComplete="street-address"
+              className="sm:col-span-2"
+            />
+            <Field name="shipping.city" label="City" errors={errors} autoComplete="address-level2" />
+            <Field
+              name="shipping.region"
+              label="State / region"
+              errors={errors}
+              autoComplete="address-level1"
+            />
+            <Field
+              name="shipping.postalCode"
+              label="Postal code"
+              errors={errors}
+              autoComplete="postal-code"
+            />
+            <Field
+              name="shipping.country"
+              label="Country"
+              defaultValue="USA"
+              errors={errors}
+              autoComplete="country-name"
+            />
           </div>
         </Section>
-      )}
 
-      <Section
-        icon={<CreditCard aria-hidden className="size-5" />}
-        title="Payment"
-        description="This is a demo store — no real payment is processed and no card data is stored."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            name="mock.cardName"
-            label="Name on card"
-            errors={errors}
-            autoComplete="off"
-            className="sm:col-span-2"
-          />
-          <Field
-            name="mock.cardNumber"
-            label="Card number"
-            errors={errors}
-            inputMode="numeric"
-            placeholder="4242 4242 4242 4242"
-            autoComplete="off"
-            className="sm:col-span-2"
-          />
-          <Field name="mock.expiry" label="Expiry" errors={errors} placeholder="MM/YY" />
-          <Field name="mock.cvc" label="CVC" errors={errors} inputMode="numeric" placeholder="123" />
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Mock payment — clicking “Place order” will not charge anything.
-        </p>
-      </Section>
+        {rxItems.length > 0 && (
+          <Section
+            step={2}
+            icon={<FileText aria-hidden className="size-5" />}
+            title="Prescription information"
+            description="Required for the prescription items in your order. Kept private and used only to fill your prescription."
+          >
+            <div className="space-y-6">
+              {rxItems.map((item) => (
+                <fieldset
+                  key={item.productId}
+                  className="rounded-lg border border-border p-4"
+                >
+                  <legend className="px-1 text-sm font-semibold text-foreground">
+                    {item.productName}
+                  </legend>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                      name={`prescription.${item.productId}.patientName`}
+                      label="Patient name"
+                      errors={errors}
+                    />
+                    <Field
+                      name={`prescription.${item.productId}.dateOfBirth`}
+                      label="Date of birth"
+                      type="date"
+                      errors={errors}
+                    />
+                    <Field
+                      name={`prescription.${item.productId}.prescribingDoctor`}
+                      label="Prescribing doctor"
+                      errors={errors}
+                    />
+                    <Field
+                      name={`prescription.${item.productId}.prescriptionNumber`}
+                      label="Prescription number"
+                      errors={errors}
+                    />
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor={`prescription.${item.productId}.notes`}
+                        className="block text-sm font-medium text-foreground"
+                      >
+                        Notes <span className="text-muted-foreground">(optional)</span>
+                      </label>
+                      <textarea
+                        id={`prescription.${item.productId}.notes`}
+                        name={`prescription.${item.productId}.notes`}
+                        rows={2}
+                        className="mt-1.5 flex w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      />
+                    </div>
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        <Section
+          step={rxItems.length > 0 ? 3 : 2}
+          icon={<CreditCard aria-hidden className="size-5" />}
+          title="Payment"
+          description="This is a demo store — no real payment is processed and no card data is stored."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              name="mock.cardName"
+              label="Name on card"
+              errors={errors}
+              autoComplete="off"
+              className="sm:col-span-2"
+            />
+            <Field
+              name="mock.cardNumber"
+              label="Card number"
+              errors={errors}
+              inputMode="numeric"
+              placeholder="4242 4242 4242 4242"
+              autoComplete="off"
+              className="sm:col-span-2"
+            />
+            <Field name="mock.expiry" label="Expiry" errors={errors} placeholder="MM/YY" />
+            <Field name="mock.cvc" label="CVC" errors={errors} inputMode="numeric" placeholder="123" />
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Mock payment — clicking “Place order” will not charge anything.
+          </p>
+        </Section>
+      </div>
 
       {/* UI_NO_SUBMIT_FEEDBACK: when on, the button never shows the pending /
           disabled state, so a slow submit looks like nothing happened. */}
-      <Button
-        type="submit"
-        size="lg"
-        disabled={noSubmitFeedback ? false : submitting}
-        className="w-full sm:w-auto"
-      >
-        {noSubmitFeedback ? "Place order" : submitting ? "Placing order…" : "Place order"}
-      </Button>
+      <span className="inline-flex items-center gap-1">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={noSubmitFeedback ? false : submitting}
+        >
+          {noSubmitFeedback ? "Place order" : submitting ? "Placing order…" : "Place order"}
+        </Button>
+        <CtaChip />
+      </span>
     </form>
   );
 }
 
+// Checkout is a genuine sequence — shipping, then (for Rx items) prescription
+// details, then payment — so each section carries its step number. The numeral
+// is presentational chrome (aria-hidden) so the heading's accessible name stays
+// exactly the title.
 function Section({
+  step,
   icon,
   title,
   description,
   children,
 }: {
+  step: number;
   icon: React.ReactNode;
   title: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <div className="flex items-center gap-2 text-primary">
-        {icon}
-        <h2 className="font-heading text-lg font-semibold text-foreground">{title}</h2>
+    <section className="p-6 sm:p-8">
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-lime font-heading text-base font-semibold text-lime-foreground tabular-nums"
+        >
+          {step}
+        </span>
+        <span className="text-primary">{icon}</span>
+        <h2 className="font-heading text-xl font-semibold text-foreground">{title}</h2>
       </div>
-      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-      <div className="mt-5">{children}</div>
+      {description && (
+        <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
+          {description}
+        </p>
+      )}
+      <div className="mt-6 border-t border-border pt-6">{children}</div>
     </section>
   );
 }

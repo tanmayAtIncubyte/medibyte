@@ -1,7 +1,6 @@
-import { UserRound } from "lucide-react";
-
 import { AccountManager } from "@/components/account/account-manager";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageRail } from "@/components/layout/page-rail";
 import { requireUser } from "@/lib/auth/guards";
 import { readAccount } from "@/lib/account/account-service";
 
@@ -16,25 +15,39 @@ export default async function AccountPage() {
 
   return (
     <PageContainer>
-      <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
+      <PageRail
+        label="On this page"
+        items={[
+          { label: "Profile", current: true },
+          { label: "Saved addresses", href: "#addresses" },
+          { label: "Insurance", href: "#insurance" },
+        ]}
+        footer={[
+          { label: "Your orders", href: "/orders" },
+          { label: "Your cart", href: "/cart" },
+        ]}
+      />
+
+      <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
         Your account
       </h1>
 
-      <section className="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm">
-        <div className="flex items-center gap-2 text-primary">
-          <UserRound className="size-5" aria-hidden />
-          <h2 className="font-heading text-lg font-semibold text-foreground">Profile</h2>
+      {/* The profile is the customer's identity card, read left to right like a
+          membership card: the initials disc, then who it belongs to. */}
+      <section className="mt-8 flex items-center gap-5 rounded-2xl bg-secondary p-6 sm:px-7">
+        <h2 className="sr-only">Profile</h2>
+        <span
+          aria-hidden
+          className="flex size-16 shrink-0 items-center justify-center rounded-full bg-primary font-heading text-xl font-semibold text-primary-foreground"
+        >
+          {initialsOf(user.name)}
+        </span>
+        <div className="min-w-0">
+          <p className="font-heading text-[1.75rem] font-semibold leading-tight tracking-tight text-primary">
+            {user.name}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
         </div>
-        <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Name</dt>
-            <dd className="text-foreground">{user.name}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Email</dt>
-            <dd className="text-foreground">{user.email}</dd>
-          </div>
-        </dl>
       </section>
 
       <AccountManager
@@ -44,4 +57,14 @@ export default async function AccountPage() {
       />
     </PageContainer>
   );
+}
+
+// The first letters of up to two name words, e.g. "Dana Whitfield" → "DW".
+function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
 }
