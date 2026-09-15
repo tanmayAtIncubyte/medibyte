@@ -3,6 +3,7 @@ import { ShoppingCart } from "lucide-react";
 
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageRail } from "@/components/layout/page-rail";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -68,6 +69,18 @@ export default async function CheckoutPage() {
 
   return (
     <PageContainer>
+      <PageRail
+        ordered
+        label="Checkout steps"
+        items={[
+          { label: "Shipping address", current: true },
+          ...(rx.length > 0 ? [{ label: "Prescription information" }] : []),
+          { label: "Payment" },
+          { label: "Place order" },
+        ]}
+        footer={[{ label: "Back to cart", href: "/cart" }]}
+      />
+
       <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
         Checkout
       </h1>

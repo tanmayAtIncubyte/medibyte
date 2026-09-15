@@ -4,6 +4,7 @@ import { ArrowLeft, Pill } from "lucide-react";
 
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageRail } from "@/components/layout/page-rail";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { CtaChip } from "@/components/ui/cta-chip";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -32,12 +33,35 @@ export default async function ProductDetailPage({
   const tripwireCopy = isBugActive("FN_TRIPWIRE_COPY", user);
 
   const status = stockStatus(product.stock);
+  // One stock string for the whole page: the price row and the spec list below
+  // read the same value, so they can never disagree.
+  const availability = stockLabel(product.stock, { inStockAtZero });
+  const typeLabel = product.requiresPrescription
+    ? "Prescription medicine"
+    : "Over the counter";
+  const categoryHref = `/products?category=${encodeURIComponent(product.category)}`;
+  // No pack field in the catalogue: the pack size lives in the parenthesised
+  // tail of the product name (e.g. "… (50 ct)"). Omitted when there is none.
+  const pack = product.name.match(/\(([^)]+)\)\s*$/)?.[1] ?? null;
 
   return (
     <PageContainer>
+      <PageRail
+        label="Where you are"
+        items={[
+          { label: "All products", href: "/products" },
+          {
+            label: product.requiresPrescription ? "Prescription" : "Over the counter",
+            href: product.requiresPrescription ? "/products?type=Rx" : "/products?type=OTC",
+          },
+          { label: product.category, href: categoryHref },
+          { label: "This product", current: true },
+        ]}
+      />
+
       <Link
         href="/products"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 rounded"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 rounded min-[1640px]:hidden"
       >
         <ArrowLeft className="size-4" aria-hidden />
         Back to products
@@ -108,9 +132,30 @@ export default async function ProductDetailPage({
                   : "text-muted-foreground",
             )}
           >
-            {stockLabel(product.stock, { inStockAtZero })}
+            {availability}
           </p>
           </div>
+
+          {/* The label on the back of the box: the facts a customer checks
+              before adding to the basket, ruled like a spec sheet. Availability
+              is the same string the price row shows — one source, never two. */}
+          <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-7 text-[0.95rem]">
+            <dt className="py-2.5 text-muted-foreground">Category</dt>
+            <dd className="py-2.5 text-foreground">{product.category}</dd>
+
+            <dt className="border-t border-border py-2.5 text-muted-foreground">Type</dt>
+            <dd className="border-t border-border py-2.5 text-foreground">{typeLabel}</dd>
+
+            {pack && (
+              <>
+                <dt className="border-t border-border py-2.5 text-muted-foreground">Pack</dt>
+                <dd className="border-t border-border py-2.5 text-foreground">{pack}</dd>
+              </>
+            )}
+
+            <dt className="border-t border-border py-2.5 text-muted-foreground">Availability</dt>
+            <dd className="border-t border-border py-2.5 text-foreground">{availability}</dd>
+          </dl>
 
           {product.requiresPrescription && (
             <div
@@ -156,6 +201,15 @@ export default async function ProductDetailPage({
                 : "Prescription required: a pharmacist must verify your prescription before this item ships."}
             </p>
           )}
+
+          <p className="mt-5 text-sm">
+            <Link
+              href={categoryHref}
+              className="font-medium text-primary underline underline-offset-4 hover:no-underline"
+            >
+              More in {product.category}
+            </Link>
+          </p>
         </div>
       </div>
     </PageContainer>

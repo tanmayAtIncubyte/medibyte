@@ -5,8 +5,10 @@ import { CartLineControls } from "@/components/cart/cart-line-controls";
 import { CartLinePrefetch } from "@/components/cart/cart-line-prefetch";
 import { CouponForm } from "@/components/cart/coupon-form";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageRail } from "@/components/layout/page-rail";
 import { ProductTypeBadge } from "@/components/products/product-type-badge";
 import { Button } from "@/components/ui/button";
+import { CtaChip } from "@/components/ui/cta-chip";
 import { getCartView } from "@/lib/cart/cart-service";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isBugActive } from "@/lib/bugs";
@@ -59,12 +61,26 @@ export default async function CartPage() {
         <EmptyCart />
       ) : (
         <div className="mt-8 grid gap-8 lg:grid-cols-3">
+          <PageRail
+            ordered
+            label="Checkout steps"
+            items={[
+              {
+                label: "Cart",
+                current: true,
+                note: `${cart.lines.length} line${cart.lines.length === 1 ? "" : "s"}`,
+              },
+              { label: "Shipping address" },
+              { label: "Payment" },
+            ]}
+            footer={[{ label: "Continue shopping", href: "/products" }]}
+          />
           <CartLinePrefetch productIds={lineProductIds} waterfall={cartWaterfall} />
-          <ul className="space-y-4 lg:col-span-2">
+          <ul className="divide-y divide-border self-start overflow-hidden rounded-2xl border border-border bg-card lg:col-span-2">
             {cart.lines.map((line) => (
               <li
                 key={line.product.id}
-                className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <ProductTypeBadge type={line.product.type} />
@@ -140,9 +156,12 @@ export default async function CartPage() {
                 />
               </div>
 
-              <Button asChild size="lg" className="mt-5 w-full">
-                <Link href="/checkout">Proceed to checkout</Link>
-              </Button>
+              <span className="mt-5 inline-flex items-center gap-1">
+                <Button asChild size="lg">
+                  <Link href="/checkout">Proceed to checkout</Link>
+                </Button>
+                <CtaChip />
+              </span>
             </div>
           </aside>
         </div>

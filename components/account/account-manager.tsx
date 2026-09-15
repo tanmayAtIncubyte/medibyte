@@ -76,8 +76,10 @@ export function AccountManager({
   );
 
   return (
-    <>
-      <section className="mt-6 rounded-2xl border border-border bg-card p-6">
+    // Addresses and insurance are one record of the customer's details, so they
+    // share a single sheet with a rule between them rather than two cards.
+    <div className="mt-6 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+      <section id="addresses" className="p-6 sm:p-7">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-primary">
             <MapPin className="size-5" aria-hidden />
@@ -182,7 +184,7 @@ export function AccountManager({
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-border bg-card p-6">
+      <section id="insurance" className="p-6 sm:p-7">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-primary">
             <ShieldPlus className="size-5" aria-hidden />
@@ -237,7 +239,7 @@ export function AccountManager({
           </dl>
         )}
       </section>
-    </>
+    </div>
   );
 }
 

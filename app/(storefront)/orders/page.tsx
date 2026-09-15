@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight, Package } from "lucide-react";
 
 import { PageContainer } from "@/components/layout/page-container";
+import { PageRail } from "@/components/layout/page-rail";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/guards";
@@ -28,6 +29,20 @@ export default async function OrdersPage() {
 
   return (
     <PageContainer>
+      <PageRail
+        label="Your account"
+        items={[
+          {
+            label: isAdmin ? "All orders" : "Your orders",
+            current: true,
+            note: `${orders.length}`,
+          },
+          { label: "Your account", href: "/account" },
+          { label: "Your cart", href: "/cart" },
+        ]}
+        footer={[{ label: "Continue shopping", href: "/products" }]}
+      />
+
       <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
         {isAdmin ? "All orders" : "Your orders"}
       </h1>

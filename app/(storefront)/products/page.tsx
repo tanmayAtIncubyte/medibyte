@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PageContainer } from "@/components/layout/page-container";
+import { PageRail } from "@/components/layout/page-rail";
 import { CatalogPagination } from "@/components/products/catalog-pagination";
 import { CatalogToolbar } from "@/components/products/catalog-toolbar";
 import { ProductCatalog } from "@/components/products/product-catalog";
@@ -55,6 +56,34 @@ export default async function ProductsPage({
 
   return (
     <PageContainer>
+      <PageRail
+        label="Aisles"
+        items={[
+          {
+            label: "All products",
+            href: "/products",
+            current: !query.category && !query.type,
+          },
+          ...categories.map((category) => ({
+            label: category,
+            href: `/products?category=${encodeURIComponent(category)}`,
+            current: query.category === category,
+          })),
+        ]}
+        footer={[
+          {
+            label: "Over the counter",
+            href: "/products?type=OTC",
+            current: query.type === "OTC",
+          },
+          {
+            label: "Prescription",
+            href: "/products?type=Rx",
+            current: query.type === "Rx",
+          },
+        ]}
+      />
+
       <header className="mb-6">
         <h1 className="font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-foreground">
           Shop products

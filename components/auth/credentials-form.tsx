@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { CtaChip } from "@/components/ui/cta-chip";
 import { Input } from "@/components/ui/input";
 
 type CredentialsFormProps = {
@@ -112,9 +113,12 @@ export function CredentialsForm({
           {error}
         </p>
       )}
-      <Button type="submit" disabled={pending}>
-        {pending ? copy.pendingLabel : copy.submitLabel}
-      </Button>
+      <span className="inline-flex items-center gap-1 self-start">
+        <Button type="submit" disabled={pending}>
+          {pending ? copy.pendingLabel : copy.submitLabel}
+        </Button>
+        <CtaChip size="sm" />
+      </span>
     </form>
   );
 }
