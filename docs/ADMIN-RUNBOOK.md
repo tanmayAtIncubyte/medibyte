@@ -175,13 +175,14 @@ deployed instance, edit the file, commit, and redeploy. `vercel.json` auto-deplo
 6. When done, **Revoke** the link (or let it expire).
 
 > **The candidate brief PDF.** `docs/CANDIDATE-BRIEF.pdf` is the hand-out version of
-> `docs/CANDIDATE-BRIEF.md`. It is rendered by printing a MediByte-styled HTML copy of
-> the brief through headless Chrome:
-> `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --no-pdf-header-footer --print-to-pdf=docs/CANDIDATE-BRIEF.pdf file://<the html>`.
-> There is **no committed script or template** — the print HTML is rebuilt by hand each
-> time, so if you edit the brief, re-render the PDF or the two will drift. The
-> automation-track assignments (`docs/automation-qa/assignment-*.md`) are sent as
-> Markdown; there is no PDF for them.
+> `docs/CANDIDATE-BRIEF.md`. Its branded print layout lives in
+> `docs/brief/CANDIDATE-BRIEF.print.html` (the app's own system — Concept 1 wordmark,
+> mint band, forest/sage/blush/lime, Fraunces + Inclusive Sans). If you edit the brief,
+> mirror the words in that HTML, then run `docs/brief/render.sh` from the repo root — it
+> prints the HTML through headless Chrome to `docs/CANDIDATE-BRIEF.pdf` (two pages; needs
+> Google Chrome and network access for the two Google Fonts). Commit all three together so
+> markdown, HTML and PDF never drift. The automation-track assignments
+> (`docs/automation-qa/assignment-*.md`) are sent as Markdown; there is no PDF for them.
 
 ### Example profiles
 
