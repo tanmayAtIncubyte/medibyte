@@ -1,5 +1,17 @@
 # Spec: MediByte — Phase 6 (Automation-QA Track: Steve account, locator hardening, tiered assignments)
 
+> **Delivered — with one later correction (noted 2026-09-15).** Every slice below
+> shipped as written, *except* the access-gate treatment. A follow-on change
+> (`feat/steve-gate`) let the `qa_automation` role past the gate on role alone; that
+> was **reverted** by `feat/automation-tracks` in favour of **track-bound candidate
+> links** — the roster record carries `track: "manual" | "automation"` and
+> `app/api/auth/login/route.ts` binds the signed-in account to the link's track (403
+> on mismatch; admin exempt). Steve is therefore an ordinary gated account today: an
+> automation candidate needs an automation-track `/start?code=…` link. The seeded-bug
+> count has also moved from ~45 to **50** (Batch 7); the hard constraint held — all 26
+> `*.bugs.test.*` suites / 94 tests still pass. Current behaviour:
+> `docs/ACCESS-CONTROL.md`, `docs/ADMIN-RUNBOOK.md`, `docs/automation-qa/`.
+
 ## Overview
 Phases 1–4 built MediByte as a manual bug-hunting assessment tool for admin/dana/omar. Phase 6 adds a parallel track for assessing **automation QA candidates**: a 4th account ("Steve") that sees the app 100% clean (like admin, but without admin-panel access), a deliberately hardened storefront DOM (no `id`/`data-testid`/guessable-string locators, though every element stays fully accessible), 3 flows of increasing automation difficulty reachable from Steve's single login, and 3 tiered candidate-facing assignment briefs (1-3y / 4-6y / 6+y experience) instructing candidates to automate one flow each with BDD + Selenium/Playwright/Cypress.
 

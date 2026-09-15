@@ -5,12 +5,25 @@
 
 This is your hold-in-your-hand kit for presenting MediByte live to the team. Three parts:
 **(1) Live Demo Script**, **(2) Pitch Narrative**, **(3) Q&A Defense.** Built for the
-**deployed Vercel URL with all 45 flags ON**, audience = **eng peers / interviewers**.
+**deployed Vercel URL with all flags ON**, audience = **eng peers / interviewers**.
 
 ## Links
 
 - **[App](https://medibyte-ten.vercel.app)** · **[Login](https://medibyte-ten.vercel.app/login)** · **[Admin](https://medibyte-ten.vercel.app/admin)** · **[Products](https://medibyte-ten.vercel.app/products)** · **[Orders](https://medibyte-ten.vercel.app/orders)** · **[Account](https://medibyte-ten.vercel.app/account)**
-- **Logins:** admin `admin@medibyte.test`/`admin.incu123` · `dana@example.test`/`dana1234` · `omar@example.test`/`omar1234`
+- **Logins:** admin `admin@medibyte.test`/`admin.incu123` · `dana@example.test`/`dana1234` · `omar@example.test`/`omar1234` · QA automation `steve@example.test`/`steve1234` (clean app, no `/admin`)
+
+> **Two numbers to have straight before you present (2026-09-15).**
+> **50 bugs, not 45.** The registry holds 50: the 45 `isBugActive`-gated bugs the demo
+> walks through, plus 5 internal-QA defects (Batch 7) that are listed but **not yet
+> gated** — they're on for admin too, so they are *not* part of the "admin sees the
+> clean app" story. Demo the 45; if asked, "five more were found by our own QA pass
+> and are queued to be wrapped in the same flag mechanism."
+> **Local `dev` is the current build, not production.** `dev` carries the 50-bug
+> registry, the access gate, the candidate roster and the automation track;
+> `medibyte-ten.vercel.app` runs off `main`, which is still the earlier **45-bug,
+> gate-free** build. That's another reason to present local. (The Incubyte visual
+> redesign is on `feat/ui-incubyte` and is on neither, so the app will look like the
+> screenshots in this kit.)
 
 ## Direct bug links — click straight to each bug
 
@@ -110,12 +123,12 @@ either target**. Sign in as a **customer** (Dana) first — admin sees the clean
 **Present from LOCAL `npm run dev` → http://localhost:4321.** Not because anything is broken
 on the deploy — cart/checkout now persist end-to-end there (Redis/Upstash-backed). Present
 local because local has **no access gate and zero setup**: everything just works, no link to
-mint, all 45 bugs live including the negative-total climax. The `/admin` reference is a
+mint, every bug live including the negative-total climax. The `/admin` reference is a
 read-only bug catalog you *show*, not a switchboard you flip (flags are set in
 `data/bug-flags.json` + redeploy — no runtime toggle anywhere).
 
-- ✅ **Local (`localhost:4321`)** — full demo, all 45 bugs, gate off, most reliable. **Use this.**
-- 🔗 **https://medibyte-ten.vercel.app** (public, all 45 on) — your **"it's live & shareable"
+- ✅ **Local (`localhost:4321`)** — full demo, all 50 bugs, gate off, most reliable. **Use this.**
+- 🔗 **https://medibyte-ten.vercel.app** (public, all flags on) — your **"it's live & shareable"
   closer.** Works for *everything now*, cart/checkout included (Redis-backed). One catch: it
   has a time-boxed **access gate** — a customer needs a personal `/start?code=…` link (minted
   at `/admin/candidates`) or they land on `/closed`; **admin bypasses the gate.** So it's a
@@ -144,7 +157,7 @@ The contrast that sells it:
 > ℹ️ **`/admin` is a read-only bug reference — there are no switches to flip.** Show it as
 > the answer-key machine: filter by category/difficulty, open the ⓘ details, pop the
 > Buggy-vs-Clean screenshot **Preview** modal. Flags live in `data/bug-flags.json` (committed
-> profile = all 45 on) and change only via redeploy — there's no runtime toggle to demo.
+> profile = all 50 on) and change only via redeploy — there's no runtime toggle to demo.
 
 ---
 
@@ -210,7 +223,7 @@ escalates and the story builds. If you're short on time, the ⏩ steps are skipp
 - **Say (on #7):** *"This is the money one — a $50 coupon on a $7 cart and the store now owes
   the customer money. Unmistakable, and it only shows if you push an edge case."*
 
-> ⚠️ With all 45 flags on, the deep arithmetic bugs (tax-on-pre-discount, tax-floor,
+> ⚠️ With all flags on, the deep arithmetic bugs (tax-on-pre-discount, tax-floor,
 > rounding-edge) all fire at once and muddy each other — **don't demo those live.** Negative
 > total (#7) is the one arithmetic bug that reads cleanly under everything-on. Point the team
 > to `ANSWER-KEY.md` for the full arithmetic tier.
@@ -257,7 +270,7 @@ escalates and the story builds. If you're short on time, the ⏩ steps are skipp
 ## Act 6 — Reveal the machine (60 sec)
 
 - **Where:** Admin window, `/admin`.
-- **Do:** Show the **read-only bug reference** — all 45 bugs grouped by category, filterable
+- **Do:** Show the **read-only bug reference** — all 50 bugs grouped by category, filterable
   by category/difficulty, each with an ⓘ details panel and a Buggy-vs-Clean screenshot
   **Preview** modal. *(It's a reference you show, not a switchboard — nothing to toggle.)*
 - **Say:** *"Every bug you just saw is one switch here. The clean app — what I'm seeing right
@@ -277,7 +290,7 @@ Three bulletproof eyeball bugs, no DevTools, no cart state needed — just Dana 
 1. `FN_PRICE_DECIMALS` — `$10.5`.
 2. `FN_PRICE_SORT_LEXICAL` — sort low→high, `$10` before `$3`.
 3. `FN_INSTOCK_AT_ZERO` — Daily Fiber says "In stock" but can't be added.
-Then: *"There are 45 of these across six categories — here's the answer key,"* and pivot to
+Then: *"There are 50 of these across six categories — here's the answer key,"* and pivot to
 the pitch.
 
 ---
@@ -289,7 +302,7 @@ the pitch.
    **find** problems.
 
 2. **The flip.** Instead of asking candidates to write tests against a spec, we build **one
-   genuinely good app** and seed it with **45 real bugs** across six **categories**
+   genuinely good app** and seed it with **50 real bugs** across six **categories**
    (functional, accessibility, performance, security, UI, UX) and four **difficulty tiers**
    (easy → expert). The task becomes: *find them, report them, write the test cases that
    catch them.* That measures real testing/debugging skill, not prompt-copying.
@@ -300,14 +313,23 @@ the pitch.
    prescription" is obviously wrong to anyone *and* a textbook violation a senior can name.
 
 4. **The mechanism (what you just saw in `/admin`).** Role-based feature flags. **Admin =
-   clean reference app + bug-control panel; customer = buggy when a flag is on.** The clean
-   build is the **live answer key**, so grading is a side-by-side comparison, not a memory
-   test. Adding a bug = one registry entry + one conditional.
+   clean reference app + a read-only bug reference; customer = buggy when a flag is on.**
+   The clean build is the **live answer key**, so grading is a side-by-side comparison, not
+   a memory test. Adding a bug = one registry entry + one conditional. (Flags are set in
+   `data/bug-flags.json` and redeployed — there's no runtime switchboard.)
 
 5. **What it actually measures.** Reading carefully (the tripwire), edge-case thinking (the
    negative-total coupon), DevTools fluency (creds-in-URL, payload bloat), and a security
    mindset (the IDOR→PHI chain). Difficulty is tiered by the **easiest path that surfaces the
    bug**, so we can calibrate per role.
+
+6. **It's two assessments on one app.** The same storefront also serves an **automation
+   track**: the candidate signs in as **Steve** (`qa_automation`), sees the *clean* app, and
+   is asked to write a BDD suite against one of three tiered journeys
+   (`docs/automation-qa/`). The DOM was deliberately stripped of `id` / `data-testid` hooks,
+   so locators must go through real accessible names — which is itself the thing we want to
+   see. A candidate's access link is **bound to a track**: a manual link can only sign in as
+   a customer, an automation link only as Steve. One app, one deploy, two hiring signals.
 
 ---
 
@@ -318,12 +340,12 @@ It's a live, private instance — not a public repo. You can't find these by sea
 have to actually exercise the app. The tripwire (reading) and the chained IDOR→PHI bug
 specifically resist paste-and-pray. And we can rotate which bugs are on per candidate.
 
-**"45 bugs at once — isn't that overwhelming and unfair?"** *(They'll ask this — the deploy
-shows all 45.)*
+**"50 bugs at once — isn't that overwhelming and unfair?"** *(They'll ask this — the deploy
+shows them all.)*
 The deployed instance is maxed **for this showcase**. Real assessments use a **curated
 profile** — see `ADMIN-RUNBOOK.md`'s example profiles ("junior/balanced" ≈ 6–8 flags, mostly
 eyeball; "senior/security" ≈ 7–9 flags, DevTools + HIPAA). You pick a focused set per
-candidate; a handful of bugs in one or two categories gives a cleaner read than 45 at once.
+candidate; a handful of bugs in one or two categories gives a cleaner read than 50 at once.
 
 **"How do you grade fairly and consistently?"**
 The admin clean app is the live reference, and every bug has per-bug repro in
@@ -345,9 +367,17 @@ buggy : correct`). No parallel clean/buggy codebases to keep in sync. Add or rem
 one registry entry + one conditional.
 
 **"What stops candidates from sharing answers between cohorts?"**
-Rotate the flag profile per candidate, self-registered accounts, and the signal is in the
-**reasoning and report quality**, not just which bugs they name. Two people who found the
-same IDOR can still be told apart by how they reported and reasoned about it.
+Rotate the flag profile per candidate; every candidate gets a **personal, time-boxed
+`/start?code=…` link** that we can revoke instantly and that isolates their cart/orders in
+their own namespace (self-registration is switched off — everyone uses the seeded login for
+their track). And the signal is in the **reasoning and report quality**, not just which bugs
+they name. Two people who found the same IDOR can still be told apart by how they reported
+and reasoned about it.
+
+**"Isn't the answer key just sitting in the repo?"**
+The repo is private and never shared. `docs/ANSWER-KEY.md`, `docs/ADMIN-RUNBOOK.md` and this
+kit are reviewer-only; `private/bug-shots/` is served only through an admin-guarded route
+that 403s for anyone else. Candidates get a URL and a brief — nothing else.
 
 **"Infra and cost?"**
 No relational database — deterministic mock data behind real Next.js API routes (so the
@@ -371,4 +401,6 @@ gated by role — the admin view and the candidate view can never silently diver
 
 *Source of truth: `lib/bug-registry.ts` (flags) + `docs/ANSWER-KEY.md` (per-bug repro) +
 `docs/ADMIN-RUNBOOK.md` (operator view) + `PLAN.md` (rationale). Clean/buggy screenshots for
-every bug live in `private/bug-shots/<KEY>-{clean,buggy}.png`.*
+every flag-gated bug live in `private/bug-shots/<KEY>-{clean,buggy}.png` (the 5 always-on
+Batch-7 defects have no clean side, so no shots). Automation track:
+`docs/automation-qa/`.*

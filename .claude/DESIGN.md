@@ -1,5 +1,15 @@
 # MediByte — Phase 2 Design Brief (Storefront)
 
+> **Superseded on `feat/ui-incubyte` (noted 2026-09-15).** This brief describes the
+> teal/Geist system still running on `dev` and `main`. The branch `feat/ui-incubyte`
+> replaces it with an Incubyte-derived system — forest `#014D43`, mint, sage for OTC,
+> blush for Rx, a lime CTA chip, navy footer; Fraunces headings + Inclusive Sans body;
+> a floating pill nav and pill buttons. The full handoff spec is
+> `docs/Mods/ui-incubyte-redesign-plan.md`; the shipped logo is
+> `docs/brand/logo/README.md`. Read this file for the Phase-2 intent (OTC/Rx as a
+> first-class signal, plain stock wording, labelled controls, no color-only meaning) —
+> those rules survived the reskin and several seeded bugs depend on them.
+
 ## Goal
 A clean, trustworthy, modern pharmacy storefront. It must read as a believable
 commercial product (think a polished consumer-health e-commerce site), not a

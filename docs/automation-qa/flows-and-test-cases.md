@@ -16,6 +16,22 @@ This account sees the app exactly as clean as an admin login does, but has no
 admin-panel access — it is a pure storefront customer account, so every flow
 below is exactly what that login sees, nothing hidden and nothing gated.
 
+**How Steve is reached (changed — read this before you mint a link).** Steve has
+**no** gate privilege: an earlier build let the `qa_automation` role past the access
+gate on role alone, and that was removed when candidate links became track-bound.
+Today an automation candidate needs an **automation-track** `/start?code=…` link,
+opened **before** they sign in. The login route reads the `mb_cand` cookie and binds
+the account to the link's track — an automation link signs in **only** as Steve, and a
+manual link **only** as dana/omar; a mismatch is a 403 naming the right account. Mint
+the link at `/admin/candidates` with Track = **Automation**. (With no Redis env — local
+dev — the gate is off entirely and Steve signs in directly.)
+
+> Caveat for grading: five registry defects (Batch 7) are **not** `isBugActive`-gated
+> yet, so Steve sees them like everyone else — see `docs/ADMIN-RUNBOOK.md` §4.7. None
+> of the three flows below touches them, but keep it in mind if a candidate reports
+> something odd in the header, on the Rx date-of-birth field, or around the checkout
+> shipping prefill.
+
 ---
 
 ## The 3-tier structural-difficulty pattern
@@ -81,8 +97,12 @@ apart, plus any nested/layered UI (a dialog opened from a button, tabs within
 a panel) a candidate might need to navigate to reach the two things being
 compared.
 
-**Reference implementation:** `/account` (saved address + insurance,
-editable) versus the shipping section of `/checkout` versus the shipping
+**Reference implementation:** `/account` (saved address + insurance — each
+card now carries **Edit** plus a destructive **Delete address** / **Remove
+insurance** behind a `window.confirm`, and both save paths run **format**
+validation on top of the required-field checks: full-name shape, US-ZIP /
+international postal shape, insurance-ID shape — see `lib/account/account.ts`)
+versus the shipping section of `/checkout` versus the shipping
 address and order line shown on an order's detail page under `/orders/[id]`
 — the same shipping/insurance data is entered or displayed in three different
 places, and Flow 3 requires reading all three and confirming they agree. The
@@ -257,11 +277,13 @@ on `/account` and at checkout.
 - *Preconditions:* Logged in as Steve; address and insurance updated per
   TC3.1/TC3.2; cart contains at least one product.
 - *Steps:* Navigate to `/checkout`. Observe the shipping fields.
-- *Expected result:* The "Full name", "Street address", "City", and other
-  shipping fields are pre-filled consistent with the account's current saved
-  address (or blank/editable if the checkout form does not pre-fill from the
-  account — either way, fill them to match the updated `/account` values and
-  submit).
+- *Expected result:* Only "Full name" is pre-filled; every other shipping
+  field is blank, because checkout does not read the account's saved
+  addresses (registry entry `CHECKOUT_NO_SAVED_ADDRESS_PREFILL` — always on,
+  Steve included). Fill them to match the updated `/account` values and
+  submit. **Reviewer note:** don't mark a candidate down for asserting on the
+  blank fields, and don't treat "checkout didn't prefill my address" as a
+  false positive — it is a known defect, not an automation error.
 
 **TC3.5 — Newly placed order appears at the top of order history**
 - *Preconditions:* Logged in as Steve; an order was just placed via TC3.4.
@@ -287,3 +309,21 @@ on `/account` and at checkout.
 - *Expected result:* The detail page that opens shows the same order ID,
   status, items, and total that were shown for that row on the list page —
   not a different order's data.
+
+---
+
+## Optional extensions to Flow 3 (not currently assigned)
+
+The account page grew two destructive actions after this catalog was written.
+They are fair game if you want to lengthen the Tier-3 flow, but the assignment
+brief (`assignment-hard.md`) does **not** ask for them today:
+
+- **Delete a saved address** — the "Delete {label} address" control, behind a
+  `window.confirm`; the automation has to accept the native dialog and then
+  assert the address is gone from the list.
+- **Remove insurance** — the "Remove insurance details" control, same dialog
+  pattern, scoped to the insurance card rather than the address card (another
+  instance of the Tier-3 disambiguation problem).
+- **Format validation on save** — both cards reject malformed values
+  (full name, postal code, insurance IDs) with per-field messages, so a
+  negative-path scenario is available without touching checkout.

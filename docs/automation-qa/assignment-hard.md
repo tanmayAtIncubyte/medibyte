@@ -36,9 +36,12 @@ Automate the following user journey through the storefront:
    confirm the account page shows the new value once out of edit mode.
 2. On the same account page, edit the insurance details (find the "Edit"
    control that belongs specifically to the insurance section, not the
-   address section — the two sit in visually similar cards, so this needs
-   more than "find the Edit button"). Change the member ID, save, and
-   confirm the new value is displayed.
+   address section — the two sit in visually similar cards, each with its
+   own edit and its own destructive control, so this needs more than "find
+   the Edit button"). Change the member ID, save, and confirm the new value
+   is displayed. Note that both sections also validate the *format* of what
+   you enter, not just that it is non-blank — your happy-path values need to
+   be well-formed.
 3. Add at least one product to the cart, then go to checkout and place an
    order, filling in the shipping fields to match the updated account
    details.
@@ -89,8 +92,13 @@ helps you understand the app's behavior.
 ## Test data
 
 Your reviewer will send you a **personal access link** (it looks like
-`https://…/start?code=…`). Open it once — in the browser your suite drives — to
-unlock the app for a limited window before you sign in.
+`https://…/start?code=…`). Open it once — in the browser your suite drives — and
+**before you sign in**: it unlocks the app for a limited window, and it is what ties
+your session to this assignment. If your suite runs in a fresh browser profile each
+time, make opening that link the first step of your setup, ahead of the login step.
+
+The link is issued for this automation assignment, so the account below is the only
+one it will sign in with — any other account is rejected.
 
 Sign in with this account. It comes with a saved address, insurance details,
 and order history so the app has content to work with.

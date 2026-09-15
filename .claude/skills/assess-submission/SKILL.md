@@ -1,6 +1,6 @@
 ---
 name: assess-submission
-description: Assess a candidate's MediByte QA submission (bug report / test cases, any format) against the 45-bug answer key AND the Incubyte Test Craftsperson framework. Produces a coverage + craft scorecard with tagged signals and an approximate Test Crafter level. Use when a reviewer points at a candidate's submitted document(s) under submissions/ and wants them evaluated.
+description: Assess a candidate's MediByte QA submission (bug report / test cases, any format) against the 50-bug answer key AND the Incubyte Test Craftsperson framework. Produces a coverage + craft scorecard with tagged signals and an approximate Test Crafter level. Use when a reviewer points at a candidate's submitted document(s) under submissions/ and wants them evaluated.
 ---
 
 # Assess a MediByte candidate submission
@@ -28,7 +28,7 @@ Assemble the full submission text. If any file can't be read, say so explicitly
 rather than guessing its contents.
 
 ## Step 2 — Load the grading context
-- `docs/ANSWER-KEY.md` — the 45 seeded bugs (trigger / expected / actual / how-to-spot). **Ground truth.**
+- `docs/ANSWER-KEY.md` — the 50 seeded bugs (trigger / expected / actual / how-to-spot). **Ground truth.** Note its Batch-7 caveat: 5 of the 50 are **not** `isBugActive`-gated, so they show for admin too — don't dismiss a report of one as "baseline".
 - `lib/bug-registry.ts` — each bug's `category`, `difficulty`, and `hipaa` flag (for weighting + tagging). The chained HIPAA pair is `SEC_IDOR_ORDER` → `SEC_PHI_OVERFETCH`; the reading tripwire is `FN_TRIPWIRE_COPY`.
 - `docs/CANDIDATE-BRIEF.md` — what the candidate was actually asked to do.
 - `docs/QA/*` — the Incubyte Test Craftsperson framework: the craft rubric + level definitions. This is the real hiring lens.
@@ -54,12 +54,12 @@ candidate's own words as evidence, across:
 
 **Be skeptical and fair.** Don't credit vague or unreproducible claims. Flag
 fabricated / unverifiable claims and baseline-as-bug reports. **Do** credit a
-genuine issue the candidate found that isn't in our 45 (tag it 💡 interesting) —
+genuine issue the candidate found that isn't in our 50 (tag it 💡 interesting) —
 finding real problems is exactly the mindset Incubyte wants.
 
 ## Step 4 — Output the scorecard (structured markdown)
 1. **Header** — candidate name (from the doc / their access record if known), files assessed, any that couldn't be read.
-2. **Coverage** — TP / partial / FP counts and an `N/45` (with the weighting caveat); a table `their finding → bug key · category · difficulty · HIPAA · verdict`; notable misses (call out the HIPAA chain + tripwire explicitly).
+2. **Coverage** — TP / partial / FP counts and an `N/50` (with the weighting caveat); a table `their finding → bug key · category · difficulty · HIPAA · verdict`; notable misses (call out the HIPAA chain + tripwire explicitly).
 3. **Craft assessment** — one short judgment per Axis-2 dimension, each backed by a quote from their submission.
 4. **Signals** — a bulleted list, every item tagged and quote-backed, using EXACTLY this set:
    - 🟢 **positive** · ⚪ **neutral** · 🔴 **negative** · 💡 **interesting** (clever repro, sharp risk framing, or a real unseeded issue) · 🚩 **red flag** (baseline reported as broken, no repro, fabricated/unverifiable, or a serious craft gap).

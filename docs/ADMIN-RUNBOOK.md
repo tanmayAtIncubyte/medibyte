@@ -18,7 +18,12 @@ MediByte is a deliberately-buggy pharmacy storefront used to assess QA candidate
 Every defect is a **flag**:
 
 - The **admin** always sees the **clean, correct app** plus a read-only **bug reference**.
-- A **customer** sees a bug **only when that bug's flag is ON** (the deploy runs with all 45 ON).
+- A **customer** sees a bug **only when that bug's flag is ON** (the deploy runs with all 50 ON).
+
+> **50, not 45.** Batch 7 promoted five defects found by the internal QA pass into the
+> registry (45 → 50). Those five are listed and graded like the rest, but they are
+> **not yet wrapped in an `isBugActive` branch** — they are always on, admin included,
+> and toggling their flag does nothing. See §4.7.
 
 You (the reviewer) set which flags are on in `data/bug-flags.json`, hand the
 candidate a **time-boxed access link** + brief, and grade what they find against
@@ -39,20 +44,20 @@ lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
 | Customer (test) | `omar@example.test` | `omar1234` | Bugs whose flags are ON |
 | QA automation (test) | `steve@example.test` | `steve1234` | Clean app, same as admin, but **no** `/admin` or `/api/admin/bug-flags` access |
 
-Candidates sign in with a seeded customer login (given in their brief) — each
-candidate's `/start` link isolates their state, so sharing a seeded login across
-candidates is safe. Self-registration is hidden from the UI (the `/register`
-route + code are kept for future use). The seeded customers are also for your
-own verification.
+Candidates sign in with the seeded login for their **track** (given in their brief):
+a customer for manual, Steve for automation. Each candidate's `/start` link isolates
+their state, so sharing a seeded login across candidates is safe. Self-registration is
+hidden from the UI (the `/register` route + code are kept for future use). The seeded
+customers are also for your own verification.
 
 ### The bug reference (`/admin`)
 - Log in as admin and go to **`/admin`**.
-- The page is a **read-only reference** of all 45 seeded bugs: filter by category /
+- The page is a **read-only reference** of all 50 seeded bugs: filter by category /
   difficulty, open the ⓘ info popover (effect, where, how to spot), and open the
   **Preview** modal for annotated Buggy-vs-Clean screenshots. There is **no toggle
   UI** — flags are not changed from the panel.
 - **Source of truth:** which bugs are active is read from **`data/bug-flags.json`**
-  at request time. The committed file is the **deploy profile — currently all 45
+  at request time. The committed file is the **deploy profile — currently all 50
   flags ON**. Every candidate faces the full set.
 - To change the active set, **edit `data/bug-flags.json`** (and redeploy for the
   hosted instance). The admin-guarded `/api/admin/bug-flags` endpoint also still
@@ -83,6 +88,11 @@ cart/orders actually persist (see "Why the link matters" below).
 - The candidate opens the link once; it drops a cookie and lands them on `/login`
   to sign in with the account for their track. Everything they do lives in an
   isolated `cand:<code>` namespace, so candidates on either track never collide.
+- ⚠️ **They must open the `/start` link BEFORE signing in.** `/login` is on the gate's
+  allowlist, so someone who goes straight to the app can sign in and *then* hit
+  `/closed` on the next page — which reads as "the app is broken". The `mb_cand`
+  cookie is also what the login route reads to enforce the track, so a sign-in with
+  no cookie is unbound. Say "open this link first, then sign in" when you send it.
 - The table shows each candidate's email/role plus:
   - **Status** — **Active**, **Revoked**, or **Expired**, with the current
     **Attempt N** (a returning/re-granted candidate reads as Attempt 2, 3, …).
@@ -118,31 +128,60 @@ cart/orders actually persist (see "Why the link matters" below).
 > in as a **customer** (`dana@example.test`), not as admin or Steve. This is enforced
 > server-side by `isBugActive(key, user)` — the buggy branch never runs for admin or
 > `qa_automation`. Steve is for the automation-QA track only and has no `/admin` access.
+> (Exception: the five Batch-7 defects in §4.7 are not flag-gated yet, so admin and
+> Steve see those too.)
+
+> **Steve does not bypass the access gate.** An earlier build let `qa_automation`
+> through the gate on role alone; that was removed when links became track-bound.
+> Today Steve is an ordinary gated account — an automation candidate needs a live
+> **automation** `/start` link exactly like a manual candidate needs a manual one.
+> Only admin passes the gate without a code.
 
 ### Deploy-time flags (Vercel)
 The deployed instance runs on Vercel, whose filesystem is **read-only** — the
 active flag set is **fixed at deploy time**, baked in from the committed
-`data/bug-flags.json` (currently all 45 ON). To change the bug set on the
-deployed instance, edit the file, commit, and redeploy.
+`data/bug-flags.json` (currently all 50 ON). To change the bug set on the
+deployed instance, edit the file, commit, and redeploy. `vercel.json` auto-deploys
+`dev` and `main` and disables auto-deploy for `feat/*` branches.
+
+> **Which build is where (2026-09-15):** `dev` is the current line — 50 bugs, the
+> access gate, the candidate roster, the automation track, and the account
+> delete/format-validation work. `main` — and therefore the public
+> `medibyte-ten.vercel.app` — is still the earlier **45-bug, gate-free** build until
+> `dev` is merged into `main`. The Incubyte visual redesign is on `feat/ui-incubyte`
+> and is on neither.
 
 ---
 
 ## 3. How to configure an assessment
 
-1. **Choose a profile** — the default deploy profile is **all 45 flags ON** (every
+1. **Choose a profile** — the default deploy profile is **all 50 flags ON** (every
    candidate faces the full set). If you want a narrower set (see example profiles
    below), aim for a mix of difficulties and at least a couple of categories.
 2. **Set the flags** — edit `data/bug-flags.json` (`true`/`false` per key) and, for
    the deployed instance, commit + redeploy. There is no toggle UI.
-3. **Mint an access link** at `/admin/candidates` and send it, with a candidate
-   brief (the brief is candidate-facing and must NOT reference flags, keys, or this
-   runbook — describe the app and the task only). On local dev (no Redis) just share
-   the URL — no link needed.
-4. Candidate opens the link and signs in with the seeded customer login (the
-   self-register link is hidden), then works the app.
+3. **Mint an access link** at `/admin/candidates` — pick the **track** (Manual or
+   Automation) — and send it with the matching candidate brief
+   (`docs/CANDIDATE-BRIEF.md` for manual, `docs/automation-qa/assignment-*.md` for
+   automation). The briefs are candidate-facing and must NOT reference flags, keys,
+   bug counts, or this runbook — describe the app and the task only. On local dev
+   (no Redis) just share the URL — no link needed.
+4. Candidate **opens the link first**, then signs in with the account for their
+   track — a customer for manual, Steve for automation (the self-register link is
+   hidden). Signing in with the wrong account for the link returns **403** with a
+   message naming the right one.
 5. **Grade** their bug reports against this runbook + the answer key, using your own
    **admin login as the live "correct" reference** (clean app side-by-side).
 6. When done, **Revoke** the link (or let it expire).
+
+> **The candidate brief PDF.** `docs/CANDIDATE-BRIEF.pdf` is the hand-out version of
+> `docs/CANDIDATE-BRIEF.md`. It is rendered by printing a MediByte-styled HTML copy of
+> the brief through headless Chrome:
+> `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --no-pdf-header-footer --print-to-pdf=docs/CANDIDATE-BRIEF.pdf file://<the html>`.
+> There is **no committed script or template** — the print HTML is rebuilt by hand each
+> time, so if you edit the brief, re-render the PDF or the two will drift. The
+> automation-track assignments (`docs/automation-qa/assignment-*.md`) are sent as
+> Markdown; there is no PDF for them.
 
 ### Example profiles
 
@@ -160,7 +199,8 @@ Requires Network inspection, edge inputs, and HIPAA reasoning:
 `FN_CONCURRENT_DOUBLESPEND`, `FN_TAX_BEFORE_DISCOUNT`, `FN_TOTAL_ROUNDING_EDGE`.
 
 > Tip: don't enable everything at once. A focused set (one or two categories) gives a
-> cleaner read on the candidate than 45 simultaneous defects.
+> cleaner read on the candidate than 50 simultaneous defects. (The five §4.7 defects
+> are always on regardless of the profile you pick.)
 
 ---
 
@@ -247,7 +287,7 @@ All flags are listed below, **grouped by category**. Columns:
 
 | Flag key | Diff | What it does (ON) | Where | How to spot | HIPAA |
 |---|---|---|---|---|---|
-| `UI_DESTRUCTIVE_NO_CONFIRM` | E | Destructive action (remove cart item / delete address) executes instantly with **no confirmation**. | `/cart` remove, address delete | Eyeball: irreversible action with no confirm dialog/undo | No |
+| `UI_DESTRUCTIVE_NO_CONFIRM` | E | **Cart line Remove** executes instantly with **no confirmation**. (Only the cart — `/account`'s Delete address and Remove insurance keep their `window.confirm` guard and are not part of this flag.) | `/cart` remove | Eyeball: irreversible action with no confirm dialog/undo | No |
 | `UI_NO_SUBMIT_FEEDBACK` | E | A form submit gives **no visible feedback** (no spinner/disable/success). | A form | Eyeball: submit and observe nothing changes/confirms | No |
 | `UI_MISLEADING_ICON` | E | A button's **icon doesn't match its action**. | A button | Eyeball: icon vs actual behavior mismatch | No |
 | `UI_FORM_CLEARS_ON_ERROR` | M | A checkout validation error **wipes the entered fields**, forcing full re-entry. | `/checkout` | Edge input: trigger a validation error, watch fields clear | No |
@@ -261,6 +301,42 @@ All flags are listed below, **grouped by category**. Columns:
 | `UX_SURPRISE_TAX` | M | Tax is **hidden until the final checkout step** (not shown in cart). | `/cart` vs `/checkout` | Cross-screen: cart total vs final total, tax appears late | No |
 | `UX_LOST_CHECKOUT_PROGRESS` | M | **Back navigation loses entered checkout data.** | `/checkout` (back nav) | Manual: fill checkout, navigate back, data gone | No |
 | `UX_NO_PAGE_TOTAL` | E | No indication of **total pages / total results** in the catalog pager. | `/products` pager | Eyeball: pager shows no "of N pages" / total count | No |
+
+### 4.7 Batch 7 — internal-QA defects (always on, not flag-gated)
+
+> ⚠️ **Read this before grading these five.** They were surfaced by the internal QA
+> pass (each independently reported by 2+ reviewers), confirmed against the code, and
+> added to `lib/bug-registry.ts` + `data/bug-flags.json` so the registry↔flags
+> invariant holds. Unlike Batches 1–6 they are **not yet wrapped in an
+> `isBugActive(...)` branch**, so:
+> - they are present for **every** login, **including admin and Steve** — the clean
+>   reference app does *not* show correct behavior for these five;
+> - **toggling their flag has no effect**;
+> - you cannot use the admin side-by-side as the "correct" reference for them.
+>
+> To make them true clean-default toggles, wrap each `location` below with
+> `isBugActive`. Until then, grade them from this table, not from the admin view.
+
+| Flag key | Diff | What it does (always) | Where | How to spot | HIPAA |
+|---|---|---|---|---|---|
+| `NAV_LINKS_SHOWN_PRELOGIN` | E | The global header renders **Browse** and **Cart** links to logged-out visitors, but both routes are behind the storefront auth guard — following one bounces straight back to login. | `/login` (primary nav) | Eyeball: nav links that go nowhere when signed out | No |
+| `HEADER_NAV_NOT_RESPONSIVE` | E | The header packs the logo, 5–7 nav buttons and the user name into one **non-wrapping** flex row with no mobile menu, so it overflows horizontally on narrow screens. | Any page at mobile width | Eyeball / responsive mode: horizontal overflow in the header | No |
+| `RX_DOB_UNVALIDATED` | E | The Rx patient **Date of birth** is required-checked only — no format or future-date validation, so a malformed or clearly-impossible date is accepted. | `/checkout` (Rx item in cart → prescription step) | Edge input: submit a future / malformed DOB | No |
+| `CHECKOUT_NO_SAVED_ADDRESS_PREFILL` | M | Checkout never reads the account's saved addresses: only the name is prefilled and there is no saved-address picker, so a customer with a saved address must retype it in full. | `/account` (saved address) → `/checkout` | Cross-screen: saved address exists, shipping fields blank | No |
+| `CART_SESSION_NOT_USER_BOUND` | M | Logout clears the auth cookie but **not** the `mb_session_id` cart cookie, so the cart (and the header badge) survives sign-out and is inherited by the next account signed in on that browser. | `/cart` → sign out → sign in as the other customer | Cross-screen: dana's cart shows up for omar in the same browser | No |
+
+**Locations (for wrapping them later):**
+
+| Flag key | Location |
+|---|---|
+| `NAV_LINKS_SHOWN_PRELOGIN` | `components/layout/site-header.tsx` (Browse/Cart rendered unconditionally) |
+| `HEADER_NAV_NOT_RESPONSIVE` | `components/layout/site-header.tsx` (single flex nav row, no wrap / mobile collapse) |
+| `RX_DOB_UNVALIDATED` | `lib/orders/checkout.ts` (`validatePrescription` — required-only) |
+| `CHECKOUT_NO_SAVED_ADDRESS_PREFILL` | `app/(storefront)/checkout/page.tsx` (passes only `defaultFullName`) + `components/checkout/checkout-form.tsx` |
+| `CART_SESSION_NOT_USER_BOUND` | `app/api/auth/logout/route.ts` + `lib/data/session-id.ts` + `lib/data/session-store.ts` + `components/layout/site-header.tsx` |
+
+> Note `CART_SESSION_NOT_USER_BOUND` is categorised **security** in the registry but
+> is not tagged HIPAA — it leaks a shopping cart between accounts, not health data.
 
 ---
 
@@ -294,6 +370,18 @@ All flags are listed below, **grouped by category**. Columns:
     DevTools (Network request body/URL, Application → Local Storage) — not visible in
     the UI.
 
+- **What `/account` can do now (clean behavior — do NOT grade these as defects).**
+  The account page gained three capabilities that used to be genuine gaps:
+  - **Delete a saved address** and **Remove insurance** — both behind a
+    `window.confirm` guard (`components/account/account-manager.tsx`). A candidate
+    reporting "can't delete an address" is reporting an old build.
+  - **Field-format validation on account edits** (`lib/account/account.ts`): full-name
+    shape, US ZIP / international postal-code shape, and insurance-ID shape, on top of
+    the existing required-field checks. These rules are deliberately **account-only** —
+    checkout keeps its required-only postal behavior so `FN_POSTAL_UNVALIDATED` stays
+    intact. A "checkout accepts a bad postal code but /account doesn't" report is a
+    correct observation of that seeded bug, not an inconsistency defect.
+
 ---
 
 ## 6. Clean vs buggy reference screenshots
@@ -306,6 +394,9 @@ All flags are listed below, **grouped by category**. Columns:
 > `FN_CONCURRENT_DOUBLESPEND`) have no on-screen difference, so their callout boxes the
 > relevant control/screen and the label says "observe in DevTools" with the captured evidence.
 > Files live in `private/bug-shots/<KEY>-buggy.png` / `-clean.png`.
+>
+> **Covers the 45 flag-gated bugs only.** The five §4.7 defects have no clean side to
+> photograph (they are on for admin too), so there are no shots for them.
 
 ### 6.1 Functional
 
@@ -827,4 +918,7 @@ instance — the app's own access gate is what secures it.
 ---
 
 *Source of truth: `lib/bug-registry.ts` (flags) + `docs/ANSWER-KEY.md` (per-bug repro).
-This runbook covers all 45 flags — every bug is implemented and browser-verified.*
+This runbook covers all 50 registry entries — the 45 flag-gated bugs (§4.1–4.6, each
+implemented and browser-verified) plus the 5 always-on Batch-7 defects (§4.7). The
+guardrail that keeps them alive is the 26 `*.bugs.test.*` suites (94 tests); run
+`npm test` before any change.*
