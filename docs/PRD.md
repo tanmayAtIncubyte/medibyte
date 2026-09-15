@@ -1,11 +1,23 @@
 # PRD: MediByte — A Deliberately-Buggy Pharmacy Store for Candidate Assessment
 
-> **Note (historical planning doc).** This PRD captures the original plan. Two
-> things evolved since: (1) the runtime admin *toggle* panel was replaced by a
-> read-only bug reference — the active flag set is edited in `data/bug-flags.json`
-> and redeployed (deploy profile = all 45 ON); (2) runtime state is Redis-backed
-> on the deploy (persists), not in-memory-only. See `docs/ADMIN-RUNBOOK.md` and
-> `docs/ACCESS-CONTROL.md` for current behavior.
+> **Note (historical planning doc).** This PRD captures the original plan. Read it
+> for the *why*; the *what* has moved on. As of **2026-09-15**:
+>
+> 1. The runtime admin *toggle* panel was replaced by a **read-only bug reference** —
+>    the active flag set is edited in `data/bug-flags.json` and redeployed
+>    (deploy profile = all ON).
+> 2. The bug count is **50**, not ~45: the original 45 `isBugActive`-gated bugs plus
+>    5 internal-QA defects promoted into the registry in Batch 7, which are **not yet
+>    gated** (admin sees them too). See `docs/ADMIN-RUNBOOK.md` §4.7.
+> 3. Runtime state is **Redis-backed** on the deploy (persists), not in-memory-only,
+>    and every candidate reaches the app through a **time-boxed `/start?code=…`
+>    access link** rather than a bare URL.
+> 4. There is a second, **automation** track (write a BDD suite against the clean app
+>    as the `qa_automation` account), and each access link is **bound to one track**.
+>    See `docs/automation-qa/`.
+> 5. Self-registration is hidden; candidates use the seeded login for their track.
+>
+> See `docs/ADMIN-RUNBOOK.md` and `docs/ACCESS-CONTROL.md` for current behavior.
 
 ## Overview & Problem
 

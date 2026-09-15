@@ -88,8 +88,13 @@ total or coupon state finishes updating after an action.
 ## Test data
 
 Your reviewer will send you a **personal access link** (it looks like
-`https://…/start?code=…`). Open it once — in the browser your suite drives — to
-unlock the app for a limited window before you sign in.
+`https://…/start?code=…`). Open it once — in the browser your suite drives — and
+**before you sign in**: it unlocks the app for a limited window, and it is what ties
+your session to this assignment. If your suite runs in a fresh browser profile each
+time, make opening that link the first step of your setup, ahead of the login step.
+
+The link is issued for this automation assignment, so the account below is the only
+one it will sign in with — any other account is rejected.
 
 Sign in with this account. It comes with saved account data and order
 history so the app has content to work with.

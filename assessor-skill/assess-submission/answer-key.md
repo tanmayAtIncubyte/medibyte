@@ -2,7 +2,9 @@
 
 > ⚠️ **PRIVATE — reviewer only.** Never share with candidates. Lists every seeded bug, how to trigger it, and the expected-vs-actual behavior. This is server-side/internal only — it is not part of any candidate-facing build. The canonical source is `lib/bug-registry.ts`; this doc adds repro detail.
 
-All bugs default **OFF** (`data/bug-flags.json`). The reviewer enables a chosen set per assessment from `/admin` (admin login: `admin@medibyte.test` / `admin.incu123`). **Admin always sees correct behavior**; bugs only manifest for customer logins (`dana@example.test` / `dana1234`, `omar@example.test` / `omar1234`).
+The committed deploy profile in `data/bug-flags.json` has **all 50 flags ON** — every candidate faces the full set. To change the active set, edit `data/bug-flags.json` and redeploy; there is **no live toggle** (`/admin` is a read-only bug reference). Admin login: `admin@medibyte.test` / `admin.incu123`. **Admin and Steve (`qa_automation`, `steve@example.test` / `steve1234`) always see correct behavior**; bugs only manifest for customer logins (`dana@example.test` / `dana1234`, `omar@example.test` / `omar1234`).
+
+> **45 gated + 5 always-on = 50.** Batches 1–6 (the 45 entries below, through `UX_NO_PAGE_TOTAL`) are wrapped in an `isBugActive(...)` branch, so admin/Steve see the correct path. **Batch 7** (the last five) came out of the internal QA pass and is *not* wrapped yet: those five are present for **every** login including admin, and toggling their flag does nothing. Don't use the admin view as the clean reference for them. See `docs/ADMIN-RUNBOOK.md` §4.7.
 
 Entry format:
 ```
@@ -44,6 +46,7 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Expected (correct / admin): page 1 starts at the first product; pages tile the catalog with no gaps.
 - Actual (buggy / customer): the window start is shifted by +1, so the very first product is dropped and each page boundary skips one item.
 - How to spot it: cross-screen — the first product on page 1 is missing; "Showing N of M" count vs. the items shown disagree.
+- **Known second face (verified in-browser 2026-07-27):** on a *filtered* set the off-by-one drops the first match, so a search that narrows to a **single** hit returns nothing — `?q=ibuprofen` renders "No products are available right now." and "0 of 39". Candidates very often report this as **"search is broken"**. That is a correct finding with the wrong cause; credit it as this bug. (`?q=vitamin` matched 3 and showed 2 — "Vitamin D3" dropped. As admin, `?q=ibuprofen` correctly shows "1 of 1".)
 
 ### FN_CART_BADGE_LINES — Header cart badge counts line items, not total quantity
 - Functional / Easy / HIPAA: no
@@ -185,6 +188,9 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Expected (correct / admin): 409 "Some items are no longer available in the requested quantity." — order rejected, nothing reserved.
 - Actual (buggy / customer): the stock check is skipped; the order is placed for 20 against 8 in stock, driving availability negative.
 - How to spot it: edge input / DevTools Network — the product page shows the available count on the screen as "Low stock (8 left)" (no hidden DB value needed); order more than that count and the clean app 409s while the buggy app 201s and places the order. Cross-check available stock afterward.
+- **Verified in-browser 2026-07-27** as customer Dana: `prod-decongestant` ("Low stock (8 left)") set to qty 20 → `PATCH /api/session/cart` 200 (no cap) → checkout summary Qty 20 / Subtotal $179.80 → `POST /api/checkout` **201**, order placed for 20 against 8.
+- **Common candidate phrasing:** "there is no maximum quantity per product" / "no item limit". That is this bug, not a by-design gap — credit it.
+- **Incidental (not seeded, not a defect to grade):** after an oversell the product detail page still reads "Low stock (8 left)" — the detail label renders the *seed* stock, not live availability, so the displayed count never reflects the oversell.
 
 ### FN_CONCURRENT_DOUBLESPEND — Concurrent orders double-spend the same stock
 - Functional / Expert / HIPAA: no
@@ -416,3 +422,55 @@ _Entries are appended per batch as bugs are built (Batches MED-23 → MED-28)._
 - Expected (correct / admin): a "Page X of Y" indicator sits above the page links so the customer knows how far the catalog goes.
 - Actual (buggy / customer): the "Page X of Y" indicator is removed, leaving bare page links with no sense of total pages/results.
 - How to spot it: look at the pager — there's no "Page X of Y" / total to orient by (the top-of-list "Showing N of M" count is a separate element and unaffected).
+
+<!-- BATCH 7: Internal-QA-reported defects (5) — ALWAYS ON, not isBugActive-gated -->
+
+---
+
+## Batch 7 — internal-QA defects (always on)
+
+> ⚠️ **These five behave differently from everything above.** They were reported by the internal QA pass (each independently by 2+ reviewers), confirmed in code, and added to `lib/bug-registry.ts` + `data/bug-flags.json`. They are **not yet wrapped in an `isBugActive(...)` branch**, so there is **no clean/admin side**: admin and Steve see them too, and toggling the flag does nothing. The "Expected" line below is what the app *should* do, not what admin currently shows. Wrapping each `location` with `isBugActive` is what would turn them into normal toggles.
+
+### NAV_LINKS_SHOWN_PRELOGIN — Header shows auth-gated Browse/Cart nav links to logged-out visitors
+- UI / Easy / HIPAA: no
+- Location: `components/layout/site-header.tsx` (Browse/Cart links rendered unconditionally in the root-layout header).
+- Trigger: Sign out (or open a private window) and look at `/login`'s primary nav; click **Browse** or **Cart**.
+- Expected (correct): auth-gated destinations are hidden (or clearly marked) for signed-out visitors.
+- Actual: both links render while signed out, but the routes sit behind the storefront auth guard, so following one bounces straight back to login.
+- How to spot it: eyeball `/login` — nav links that lead nowhere.
+
+### HEADER_NAV_NOT_RESPONSIVE — Primary header nav overflows on small viewports
+- UI / Easy / HIPAA: no
+- Location: `components/layout/site-header.tsx` (single non-wrapping flex nav row, no wrap / no mobile collapse).
+- Trigger: Open any page at a narrow/mobile viewport width (DevTools device toolbar) while signed in, so the full nav is rendered.
+- Expected (correct): the nav wraps, collapses to a menu, or otherwise fits the viewport.
+- Actual: the logo, 5–7 nav buttons and the user name sit in one non-wrapping flex row, so the header overflows horizontally.
+- How to spot it: eyeball in responsive mode — horizontal overflow / clipped nav.
+
+### RX_DOB_UNVALIDATED — Prescription Date of birth is required-checked only
+- Functional / Easy / HIPAA: no
+- Location: `lib/orders/checkout.ts` (`validatePrescription` — required-only, no date validation).
+- Trigger: Put an Rx item in the cart, go to `/checkout`, and in the prescription/health step enter a malformed or clearly-impossible **Date of birth** (e.g. a future date). Submit.
+- Expected (correct): a real date check — well-formed and not in the future — rejects the entry.
+- Actual: only a non-blank check runs, so a malformed or future DOB is accepted and the order is placed.
+- How to spot it: edge input on the Rx Date-of-birth field.
+
+### CHECKOUT_NO_SAVED_ADDRESS_PREFILL — Checkout ignores the account's saved addresses
+- UX / Moderate / HIPAA: no
+- Location: `app/(storefront)/checkout/page.tsx` (passes only `defaultFullName`) + `components/checkout/checkout-form.tsx` (shipping fields default blank).
+- Trigger: As a customer with a saved address on `/account`, add an item and go to `/checkout`. Look at the Shipping section.
+- Expected (correct): the saved address prefills, or a saved-address picker is offered.
+- Actual: only the full name is prefilled; every shipping field is blank and there is no picker, so the customer retypes an address the app already has.
+- How to spot it: cross-screen — `/account` shows a saved address, `/checkout` shows empty shipping fields.
+
+### CART_SESSION_NOT_USER_BOUND — Cart is bound to the browser session, not the signed-in user
+- Security / Moderate / HIPAA: no
+- Location: `app/api/auth/logout/route.ts` (clears the auth cookie only) + `lib/data/session-id.ts` (`mb_session_id`) + `lib/data/session-store.ts` + `components/layout/site-header.tsx` (badge).
+- Trigger: As `dana@example.test`, add items to the cart. Sign out. In the **same browser**, sign in as `omar@example.test` and open `/cart` (and look at the header badge).
+- Expected (correct): logout clears the cart session too, and a cart belongs to the account that built it.
+- Actual: logout clears only the auth cookie; the `mb_session_id` cart cookie survives, so dana's cart (and her badge count) is inherited by omar.
+- How to spot it: cross-screen — sign out, sign in as the other customer, cart is not empty. Also visible in DevTools → Application → Cookies (`mb_session_id` unchanged across logout).
+
+---
+
+*50 registry entries: 45 flag-gated (Batches 1–6) + 5 always-on (Batch 7). Guardrail: the 26 `*.bugs.test.*` suites / 94 tests.*

@@ -42,6 +42,10 @@ Use `docs/automation-qa/flows-and-test-cases.md` as the canonical source for flo
 
 Steve is the automation account: `steve@example.test` / `steve1234`. Steve sees the storefront clean and bug-free, with no admin access. Candidates automate one assigned clean flow; do not reward unrelated bug discovery.
 
+Two current caveats when judging "the suite fails, is that the candidate's fault?":
+- Steve has **no gate privilege**. An automation candidate needs an automation-track `/start?code=…` link, opened in the driven browser **before** sign-in; the login route rejects any non-Steve account on that link with a 403. A suite that logs in without opening the link first will fail on the deployed app (locally, with no Redis, the gate is off and this does not apply).
+- Five registry defects (Batch 7 — see `docs/ADMIN-RUNBOOK.md` §4.7) are **not** flag-gated, so Steve sees them too. The most likely one to bite an assertion is `CHECKOUT_NO_SAVED_ADDRESS_PREFILL`: checkout does **not** prefill the account's saved address, only the full name. Treat a candidate's handling of that as correct observation, not as a broken test.
+
 Locator ground truth:
 - The app intentionally has no `id`, no `data-testid`, and no guessable hooks for these flows.
 - Elements remain reachable by accessible name and role.

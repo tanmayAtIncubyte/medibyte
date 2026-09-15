@@ -28,9 +28,10 @@ Pharmacies sell two kinds of product, and the distinction matters as you test:
 Every product in the catalog is labelled as either OTC or Rx.
 
 Your reviewer will send you a **personal access link** (it looks like
-`https://…/start?code=…`). Open it once to begin — it gives you access to the app
-for a limited window (typically 10 days). After that the link expires. Use the
-same browser so you stay signed in.
+`https://…/start?code=…`). **Open it before you sign in** — it unlocks the app for a
+limited window (typically 10 days) and is tied to the customer accounts listed under
+*Test data* below. After that the link expires. Use the same browser throughout so
+you keep your access and stay signed in.
 
 ## Your task
 

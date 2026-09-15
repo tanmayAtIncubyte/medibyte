@@ -10,10 +10,28 @@ over-the-counter (OTC) and prescription (Rx) products, search and filter the
 catalog, add items to a cart, apply promo codes, check out with a shipping
 address, and review their past orders and account details.
 
+### Over-the-counter (OTC) vs prescription (Rx)
+
+Pharmacies sell two kinds of product, and the distinction matters as you test:
+
+- **Over-the-counter (OTC)** — everyday medicines and health products anyone can
+  buy without a doctor's authorization: pain relievers, vitamins, antacids,
+  allergy tablets, first-aid supplies, and the like. In a store like this they
+  behave like ordinary retail items — you pick them and buy them.
+- **Prescription (Rx)** — medicines that legally require a valid prescription
+  from a licensed prescriber before they can be dispensed (many antibiotics,
+  cardiac and diabetes medicines, controlled substances, etc.). A pharmacy is
+  expected to treat them differently from OTC items: it should establish that a
+  prescription exists, and it handles the associated patient/health information
+  as sensitive data.
+
+Every product in the catalog is labelled as either OTC or Rx.
+
 Your reviewer will send you a **personal access link** (it looks like
-`https://…/start?code=…`). Open it once to begin — it gives you access to the app
-for a limited window (typically 10 days). After that the link expires. Use the
-same browser so you stay signed in.
+`https://…/start?code=…`). **Open it before you sign in** — it unlocks the app for a
+limited window (typically 10 days) and is tied to the customer accounts listed under
+*Test data* below. After that the link expires. Use the same browser throughout so
+you keep your access and stay signed in.
 
 ## Your task
 

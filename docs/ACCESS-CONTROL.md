@@ -41,6 +41,28 @@ Attempt = { attempt, grantedAt, windowDays, expiresAt, startedAt?, revokedAt? }
 stamped if the attempt is revoked. The **current attempt** (the last one) is what
 `expiresAt`/gating read.
 
+### Track (which assessment the link is for)
+
+A record also carries a **`track`**: `"manual"` or `"automation"`
+(`CandidateTrack` in `lib/access/candidates.ts`). It is chosen at mint and it does
+two things:
+
+- it tells the reviewer which brief to send (the roster shows a Manual/Automation
+  badge per row);
+- it **binds the login**. `app/api/auth/login/route.ts` reads the `mb_cand` cookie on
+  every sign-in and compares the record's track with the authenticated role:
+  a **manual** link accepts only `customer` (dana/omar), an **automation** link only
+  `qa_automation` (Steve). A mismatch is a **403** whose message names the right
+  account. **Admins are exempt** (they aren't candidates), and a sign-in with no
+  `mb_cand` cookie is unbound — the gate governs entry separately.
+
+Records minted before tracks existed have no `track` field; read it through
+`candidateTrack(record)`, which defaults a missing value to `"manual"`.
+
+> Steve has **no** special standing at the gate. An earlier build let the
+> `qa_automation` role bypass it on role alone; that was removed when links became
+> track-bound. Only admin passes without a code.
+
 ### Fractional windows
 
 Windows are **fractional days**: `0.5` = 12h, `0.25` = 6h, etc. They are typed on
@@ -57,6 +79,7 @@ record (**no TTL**):
 ```
 SET cand:<code>  {
   name, email, role?, notes?,
+  track: "manual" | "automation",
   createdAt,
   status: "active",
   attempts: [{ attempt: 1, grantedAt, windowDays, expiresAt }]
@@ -80,18 +103,28 @@ candidate.
   shown in the reviewer console.
 - Sets an **httpOnly cookie** `mb_cand=<code>` (the cookie only carries the code;
   the record in Redis is the authority).
-- Redirects to `/login` to register / sign in.
+- Redirects to `/login` to sign in (self-registration is hidden).
+
+⚠️ **The link has to be opened before signing in.** `/login` is on the gate's
+allowlist, so a candidate who goes straight to the app can sign in and only hit
+`/closed` on the next navigation. The `mb_cand` cookie is also what the login route
+reads to enforce the track, so a sign-in with no cookie is unbound.
 
 **4. Every request passes through the gate** (`proxy.ts`, runs before any page or
 API):
 
 ```
 if no Redis configured            → pass    (local dev / demos: gate off)
-if path is /login, /start, /closed, /api/auth/*, /api/health → pass  (allowlist)
+if path is /start, /closed, /login, /api/auth/login, /api/auth/logout, /api/health
+                                  → pass    (OPEN_PATHS allowlist)
 if valid admin session            → pass    (reviewers never need a code)
 if mb_cand cookie present AND candidateHasAccess(code) is true → pass
 otherwise                         → /closed  (403 JSON for /api/*)
 ```
+
+(`OPEN_PATHS` is an exact-match list in `lib/access/gate.ts` — not a prefix match.
+`/api/auth/login` is open for both POST and the GET the seeded `SEC_CREDS_IN_URL`
+bug drives; the pathname is the same either way.)
 
 The key line is the last real check: the cookie only carries the code; **the
 authority is `candidateHasAccess(code)`** — active **and** unexpired — evaluated
@@ -142,6 +175,9 @@ the state-key TTL is Redis's own auto-eviction safety net.
   baked into a self-contained token.
 - Duplicate emails are rejected at mint, so one candidate can't hold two live
   roster entries.
+- The link's **track** constrains which account it can sign into, so a manual
+  candidate can never reach the clean-app (Steve) side and an automation candidate
+  never lands in the buggy customer app.
 
 ## Where it lives (code map)
 
@@ -150,6 +186,8 @@ the state-key TTL is Redis's own auto-eviction safety net.
 | Access registry (mint / get / list / find-by-email) | `lib/access/candidates.ts` → `mintCandidate`, `getCandidate`, `listCandidates`, `findCandidateByEmail` |
 | Lifecycle transitions | `revokeCandidate` (soft), `regrantCandidate`, `extendCandidate`, `removeCandidate` (hard delete + purge), `markStarted` |
 | Access authority + helpers | `candidateHasAccess`, `currentAttempt`, `effectiveExpiresAt`, `displayStatus` |
+| Track type + default | `CandidateTrack`, `candidateTrack(record)` (missing → `"manual"`) |
+| Track binding at sign-in | `app/api/auth/login/route.ts` → `trackBindingError(user, candidateCode)` (403 on mismatch; admin exempt) |
 | Request scope + cookie name + state TTL | `lib/access/scope.ts` (`CANDIDATE_STATE_TTL_DAYS`) |
 | Gate adapter (runs per request) | `proxy.ts` |
 | Candidate entry point | `app/start/route.ts` |

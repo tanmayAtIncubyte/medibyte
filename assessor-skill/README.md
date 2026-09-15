@@ -58,7 +58,9 @@ team. Assessors then upload the candidate doc into the Project and ask to assess
 
 ## Keeping it current
 The four docs are **snapshots**. If the app's seeded bugs, the candidate brief,
-or the QA framework change, re-copy them and re-zip:
+or the QA framework change, re-copy them and re-zip (last refreshed **2026-09-15**,
+when the seeded set went from 45 to 50 — five of which are not yet flag-gated, so
+admin is *not* a clean reference for them; the bundled answer key says which):
 ```bash
 cp ../docs/ANSWER-KEY.md            assess-submission/answer-key.md
 cp ../docs/CANDIDATE-BRIEF.md       assess-submission/candidate-brief.md

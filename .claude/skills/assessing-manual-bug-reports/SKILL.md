@@ -20,6 +20,8 @@ When unsure whether something is a defect or a non-issue, default to **neutral**
 
 Disabled seeded bugs are `N-A-disabled`, never misses.
 
+The registry holds **50** entries. Forty-five are `isBugActive`-gated, so admin is the clean reference for them. The other five (Batch 7 — `NAV_LINKS_SHOWN_PRELOGIN`, `HEADER_NAV_NOT_RESPONSIVE`, `RX_DOB_UNVALIDATED`, `CHECKOUT_NO_SAVED_ADDRESS_PREFILL`, `CART_SESSION_NOT_USER_BOUND`) are **not gated yet**: they are present for admin too, and their flags are inert. Two consequences when grading — never mark one of them "baseline reported as broken" just because admin shows the same behavior, and never mark one `N-A-disabled`. Repro detail is in `docs/ANSWER-KEY.md`'s Batch 7 section and `docs/ADMIN-RUNBOOK.md` §4.7.
+
 ## When to use
 
 Use when:
