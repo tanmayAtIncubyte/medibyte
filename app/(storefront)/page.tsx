@@ -1,33 +1,23 @@
 import Link from "next/link";
 
-import { PromoPanel } from "@/components/home/promo-panel";
+import { CategoryStrip } from "@/components/home/category-strip";
+import { Doors } from "@/components/home/doors";
+import { ProductShelves } from "@/components/home/product-shelves";
+import { SearchHero } from "@/components/home/search-hero";
 import { PageContainer } from "@/components/layout/page-container";
-import { ProductCatalog } from "@/components/products/product-catalog";
-import { brand } from "@/lib/brand";
 import { listFeaturedProducts } from "@/lib/data/products";
 
+// The home page is a medicine cabinet: search first, a strip of category tiles
+// on the seam of the hero, then three doors (over the counter, prescriptions,
+// refills) beside the featured products on white shelves. The column widens
+// to 90rem here only, so wide screens fill with products rather than margin.
 export default function HomePage() {
   const featured = listFeaturedProducts();
 
   return (
-    <PageContainer>
-      {/* Type-led hero on a full-bleed mint band — incubyte.co's top region. The
-          band is a pseudo-element stretched to the viewport width and pulled up
-          behind the floating nav, so the page itself stays white and the mint
-          reads as an accent rather than a wash. `isolate` keeps the -z-10 band
-          inside this section's stacking context (above the body, behind the
-          copy). */}
-      <section className="relative isolate -mt-10 pt-20 pb-14 before:pointer-events-none before:absolute before:-top-20 before:bottom-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-secondary sm:pt-28 sm:pb-16">
-        <p className="text-sm font-medium text-primary">{brand.name}</p>
-        <h1 className="mt-4 max-w-3xl font-heading text-[3.25rem] font-semibold leading-[1.02] tracking-[-0.01em] text-primary sm:text-[5rem]">
-          {brand.tagline}
-        </h1>
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-foreground/75 sm:text-lg">
-          {brand.description}
-        </p>
-      </section>
-
-      <PromoPanel />
+    <PageContainer className="xl:max-w-[90rem]">
+      <SearchHero />
+      <CategoryStrip />
 
       {/* Featured products — server-rendered, visible without clicking "Browse" */}
       <section className="mt-16" aria-labelledby="featured-heading">
@@ -51,8 +41,9 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="mt-8">
-          <ProductCatalog products={featured} />
+        <div className="mt-7 grid gap-7 lg:grid-cols-[minmax(17rem,0.9fr)_2.6fr] lg:items-stretch">
+          <Doors />
+          <ProductShelves products={featured} />
         </div>
 
         <div className="mt-10 flex justify-center sm:hidden">

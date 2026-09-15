@@ -17,6 +17,9 @@
   --color-panel-foreground: var(--panel-foreground);
   --color-footer: var(--footer);
   --color-footer-foreground: var(--footer-foreground);
+  --color-door-chartreuse: var(--door-chartreuse);
+  --color-door-teal: var(--door-teal);
+  --color-door-green: var(--door-green);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-heading);
@@ -98,6 +101,11 @@
   --panel-foreground: #ffffff;
   --footer: #060a1e;
   --footer-foreground: #ebfff6;
+  /* The three home-page doors — incubyte.co's service-card colours, measured
+     off their DOM. Dark text (--foreground) on all three. */
+  --door-chartreuse: #cbdf7a;
+  --door-teal: #5dc6d6;
+  --door-green: #9dde8b;
   --border: #d5e6dc; /* hairline, tinted toward the mint */
   --input: #d5e6dc;
   --ring: #014d43;
@@ -145,6 +153,9 @@
   --panel-foreground: #ebfff6;
   --footer: #060a1e;
   --footer-foreground: #ebfff6;
+  --door-chartreuse: #cbdf7a;
+  --door-teal: #5dc6d6;
+  --door-green: #9dde8b;
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: #d3fe73;

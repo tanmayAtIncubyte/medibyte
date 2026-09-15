@@ -17,11 +17,15 @@ export function ProductCatalog({
   dropDecimal = false,
   inStockAtZero = false,
   lowContrast = false,
+  // Optional extra cell rendered after the last card (the home page uses it
+  // for the prescription note). Presentational only; the cards are unchanged.
+  trailing,
 }: {
   products: Product[];
   dropDecimal?: boolean;
   inStockAtZero?: boolean;
   lowContrast?: boolean;
+  trailing?: React.ReactNode;
 }) {
   if (products.length === 0) {
     return (
@@ -69,6 +73,7 @@ export function ProductCatalog({
           </Link>
         </li>
       ))}
+      {trailing ? <li className="flex">{trailing}</li> : null}
     </ul>
   );
 }
