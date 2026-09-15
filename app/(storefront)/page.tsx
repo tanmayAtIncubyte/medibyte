@@ -1,23 +1,21 @@
 import Link from "next/link";
 
-import { CategoryStrip } from "@/components/home/category-strip";
 import { Doors } from "@/components/home/doors";
 import { ProductShelves } from "@/components/home/product-shelves";
 import { SearchHero } from "@/components/home/search-hero";
 import { PageContainer } from "@/components/layout/page-container";
 import { listFeaturedProducts } from "@/lib/data/products";
 
-// The home page is a medicine cabinet: search first, a strip of category tiles
-// on the seam of the hero, then three doors (over the counter, prescriptions,
-// refills) beside the featured products on white shelves. The column widens
-// to 90rem here only, so wide screens fill with products rather than margin.
+// The home page is a medicine cabinet: search first, then three doors (over
+// the counter, prescriptions, refills) beside the featured products on white
+// shelves. The column widens to 90rem here only, so wide screens fill with
+// products rather than margin.
 export default function HomePage() {
   const featured = listFeaturedProducts();
 
   return (
     <PageContainer className="xl:max-w-[90rem]">
       <SearchHero />
-      <CategoryStrip />
 
       {/* Featured products — server-rendered, visible without clicking "Browse" */}
       <section className="mt-16" aria-labelledby="featured-heading">

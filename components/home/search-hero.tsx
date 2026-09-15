@@ -8,12 +8,11 @@ import { brand } from "@/lib/brand";
  * The home page opens on a need, not a mood: headline, one line, and a search
  * box that lands on the catalog (`/products?q=`). The mint band is a
  * pseudo-element stretched to the viewport and pulled up behind the floating
- * nav, so the page itself stays white. The category strip below overlaps this
- * band's bottom edge by design (see `CategoryStrip`).
+ * nav, so the page itself stays white.
  */
 export function SearchHero() {
   return (
-    <section className="relative isolate -mt-10 pt-16 pb-24 before:pointer-events-none before:absolute before:-top-20 before:bottom-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-secondary sm:pt-20 sm:pb-28">
+    <section className="relative isolate -mt-10 pt-16 pb-16 before:pointer-events-none before:absolute before:-top-20 before:bottom-0 before:left-1/2 before:-z-10 before:w-screen before:-translate-x-1/2 before:bg-secondary sm:pt-20 sm:pb-20">
       <p className="text-sm font-medium text-primary">{brand.name}</p>
       <h1 className="mt-3 max-w-3xl font-heading text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.01em] text-primary sm:text-[3.25rem]">
         {brand.tagline}
