@@ -182,7 +182,10 @@ deployed instance, edit the file, commit, and redeploy. `vercel.json` auto-deplo
 > prints the HTML through headless Chrome to `docs/CANDIDATE-BRIEF.pdf` (two pages; needs
 > Google Chrome and network access for the two Google Fonts). Commit all three together so
 > markdown, HTML and PDF never drift. The automation-track assignments
-> (`docs/automation-qa/assignment-*.md`) are sent as Markdown; there is no PDF for them.
+> (`docs/automation-qa/assignment-{easy,medium,hard}.md`) have matching PDFs next to them
+> in the same look; they are rendered straight from the Markdown (no words to mirror) with
+> `docs/brief/render-md.sh docs/automation-qa/assignment-easy.md docs/automation-qa/assignment-easy.pdf "Automation QA assignment"`
+> — run it for each tier after editing an assignment and commit the PDF with the Markdown.
 
 ### Example profiles
 
