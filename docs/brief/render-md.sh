@@ -56,6 +56,10 @@ ${STYLE}
   main ol li::marker { color: var(--forest); font-weight: 600; }
   main li p { margin: 0; }
   main table { margin: 8px 0 4px; }
+  main pre { margin: 10px 0; padding: 12px 16px; border-radius: 12px; background: var(--mint); font-size: 9pt; line-height: 1.5; white-space: pre-wrap; break-inside: avoid; }
+  main pre code { color: var(--ink); font-size: 1em; }
+  main td strong { white-space: nowrap; }
+  main a { color: var(--forest); text-decoration: underline; text-underline-offset: 3px; }
   main hr { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
   main > p:last-child { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--muted); font-size: 9.4pt; break-before: avoid; }
 </style>
