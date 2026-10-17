@@ -54,8 +54,8 @@ can fall into any of these areas — look across all of them:
 - **UX** — confusing or frustrating flows, surprise behavior, lost work, unclear
   errors or confirmations.
 
-Write up **test cases** for the areas you cover and clear **bug reports** for the
-defects you find.
+Write **test cases** for the areas you cover and a clear **bug report** for every
+defect you find. *What to submit*, at the end of this brief, sets out the format.
 
 ### The DevTools Network tab is fair game
 
@@ -91,5 +91,26 @@ test data — use them to exercise the discount and checkout flows.
 | `MEGA50`     | $50 off your order      | none          |                             |
 | `SPRING2023` | 20% off (spring promo)  | none          | expired on 2023-05-31       |
 
-Document what you find and how you'd verify it in whatever form best shows your
-thinking — the quality and clarity of your write-up is part of what we assess.
+## What to submit
+
+Fill in the Excel workbook that came with this brief,
+`QA-ASSESSMENT-TEMPLATE.xlsx`. It has a sheet for each part:
+
+- **Test cases, traditional style** — ID, title, preconditions, test data, steps,
+  expected result, actual result and status.
+- **Test cases, BDD style** — the same kind of coverage written as
+  Given / When / Then scenarios.
+- **Bug reports** — one per defect: title, severity, steps to reproduce, expected
+  and actual result, and a screenshot or recording where it helps.
+
+Include both **positive** test cases (the feature works as intended) and
+**negative** ones (invalid input, edge cases, error paths), and mark which is
+which.
+
+### How to send it
+
+Commit the workbook, with any screenshots or recordings, to a **Git repository**
+(GitHub, GitLab or Bitbucket). Reply to your reviewer's email with the repository
+URL before your link expires, and make sure they can open it.
+
+The quality and clarity of your write-up is part of what we assess.

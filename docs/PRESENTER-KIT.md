@@ -349,8 +349,9 @@ candidate; a handful of bugs in one or two categories gives a cleaner read than 
 
 **"How do you grade fairly and consistently?"**
 The admin clean app is the live reference, and every bug has per-bug repro in
-`ANSWER-KEY.md`. Candidates submit a fixed Excel template (Bug | Steps | Expected | Actual |
-Severity | Test case); you review against the key. **Quality over count** — a few
+`ANSWER-KEY.md`. Candidates fill a fixed Excel template (`docs/QA-ASSESSMENT-TEMPLATE.xlsx`:
+traditional + BDD test cases, positive and negative, plus bug reports) and submit it as a
+Git repo URL; you review against the key. **Quality over count** — a few
 well-documented reproducible reports beat a long vague list. Deliberately **no auto-scoring
 engine** — the hire call is human judgment.
 

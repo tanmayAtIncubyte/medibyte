@@ -21,7 +21,9 @@ Pick the row that matches the candidate. The **Track** is what you choose when c
 
 The track and the brief must match. A manual link will not let an automation candidate sign in, and the other way round.
 
-Where the PDFs live: `docs/CANDIDATE-BRIEF.pdf` and `docs/automation-qa/assignment-easy.pdf`, `-medium.pdf`, `-hard.pdf` in the MediByte repo.
+Manual candidates also get the Excel template, `QA-ASSESSMENT-TEMPLATE.xlsx`. They fill it in, commit it to a Git repository and reply with the repository URL.
+
+Where the files live: `docs/CANDIDATE-BRIEF.pdf`, `docs/QA-ASSESSMENT-TEMPLATE.xlsx` and `docs/automation-qa/assignment-easy.pdf`, `-medium.pdf`, `-hard.pdf` in the MediByte repo.
 
 ## Create the link
 
@@ -66,6 +68,8 @@ Best,
 <your name>
 ```
 
+For manual candidates, attach the Excel template as well as the brief.
+
 For automation candidates you can add one line: "Open the link in the browser your tests run in."
 
 ## After you send it
@@ -90,6 +94,8 @@ What you can do on a row:
 | **Remove** | Delete the candidate for good, so the email can be used again. Asks you to confirm | Expired / Revoked rows |
 
 Each re-grant adds an attempt; the clock icon on the row shows the full history.
+
+When a candidate replies with their Git repository URL, open it to check you can see the workbook, then forward it to the reviewer.
 
 ## When a candidate is stuck
 

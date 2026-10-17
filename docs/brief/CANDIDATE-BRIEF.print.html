@@ -120,7 +120,7 @@
     <li><strong>UI</strong> — visual and interaction problems (misleading controls, missing feedback, destructive actions without safeguards).</li>
     <li><strong>UX</strong> — confusing or frustrating flows, surprise behavior, lost work, unclear errors or confirmations.</li>
   </ul>
-  <p style="margin-top:10px">Write up <strong>test cases</strong> for the areas you cover and clear <strong>bug reports</strong> for the defects you find.</p>
+  <p style="margin-top:10px">Write <strong>test cases</strong> for the areas you cover and a clear <strong>bug report</strong> for every defect you find. <em>What to submit</em>, at the end of this brief, sets out the format.</p>
 
   <div class="card mint">
     <h3>The DevTools Network tab is fair game</h3>
@@ -154,7 +154,23 @@
   </table>
 </section>
 
-<p class="closing">Document what you find and how you'd verify it in whatever form best shows your thinking — the quality and clarity of your write-up is part of what we assess.</p>
+<section style="break-before: page">
+  <h2>What to submit</h2>
+  <p>Fill in the Excel workbook that came with this brief, <code>QA-ASSESSMENT-TEMPLATE.xlsx</code>. It has a sheet for each part:</p>
+  <ul>
+    <li><strong>Test cases, traditional style</strong> — ID, title, preconditions, test data, steps, expected result, actual result and status.</li>
+    <li><strong>Test cases, BDD style</strong> — the same kind of coverage written as Given / When / Then scenarios.</li>
+    <li><strong>Bug reports</strong> — one per defect: title, severity, steps to reproduce, expected and actual result, and a screenshot or recording where it helps.</li>
+  </ul>
+  <p style="margin-top:8px">Include both <strong>positive</strong> test cases (the feature works as intended) and <strong>negative</strong> ones (invalid input, edge cases, error paths), and mark which is which.</p>
+
+  <div class="card mint">
+    <h3>How to send it</h3>
+    <p>Commit the workbook, with any screenshots or recordings, to a <strong>Git repository</strong> (GitHub, GitLab or Bitbucket). Reply to your reviewer's email with the repository URL before your link expires, and make sure they can open it.</p>
+  </div>
+</section>
+
+<p class="closing">The quality and clarity of your write-up is part of what we assess.</p>
 
 </body>
 </html>
