@@ -61,7 +61,7 @@
   tr:last-child td { border-bottom: 0; }
   td code { color: var(--ink); }
 
-  .closing { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 9.4pt; }
+  .closing { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--muted); font-size: 9.4pt; }
 </style>
 </head>
 <body>
@@ -120,7 +120,7 @@
     <li><strong>UI</strong> — visual and interaction problems (misleading controls, missing feedback, destructive actions without safeguards).</li>
     <li><strong>UX</strong> — confusing or frustrating flows, surprise behavior, lost work, unclear errors or confirmations.</li>
   </ul>
-  <p style="margin-top:10px">Write <strong>test cases</strong> for the areas you cover and a clear <strong>bug report</strong> for every defect you find. <em>What to submit</em>, at the end of this brief, sets out the format.</p>
+  <p style="margin-top:10px">Write <strong>test cases</strong> for the areas you cover and a clear <strong>bug report</strong> for every defect you find. <em>What to submit</em>, at the end of this brief, says what to send.</p>
 
   <div class="card mint">
     <h3>The DevTools Network tab is fair game</h3>
@@ -154,19 +154,16 @@
   </table>
 </section>
 
-<section style="break-before: page">
+<section>
   <h2>What to submit</h2>
-  <p>Fill in the Excel workbook that came with this brief, <code>QA-ASSESSMENT-TEMPLATE.xlsx</code>. It has a sheet for each part:</p>
   <ul>
-    <li><strong>Test cases, traditional style</strong> — ID, title, preconditions, test data, steps, expected result, actual result and status.</li>
-    <li><strong>Test cases, BDD style</strong> — the same kind of coverage written as Given / When / Then scenarios.</li>
-    <li><strong>Bug reports</strong> — one per defect: title, severity, steps to reproduce, expected and actual result, and a screenshot or recording where it helps.</li>
+    <li><strong>Test cases</strong> for the areas you cover, written in both a <strong>traditional</strong> style and a <strong>BDD</strong> (Given / When / Then) style. Include both <strong>positive</strong> and <strong>negative</strong> cases.</li>
+    <li><strong>Bug reports</strong> for the defects you find.</li>
   </ul>
-  <p style="margin-top:8px">Include both <strong>positive</strong> test cases (the feature works as intended) and <strong>negative</strong> ones (invalid input, edge cases, error paths), and mark which is which.</p>
 
   <div class="card mint">
     <h3>How to send it</h3>
-    <p>Commit the workbook, with any screenshots or recordings, to a <strong>Git repository</strong> (GitHub, GitLab or Bitbucket). Reply to your reviewer's email with the repository URL before your link expires, and make sure they can open it.</p>
+    <p>Commit everything, including any screenshots or recordings, to a <strong>Git repository</strong>. Then reply to your reviewer's email with the repository URL before your link expires, and make sure they can open it.</p>
   </div>
 </section>
 

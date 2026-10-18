@@ -55,7 +55,7 @@ can fall into any of these areas — look across all of them:
   errors or confirmations.
 
 Write **test cases** for the areas you cover and a clear **bug report** for every
-defect you find. *What to submit*, at the end of this brief, sets out the format.
+defect you find. *What to submit*, at the end of this brief, says what to send.
 
 ### The DevTools Network tab is fair game
 
@@ -93,24 +93,15 @@ test data — use them to exercise the discount and checkout flows.
 
 ## What to submit
 
-Fill in the Excel workbook that came with this brief,
-`QA-ASSESSMENT-TEMPLATE.xlsx`. It has a sheet for each part:
-
-- **Test cases, traditional style** — ID, title, preconditions, test data, steps,
-  expected result, actual result and status.
-- **Test cases, BDD style** — the same kind of coverage written as
-  Given / When / Then scenarios.
-- **Bug reports** — one per defect: title, severity, steps to reproduce, expected
-  and actual result, and a screenshot or recording where it helps.
-
-Include both **positive** test cases (the feature works as intended) and
-**negative** ones (invalid input, edge cases, error paths), and mark which is
-which.
+- **Test cases** for the areas you cover, written in both a **traditional** style
+  and a **BDD** (Given / When / Then) style. Include both **positive** and
+  **negative** cases.
+- **Bug reports** for the defects you find.
 
 ### How to send it
 
-Commit the workbook, with any screenshots or recordings, to a **Git repository**
-(GitHub, GitLab or Bitbucket). Reply to your reviewer's email with the repository
-URL before your link expires, and make sure they can open it.
+Commit everything, including any screenshots or recordings, to a **Git
+repository**. Then reply to your reviewer's email with the repository URL before
+your link expires, and make sure they can open it.
 
 The quality and clarity of your write-up is part of what we assess.
