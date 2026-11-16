@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { InsuranceInfo, SavedAddress } from "@/lib/account/types";
 
@@ -55,5 +55,46 @@ describe("AccountManager", () => {
     expect(screen.getByText("Add address")).toBeInTheDocument();
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
     expect(screen.getByLabelText("Street address")).toBeInTheDocument();
+  });
+
+  describe("delete / remove", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("offers Delete on an address and Remove on populated insurance", () => {
+      setup();
+      expect(
+        screen.getByRole("button", { name: /delete home address/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /remove insurance details/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("cancelling the confirm does NOT call the API", async () => {
+      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      setup();
+      await userEvent.click(screen.getByRole("button", { name: /delete home address/i }));
+      expect(confirmSpy).toHaveBeenCalledOnce();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("confirming a delete PATCHes /api/account with the deleteAddress kind", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({ account: { addresses: [], insurance } }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+      setup();
+      await userEvent.click(screen.getByRole("button", { name: /delete home address/i }));
+      expect(fetchSpy).toHaveBeenCalledOnce();
+      const [, init] = fetchSpy.mock.calls[0];
+      const body = JSON.parse(String(init?.body));
+      expect(body).toMatchObject({ kind: "deleteAddress", addressId: "addr-home" });
+    });
   });
 });

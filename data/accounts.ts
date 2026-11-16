@@ -44,6 +44,25 @@ export const seedAccounts: Record<string, AccountState> = {
       groupNumber: "GRP-55014",
     },
   },
+  "user-qa-steve": {
+    addresses: [
+      {
+        id: "addr-steve-home",
+        label: "Home",
+        fullName: "Steve QA",
+        street: "215 Maple Avenue",
+        city: "Denver",
+        region: "CO",
+        postalCode: "80202",
+        country: "USA",
+      },
+    ],
+    insurance: {
+      provider: "UnitedHealthcare",
+      memberId: "UHC-2201847",
+      groupNumber: "GRP-30099",
+    },
+  },
 };
 
 /** A blank account state (deep copy) for users without a seed. */

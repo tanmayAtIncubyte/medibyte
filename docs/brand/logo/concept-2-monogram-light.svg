@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="MediByte">
+  <title>MediByte</title>
+  <rect width="512" height="512" rx="115.2" fill="#FFFFFF"/>
+  <g transform="translate(256 256) scale(7.92)"><g transform="rotate(-35)"><rect x="-19" y="-7.8" width="38" height="15.6" rx="7.8" fill="#014D43"/><path d="M0 -5.7 H11.2 A5.7 5.7 0 0 1 11.2 5.7 H0 Z" fill="#D3FE73"/></g></g>
+</svg>

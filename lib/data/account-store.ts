@@ -1,47 +1,55 @@
 import { seedAccountFor } from "@/data/accounts";
-import { globalSingleton } from "@/lib/data/global-store";
+import { currentScope, scopeTtlSeconds } from "@/lib/access/scope";
+import { backend } from "@/lib/data/backend";
 import type { AccountState } from "@/lib/account/types";
 
-// In-memory per-process account state, keyed by userId. Anchored on globalThis
-// (globalSingleton) so account edits made via the /api/account route handler are
-// visible to the /account server-component render (Next bundles them separately).
-// Writes survive for the process lifetime and reset on restart back to the seed
-// account state. No DB. On first access a user's state is lazily initialized
-// from their seed (a copy, so edits never mutate the seed module).
+// Per-user account state, keyed by userId in the async KV seam
+// (lib/data/backend.ts) under `${scope}:account:<userId>` — scoped so a
+// candidate's account edits are isolated and expire with their access window.
+// Locally the in-memory backend resets on restart back to the seed account
+// state; on the deploy (Redis) an edit made via the /api/account route handler
+// is visible to the /account server-component render on a different lambda. No
+// DB. On first access a user's state is lazily initialized from their seed (a
+// copy, so edits never mutate the seed module).
 
-const accounts = globalSingleton(
-  "account-store/accounts",
-  () => new Map<string, AccountState>(),
-);
+function accountKey(scope: string, userId: string): string {
+  return `${scope}:account:${userId}`;
+}
 
-// Per-user sequence used to derive stable ids for newly-added addresses.
-const addressSequences = globalSingleton(
-  "account-store/addressSequences",
-  () => new Map<string, number>(),
-);
+function addressSeqKey(scope: string, userId: string): string {
+  return `${scope}:account:addrseq:${userId}`;
+}
 
-export function getAccountState(userId: string): AccountState {
-  const existing = accounts.get(userId);
+export async function getAccountState(userId: string): Promise<AccountState> {
+  const scope = await currentScope();
+  const existing = await backend().get<AccountState>(accountKey(scope, userId));
   if (existing) {
     return existing;
   }
   const seeded = seedAccountFor(userId);
-  accounts.set(userId, seeded);
+  await backend().set(accountKey(scope, userId), seeded, scopeTtlSeconds(scope));
   return seeded;
 }
 
-export function setAccountState(userId: string, state: AccountState): void {
-  accounts.set(userId, state);
+export async function setAccountState(userId: string, state: AccountState): Promise<void> {
+  const scope = await currentScope();
+  await backend().set(accountKey(scope, userId), state, scopeTtlSeconds(scope));
 }
 
 /** Next sequence for a user's newly-added address id. */
-export function nextAddressSequence(userId: string): number {
-  const next = (addressSequences.get(userId) ?? 0) + 1;
-  addressSequences.set(userId, next);
+export async function nextAddressSequence(userId: string): Promise<number> {
+  const scope = await currentScope();
+  const current = (await backend().get<number>(addressSeqKey(scope, userId))) ?? 0;
+  const next = current + 1;
+  await backend().set(addressSeqKey(scope, userId), next, scopeTtlSeconds(scope));
   return next;
 }
 
-export function resetAccounts(): void {
-  accounts.clear();
-  addressSequences.clear();
+export async function resetAccounts(): Promise<void> {
+  const scope = await currentScope();
+  // Address-sequence keys share the `account:` prefix, so one sweep clears both.
+  const keys = await backend().listKeys(`${scope}:account:`);
+  for (const key of keys) {
+    await backend().del(key);
+  }
 }

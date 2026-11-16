@@ -5,6 +5,26 @@ import {
   findRegisteredByEmail,
 } from "@/lib/data/registrations";
 import type { SessionPayload } from "@/lib/auth/session";
+import { backend } from "@/lib/data/backend";
+
+// The admin password can be rotated WITHOUT a code change: it's resolved at
+// login from the `admin:password` key in the KV store (Redis on the deploy),
+// then the ADMIN_PASSWORD env var, then the seed default in data/users.ts.
+// Only the admin account uses this override; customer passwords stay in the
+// seed / registration store.
+export const ADMIN_PASSWORD_KEY = "admin:password";
+
+async function resolveAdminPassword(seedPassword: string): Promise<string> {
+  const fromDb = await backend().get<string>(ADMIN_PASSWORD_KEY);
+  if (typeof fromDb === "string" && fromDb.length > 0) {
+    return fromDb;
+  }
+  const fromEnv = process.env.ADMIN_PASSWORD;
+  if (fromEnv && fromEnv.length > 0) {
+    return fromEnv;
+  }
+  return seedPassword;
+}
 
 // The shape server code consumes — never includes the password.
 export type SessionUser = {
@@ -21,8 +41,8 @@ export class DuplicateEmailError extends Error {
   }
 }
 
-function findAccountByEmail(email: string): SeedUser | null {
-  return findUserByEmail(email) ?? findRegisteredByEmail(email);
+async function findAccountByEmail(email: string): Promise<SeedUser | null> {
+  return findUserByEmail(email) ?? (await findRegisteredByEmail(email));
 }
 
 function toSessionUser(account: SeedUser): SessionUser {
@@ -38,23 +58,39 @@ function toSessionUser(account: SeedUser): SessionUser {
 // Auth itself is clean; security bugs are introduced behind the toggle infra in
 // Phase 4. Returns null on unknown email or wrong password — callers must not
 // distinguish the two to the client.
-export function authenticate(email: string, password: string): SessionUser | null {
-  const account = findAccountByEmail(email);
-  if (!account || account.password !== password) {
+export async function authenticate(
+  email: string,
+  password: string,
+): Promise<SessionUser | null> {
+  const account = await findAccountByEmail(email);
+  if (!account) {
+    return null;
+  }
+  const expected =
+    account.role === "admin"
+      ? await resolveAdminPassword(account.password)
+      : account.password;
+  if (expected !== password) {
     return null;
   }
   return toSessionUser(account);
 }
 
-export function registerCustomer(name: string, email: string, password: string): SessionUser {
-  if (findAccountByEmail(email)) {
+export async function registerCustomer(
+  name: string,
+  email: string,
+  password: string,
+): Promise<SessionUser> {
+  if (await findAccountByEmail(email)) {
     throw new DuplicateEmailError(email);
   }
-  return toSessionUser(addRegisteredCustomer(name, email, password));
+  return toSessionUser(await addRegisteredCustomer(name, email, password));
 }
 
-export function sessionUserFromPayload(payload: SessionPayload): SessionUser | null {
-  const account = findAccountByEmail(payload.email);
+export async function sessionUserFromPayload(
+  payload: SessionPayload,
+): Promise<SessionUser | null> {
+  const account = await findAccountByEmail(payload.email);
   if (!account || account.id !== payload.userId || account.role !== payload.role) {
     return null;
   }

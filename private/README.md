@@ -21,6 +21,5 @@ These are captured in a separate, later step. Until a file exists the image
 route 404s and the panel shows a "Screenshot pending" placeholder — so the panel
 works before any screenshots are captured.
 
-The PNGs themselves are git-ignored (they are large, regenerable answer-key
-artifacts); only this README and `bug-shots/.gitkeep` are tracked so the folder
-structure survives a fresh clone.
+The PNGs are tracked in git alongside this README and `bug-shots/.gitkeep`, so a
+fresh clone gets the full reviewer reference set without having to re-capture it.

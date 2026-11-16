@@ -28,6 +28,12 @@ const customerPayload: SessionPayload = {
   role: "customer",
 };
 
+const qaAutomationPayload: SessionPayload = {
+  userId: "user-qa-steve",
+  email: "steve@example.test",
+  role: "qa_automation",
+};
+
 // Mirrors the production signing so tests can forge "valid-looking" parts.
 function encodePayload(payload: object): string {
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
@@ -48,6 +54,14 @@ describe("signSession / verifySession round-trip", () => {
     const token = signSession(customerPayload, SECRET);
 
     expect(verifySession(token, SECRET)).toEqual(customerPayload);
+  });
+
+  // Slice 1 (Phase 6): the role allowlist widened to accept qa_automation —
+  // this locks in the fix for the "guaranteed breakage point" the spec flags.
+  it("recovers the exact qa_automation payload that was signed", () => {
+    const token = signSession(qaAutomationPayload, SECRET);
+
+    expect(verifySession(token, SECRET)).toEqual(qaAutomationPayload);
   });
 
   it("preserves the role claim through a round-trip", () => {

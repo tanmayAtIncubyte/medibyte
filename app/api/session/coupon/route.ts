@@ -17,7 +17,7 @@ import { clearCoupon, setCouponCode } from "@/lib/data/session-store";
 
 // Reads the signed session user straight off the NextRequest cookie so bug-flag
 // gating works in both the running app and unit tests. Read-only.
-function userFromRequest(request: NextRequest): GatingUser {
+async function userFromRequest(request: NextRequest): Promise<GatingUser> {
   const raw = request.cookies.get(SESSION_COOKIE)?.value;
   const payload = verifySession(raw, getSessionSecret());
   if (!payload) {
@@ -26,13 +26,13 @@ function userFromRequest(request: NextRequest): GatingUser {
   return sessionUserFromPayload(payload);
 }
 
-function withSession(
+async function withSession(
   request: NextRequest,
-  run: (sessionId: string) => { status: number; body: unknown },
-): NextResponse {
+  run: (sessionId: string) => Promise<{ status: number; body: unknown }>,
+): Promise<NextResponse> {
   const existingSessionId = readSessionId(request);
   const sessionId = existingSessionId ?? newSessionId();
-  const { status, body } = run(sessionId);
+  const { status, body } = await run(sessionId);
   const response = NextResponse.json(body, { status });
   if (!existingSessionId) {
     attachSessionId(response, sessionId);
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
   const { code } = await request.json();
   // Resolve seeded-bug flags here (the signed user lives at this boundary) and
   // pass plain booleans into the pure validator; admins are never affected.
-  const ignoreExpiry = isBugActive("FN_EXPIRED_COUPON_OK", userFromRequest(request));
-  return withSession(request, (sessionId) => {
-    const subtotal = getCartView(sessionId).subtotal;
+  const ignoreExpiry = isBugActive("FN_EXPIRED_COUPON_OK", await userFromRequest(request));
+  return withSession(request, async (sessionId) => {
+    const subtotal = (await getCartView(sessionId)).subtotal;
     const validation = validateCoupon(String(code ?? ""), subtotal, new Date(), {
       ignoreExpiry,
     });
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
         body: { error: validation.message, reason: validation.reason },
       };
     }
-    setCouponCode(sessionId, validation.coupon.code);
-    const cart = getCartView(sessionId, { ignoreExpiry });
+    await setCouponCode(sessionId, validation.coupon.code);
+    const cart = await getCartView(sessionId, { ignoreExpiry });
     return {
       status: 200,
       body: {
@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
 
 // Remove the applied coupon from the session.
 export async function DELETE(request: NextRequest) {
-  return withSession(request, (sessionId) => {
-    clearCoupon(sessionId);
+  return withSession(request, async (sessionId) => {
+    await clearCoupon(sessionId);
     return { status: 200, body: { appliedCoupon: null } };
   });
 }

@@ -1,5 +1,13 @@
 import { NextRequest } from "next/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// This file tests the CLEAN cart behavior, so pin every bug flag off in-memory
+// (the committed data/bug-flags.json is the deploy profile and may enable
+// bugs). The buggy paths are covered in route.bugs.test.ts.
+vi.mock("@/lib/bug-flags", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/bug-flags")>()),
+  loadBugFlags: () => ({}),
+}));
 
 import {
   DELETE as cartDelete,
@@ -14,8 +22,8 @@ import { resetAllSessions } from "@/lib/data/session-store";
 // AC 6: a write performed in a session is readable back within the same session.
 // Also covers session-id issuance and isolation between sessions.
 
-afterEach(() => {
-  resetAllSessions();
+afterEach(async () => {
+  await resetAllSessions();
 });
 
 function getRequest(sessionId?: string): NextRequest {
@@ -49,21 +57,21 @@ function postRequest(
 
 describe("GET /api/session/cart", () => {
   it("responds 200 with an empty cart for a brand-new session", async () => {
-    const response = cartGet(getRequest());
+    const response = await cartGet(getRequest());
 
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.items).toEqual([]);
   });
 
-  it("issues a session id cookie when the request has none", () => {
-    const response = cartGet(getRequest());
+  it("issues a session id cookie when the request has none", async () => {
+    const response = await cartGet(getRequest());
 
     expect(response.cookies.get(SESSION_ID_COOKIE)?.value).toBeTruthy();
   });
 
-  it("does not reissue a session id cookie when one is already present", () => {
-    const response = cartGet(getRequest("existing-session"));
+  it("does not reissue a session id cookie when one is already present", async () => {
+    const response = await cartGet(getRequest("existing-session"));
 
     expect(response.cookies.get(SESSION_ID_COOKIE)).toBeUndefined();
   });
@@ -99,7 +107,7 @@ describe("session cart write/read roundtrip", () => {
       postRequest({ productId: "prod-ibuprofen-200", quantity: 3 }, "sess-rt"),
     );
 
-    const body = await cartGet(getRequest("sess-rt")).json();
+    const body = await (await cartGet(getRequest("sess-rt"))).json();
     expect(body.items).toEqual([
       { productId: "prod-ibuprofen-200", quantity: 3 },
     ]);
@@ -110,7 +118,7 @@ describe("session cart write/read roundtrip", () => {
       postRequest({ productId: "prod-ibuprofen-200", quantity: 1 }, "sess-x"),
     );
 
-    const body = await cartGet(getRequest("sess-y")).json();
+    const body = await (await cartGet(getRequest("sess-y"))).json();
     expect(body.items).toEqual([]);
   });
 });

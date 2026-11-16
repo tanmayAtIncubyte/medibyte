@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     );
   }
   try {
-    const user = registerCustomer(name, email, password);
+    const user = await registerCustomer(name, email, password);
     const response = NextResponse.json({ user }, { status: 201 });
     setSessionCookie(response, user);
     return response;

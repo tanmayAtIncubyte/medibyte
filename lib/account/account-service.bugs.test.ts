@@ -33,10 +33,10 @@ function read(
 }
 
 describe("SEC_PHI_OVERFETCH toggle", () => {
-  it("flag off → only the rendered fields, no leaked PHI, for everyone", () => {
+  it("flag off → only the rendered fields, no leaked PHI, for everyone", async () => {
     const off = flags({ SEC_PHI_OVERFETCH: false });
     for (const user of [CUSTOMER, ADMIN]) {
-      const payload = read(off, user);
+      const payload = await read(off, user);
       const insuranceKeys = Object.keys(payload.insurance);
       expect(insuranceKeys.sort()).toEqual([...RENDERED_INSURANCE_KEYS].sort());
       for (const leaked of LEAKED_KEYS) {
@@ -45,16 +45,16 @@ describe("SEC_PHI_OVERFETCH toggle", () => {
     }
   });
 
-  it("flag on → a customer's payload leaks PHI; admin's stays lean", () => {
+  it("flag on → a customer's payload leaks PHI; admin's stays lean", async () => {
     const on = flags({ SEC_PHI_OVERFETCH: true });
 
-    const customerPayload = read(on, CUSTOMER);
+    const customerPayload = await read(on, CUSTOMER);
     const customerKeys = Object.keys(customerPayload.insurance);
     for (const leaked of LEAKED_KEYS) {
       expect(customerKeys).toContain(leaked);
     }
 
-    const adminPayload = read(on, ADMIN);
+    const adminPayload = await read(on, ADMIN);
     const adminKeys = Object.keys(adminPayload.insurance);
     for (const leaked of LEAKED_KEYS) {
       expect(adminKeys).not.toContain(leaked); // flag inert for admins

@@ -3,7 +3,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isBugActive } from "@/lib/bugs";
 import {
+  deleteAddress,
   readAccountForApi,
+  removeInsurance,
   updateAddress,
   updateInsurance,
 } from "@/lib/account/account-service";
@@ -22,7 +24,7 @@ export async function GET() {
   // SEC_PHI_OVERFETCH: resolved at the boundary (the user lives here). When on
   // for a non-admin, the response is padded with PHI the view never needs; clean
   // / admin gets only the rendered fields.
-  const account = readAccountForApi(user.id, {
+  const account = await readAccountForApi(user.id, {
     overfetchPhi: isBugActive("SEC_PHI_OVERFETCH", user),
   });
   return NextResponse.json({ account });
@@ -36,12 +38,24 @@ export async function PATCH(request: NextRequest) {
 
   const body = (await request.json()) as
     | { kind: "address"; address: Record<string, string> }
-    | { kind: "insurance"; insurance: Record<string, string> };
+    | { kind: "insurance"; insurance: Record<string, string> }
+    | { kind: "deleteAddress"; addressId: string }
+    | { kind: "clearInsurance" };
 
-  const result =
-    body.kind === "insurance"
-      ? updateInsurance(user.id, body.insurance ?? {})
-      : updateAddress(user.id, body.address ?? {});
+  let result;
+  switch (body.kind) {
+    case "insurance":
+      result = await updateInsurance(user.id, body.insurance ?? {});
+      break;
+    case "deleteAddress":
+      result = await deleteAddress(user.id, String(body.addressId ?? ""));
+      break;
+    case "clearInsurance":
+      result = await removeInsurance(user.id);
+      break;
+    default:
+      result = await updateAddress(user.id, body.address ?? {});
+  }
 
   if (!result.ok) {
     return NextResponse.json(

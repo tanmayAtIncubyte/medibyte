@@ -15,13 +15,19 @@
 ## 1. Purpose
 
 MediByte is a deliberately-buggy pharmacy storefront used to assess QA candidates.
-Every defect is a **toggleable flag**:
+Every defect is a **flag**:
 
-- The **admin** always sees the **clean, correct app** plus a **bug-control panel**.
-- A **customer** sees a bug **only when that bug's flag is turned ON**.
+- The **admin** always sees the **clean, correct app** plus a read-only **bug reference**.
+- A **customer** sees a bug **only when that bug's flag is ON** (the deploy runs with all 50 ON).
 
-You (the reviewer) pick a set of flags to enable, hand the candidate a URL + brief,
-and grade what they find against this runbook and the live admin reference.
+> **50, not 45.** Batch 7 promoted five defects found by the internal QA pass into the
+> registry (45 → 50). Those five are listed and graded like the rest, but they are
+> **not yet wrapped in an `isBugActive` branch** — they are always on, admin included,
+> and toggling their flag does nothing. See §4.7.
+
+You (the reviewer) set which flags are on in `data/bug-flags.json`, hand the
+candidate a **time-boxed access link** + brief, and grade what they find against
+this runbook and the live admin reference.
 
 The canonical list of flags lives in `lib/bug-registry.ts`; per-bug repro detail
 lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
@@ -33,47 +39,153 @@ lives in `docs/ANSWER-KEY.md`. This runbook is the operator's view of both.
 ### Logins
 | Role | Email | Password | Sees |
 |---|---|---|---|
-| Admin / reviewer | `admin@medibyte.test` | `admin1234` | Clean app + bug-control panel at `/admin` |
+| Admin / reviewer | `admin@medibyte.test` | `admin.incu123` | Clean app + bug-control panel at `/admin` |
 | Customer (test) | `dana@example.test` | `dana1234` | Bugs whose flags are ON |
 | Customer (test) | `omar@example.test` | `omar1234` | Bugs whose flags are ON |
+| QA automation (test) | `steve@example.test` | `steve1234` | Clean app, same as admin, but **no** `/admin` or `/api/admin/bug-flags` access |
 
-Candidates **self-register** their own customer accounts; the two seeded customers
-above are for your own verification.
+Candidates sign in with the seeded login for their **track** (given in their brief):
+a customer for manual, Steve for automation. Each candidate's `/start` link isolates
+their state, so sharing a seeded login across candidates is safe. Self-registration is
+hidden from the UI (the `/register` route + code are kept for future use). The seeded
+customers are also for your own verification.
 
-### The control panel
+### The bug reference (`/admin`)
 - Log in as admin and go to **`/admin`**.
-- Each registered flag has a toggle. Turning it **ON** enables that bug for customer
-  logins; turning it **OFF** restores correct behavior for everyone.
-- **Persistence:** toggles are written to **`data/bug-flags.json`** (all keys default
-  to `false`). The file is the live source of truth for which bugs are active.
-- **Reset to defaults** = every flag OFF (clean app).
+- The page is a **read-only reference** of all 50 seeded bugs: filter by category /
+  difficulty, open the ⓘ info popover (effect, where, how to spot), and open the
+  **Preview** modal for annotated Buggy-vs-Clean screenshots. There is **no toggle
+  UI** — flags are not changed from the panel.
+- **Source of truth:** which bugs are active is read from **`data/bug-flags.json`**
+  at request time. The committed file is the **deploy profile — currently all 50
+  flags ON**. Every candidate faces the full set.
+- To change the active set, **edit `data/bug-flags.json`** (and redeploy for the
+  hosted instance). The admin-guarded `/api/admin/bug-flags` endpoint also still
+  accepts programmatic reads/writes in local dev.
+
+### Candidate access — time-boxed links (`/admin/candidates`)
+Candidates don't get the bare URL; you mint each one a **personal, time-boxed
+access link** on a **persistent roster**. This also fixes the deploy so their
+cart/orders actually persist (see "Why the link matters" below).
+
+- Go to **`/admin/candidates`** (linked from `/admin`, and from the **Candidates**
+  nav item shown to admins).
+- **Create** a link: enter the candidate's **name**, **email** (required — your
+  unique identifier for the roster), an optional **role** and **internal notes**
+  (reviewer-only, never shown to the candidate), a **track**, and a **window** in
+  days (default **10**). Windows accept **fractions** — `0.5` = 12h, `0.25` = 6h.
+  Click **Create access link**, then **Copy link** (`https://…/start?code=<code>`)
+  and send it to the candidate. **Duplicate email is blocked** — if that email is
+  already on the roster, mint fails (409); re-grant or remove the existing entry
+  instead.
+- **Track** picks which assessment the link is for, and **binds the login**:
+  - **Manual** (default) → the candidate signs in as a **customer** (dana/omar)
+    and sees the **seeded bugs**. Signing in as Steve on a manual link is rejected.
+  - **Automation** → the candidate signs in as **Steve** (`steve@example.test`)
+    and sees the **clean app**. Signing in as a customer on an automation link is
+    rejected. Give automation candidates the automation brief (`docs/automation-qa/`).
+  The roster shows a **Manual/Automation** badge per row.
+- The candidate opens the link once; it drops a cookie and lands them on `/login`
+  to sign in with the account for their track. Everything they do lives in an
+  isolated `cand:<code>` namespace, so candidates on either track never collide.
+- ⚠️ **They must open the `/start` link BEFORE signing in.** `/login` is on the gate's
+  allowlist, so someone who goes straight to the app can sign in and *then* hit
+  `/closed` on the next page — which reads as "the app is broken". The `mb_cand`
+  cookie is also what the login route reads to enforce the track, so a sign-in with
+  no cookie is unbound. Say "open this link first, then sign in" when you send it.
+- The table shows each candidate's email/role plus:
+  - **Status** — **Active**, **Revoked**, or **Expired**, with the current
+    **Attempt N** (a returning/re-granted candidate reads as Attempt 2, 3, …).
+  - **Access until** — the current window's expiry date/time and the remaining
+    time (or how long ago it lapsed).
+  - **History** — a per-candidate log of attempts (each grant, when they started,
+    any revoke), so you can see the candidate's full access story.
+  - the code, the copy-link button, and the lifecycle actions below.
+- **Lifecycle actions** (all keep the candidate on the roster except Remove):
+  - **Revoke** — locks them out **immediately** on their next request. It's
+    **reversible**: the candidate stays listed as **Revoked** (not deleted).
+  - **Re-grant** — brings a revoked/expired candidate back as a **new attempt**
+    with a fresh, typed window (fractions OK). Their prior work **resumes** if it's
+    still within the state retention window.
+  - **Extend** — pushes the current window's expiry out by the extra days.
+  - **Remove** — **permanently deletes** the roster entry and purges all their
+    state; this **frees the email** for reuse. Use it when you truly want them gone.
+- **Auto-expiry:** when the window lapses the candidate reads as **Expired** and
+  the next page load shows **`/closed`** — but the roster entry **remains** and can
+  be re-granted. You (admin) never need a code — your admin session always passes
+  the gate.
+
+> **Why the link matters (not optional on the deploy):** Vercel is serverless, so
+> in-memory state doesn't survive between requests — without the Redis-backed
+> candidate namespace, add-to-cart would return 201 but the cart would render empty,
+> killing every cart/checkout/order bug. The access link *is* the persistence
+> mechanism. Requires the Upstash env vars (see §7); with no Redis env the gate is
+> **disabled** (local dev / demos are unaffected and need no link).
 
 ### The one rule that matters
-> **Admin always sees the clean app. Bugs only manifest for customer logins.**
-> If you're verifying a bug and don't see it, confirm you're logged in as a
-> **customer** (`dana@example.test`), not as admin. This is enforced server-side by
-> `isBugActive(key, user)` — the buggy branch never runs for admin.
+> **Admin and Steve (`qa_automation`) always see the clean app. Bugs only manifest for
+> customer logins.** If you're verifying a bug and don't see it, confirm you're logged
+> in as a **customer** (`dana@example.test`), not as admin or Steve. This is enforced
+> server-side by `isBugActive(key, user)` — the buggy branch never runs for admin or
+> `qa_automation`. Steve is for the automation-QA track only and has no `/admin` access.
+> (Exception: the five Batch-7 defects in §4.7 are not flag-gated yet, so admin and
+> Steve see those too.)
 
-### Deploy-time-flags caveat (free host)
-Live in-panel toggling works in **local dev**. On the **deployed** free-host instance
-the active flag set is effectively **fixed at deploy time** — the set of enabled bugs
-is baked in when the instance is built. To change the bug set on the deployed
-instance, redeploy with the desired `data/bug-flags.json`. Plan each candidate's
-assessment around a deploy (or run assessments locally where you can toggle live).
+> **Steve does not bypass the access gate.** An earlier build let `qa_automation`
+> through the gate on role alone; that was removed when links became track-bound.
+> Today Steve is an ordinary gated account — an automation candidate needs a live
+> **automation** `/start` link exactly like a manual candidate needs a manual one.
+> Only admin passes the gate without a code.
+
+### Deploy-time flags (Vercel)
+The deployed instance runs on Vercel, whose filesystem is **read-only** — the
+active flag set is **fixed at deploy time**, baked in from the committed
+`data/bug-flags.json` (currently all 50 ON). To change the bug set on the
+deployed instance, edit the file, commit, and redeploy. `vercel.json` auto-deploys
+`dev` and `main` and disables auto-deploy for `feat/*` branches.
+
+> **Which build is where (2026-09-15):** `dev` is the current line — 50 bugs, the
+> access gate, the candidate roster, the automation track, and the account
+> delete/format-validation work. `main` — and therefore the public
+> `medibyte-ten.vercel.app` — is still the earlier **45-bug, gate-free** build until
+> `dev` is merged into `main`. The Incubyte visual redesign is on `feat/ui-incubyte`
+> and is on neither.
 
 ---
 
 ## 3. How to configure an assessment
 
-1. **Choose a profile** — decide which bugs this candidate should face (see example
-   profiles below). Aim for a mix of difficulties and at least a couple of categories.
-2. **Enable the flags** — local: toggle them ON in `/admin`. Deployed: set them to
-   `true` in `data/bug-flags.json` and deploy.
-3. **Share the URL + a candidate brief** (the brief is candidate-facing and must NOT
-   reference flags, keys, or this runbook — describe the app and the task only).
-4. Candidate **self-registers** a customer account and works the app.
+1. **Choose a profile** — the default deploy profile is **all 50 flags ON** (every
+   candidate faces the full set). If you want a narrower set (see example profiles
+   below), aim for a mix of difficulties and at least a couple of categories.
+2. **Set the flags** — edit `data/bug-flags.json` (`true`/`false` per key) and, for
+   the deployed instance, commit + redeploy. There is no toggle UI.
+3. **Mint an access link** at `/admin/candidates` — pick the **track** (Manual or
+   Automation) — and send it with the matching candidate brief
+   (`docs/CANDIDATE-BRIEF.md` for manual, `docs/automation-qa/assignment-*.md` for
+   automation). The briefs are candidate-facing and must NOT reference flags, keys,
+   bug counts, or this runbook — describe the app and the task only. On local dev
+   (no Redis) just share the URL — no link needed.
+4. Candidate **opens the link first**, then signs in with the account for their
+   track — a customer for manual, Steve for automation (the self-register link is
+   hidden). Signing in with the wrong account for the link returns **403** with a
+   message naming the right one.
 5. **Grade** their bug reports against this runbook + the answer key, using your own
    **admin login as the live "correct" reference** (clean app side-by-side).
+6. When done, **Revoke** the link (or let it expire).
+
+> **The candidate brief PDF.** `docs/CANDIDATE-BRIEF.pdf` is the hand-out version of
+> `docs/CANDIDATE-BRIEF.md`. Its branded print layout lives in
+> `docs/brief/CANDIDATE-BRIEF.print.html` (the app's own system — Concept 1 wordmark,
+> mint band, forest/sage/blush/lime, Fraunces + Inclusive Sans). If you edit the brief,
+> mirror the words in that HTML, then run `docs/brief/render.sh` from the repo root — it
+> prints the HTML through headless Chrome to `docs/CANDIDATE-BRIEF.pdf` (two pages; needs
+> Google Chrome and network access for the two Google Fonts). Commit all three together so
+> markdown, HTML and PDF never drift. The automation-track assignments
+> (`docs/automation-qa/assignment-{easy,medium,hard}.md`) have matching PDFs next to them
+> in the same look; they are rendered straight from the Markdown (no words to mirror) with
+> `docs/brief/render-md.sh docs/automation-qa/assignment-easy.md docs/automation-qa/assignment-easy.pdf "Automation QA assignment"`
+> — run it for each tier after editing an assignment and commit the PDF with the Markdown.
 
 ### Example profiles
 
@@ -91,7 +203,8 @@ Requires Network inspection, edge inputs, and HIPAA reasoning:
 `FN_CONCURRENT_DOUBLESPEND`, `FN_TAX_BEFORE_DISCOUNT`, `FN_TOTAL_ROUNDING_EDGE`.
 
 > Tip: don't enable everything at once. A focused set (one or two categories) gives a
-> cleaner read on the candidate than 45 simultaneous defects.
+> cleaner read on the candidate than 50 simultaneous defects. (The five §4.7 defects
+> are always on regardless of the profile you pick.)
 
 ---
 
@@ -99,18 +212,13 @@ Requires Network inspection, edge inputs, and HIPAA reasoning:
 
 All flags are listed below, **grouped by category**. Columns:
 
-- **Flag key** — the toggle in `/admin` / `data/bug-flags.json`.
+- **Flag key** — the key in `data/bug-flags.json` (and in the `/admin` reference list).
 - **Diff** — difficulty (E easy / M moderate / D difficult / X expert).
 - **What it does (ON)** — the customer-visible effect.
 - **Where** — route/screen to observe it.
 - **How to spot** — the technique (eyeball / edge input / Network / a11y tool /
   keyboard / arithmetic / code).
 - **HIPAA** — whether the defect is a HIPAA/PHI concern.
-
-> Entries marked **🔧 per spec — confirm after verification** are from Batches 5 & 6,
-> which were still being built when this runbook was written; their detailed
-> answer-key entries may not exist yet, so the described behavior is from the spec and
-> should be confirmed once those bugs are implemented and verified.
 
 ### 4.1 Functional
 
@@ -168,45 +276,71 @@ All flags are listed below, **grouped by category**. Columns:
 | `PERF_OVERFETCH_PAYLOAD` | M | `GET /api/products` bloats each item with large unused/duplicated fields (`_raw`, `_duplicate`, `_description_long`, `_seoKeywords[100]`, `_auditTrail[50]`). | `GET /api/products` | DevTools Network: response **Size** far larger than needed; inspect payload | No |
 | `PERF_NO_CACHE` | M | `GET /api/products` forces `Cache-Control: no-store` → full catalog refetched on every navigation. | `/api/products` (repeat nav) | DevTools Network: `no-store` header; request repeats, never "from cache" | No |
 
-### 4.4 Security / Transport (HIPAA) — 🔧 per spec — confirm after verification
-
-> Batch 5 was still being built when this runbook was written. Behavior below is from
-> the spec (`docs/specs/medibyte-phase-4-spec.md`); confirm against the answer key and
-> a live toggle once implemented.
+### 4.4 Security / Transport (HIPAA)
 
 | Flag key | Diff | What it does (ON) | Where | How to spot | HIPAA |
 |---|---|---|---|---|---|
-| `SEC_IDOR_ORDER` 🔗 | — | Ownership check dropped on the order route → a customer can view **another customer's order** by guessing/altering the order id. | `/orders/[id]` + API | Edit the order id in the URL/request and load someone else's order; compare to admin-clean (403/own-only) | **Yes** |
-| `SEC_PHI_OVERFETCH` 🔗 | — | Orders/account API response includes **PHI the page doesn't need**. Chains with IDOR: an id leaked via `SEC_IDOR_ORDER` reused here exposes extra PHI. | Orders / account API | DevTools Network: inspect response body for PHI fields not rendered | **Yes** |
-| `SEC_MISSING_ADMIN_AUTH` | — | Admin guard removed on the bug-flags endpoint → a non-admin can read/modify flags. | `/api/admin/bug-flags` | Call the endpoint as a customer (or unauthenticated) and get a non-403 response | **Yes** |
-| `SEC_CREDS_IN_URL` | — | Login sends credentials via **GET query string** → password leaks into URL/history/logs. | Login | DevTools Network: credentials visible in the request URL/query string | **Yes** |
-| `SEC_TOKEN_LOCALSTORAGE` | — | Auth identity/token copied into **`localStorage`** (XSS-exfiltratable, not httpOnly). | Client auth | DevTools Application → Local Storage: identity/token present | **Yes** |
-| `SEC_PRICE_TAMPER` | — | Checkout **trusts the client-supplied price** instead of recomputing server-side → tampered request pays a manipulated amount. | `/api/checkout` | Edit the price in the checkout request and confirm the order honors it | **Yes** |
+| `SEC_IDOR_ORDER` 🔗 | D | Ownership check dropped on the order route → a customer can view **another customer's order** by guessing/altering the order id. | `/orders/[id]` + API | Edit the order id in the URL/request and load someone else's order; compare to admin-clean (403/own-only) | **Yes** |
+| `SEC_PHI_OVERFETCH` 🔗 | D | Orders/account API response includes **PHI the page doesn't need**. Chains with IDOR: an id leaked via `SEC_IDOR_ORDER` reused here exposes extra PHI. | Orders / account API | DevTools Network: inspect response body for PHI fields not rendered | **Yes** |
+| `SEC_MISSING_ADMIN_AUTH` | D | Admin guard removed on the bug-flags endpoint → a non-admin can read/modify flags. | `/api/admin/bug-flags` | Call the endpoint as a customer (or unauthenticated) and get a non-403 response | **Yes** |
+| `SEC_CREDS_IN_URL` | M | Login sends credentials via **GET query string** → password leaks into URL/history/logs. | Login | DevTools Network: credentials visible in the request URL/query string | **Yes** |
+| `SEC_TOKEN_LOCALSTORAGE` | M | Auth identity/token copied into **`localStorage`** (XSS-exfiltratable, not httpOnly). | Client auth | DevTools Application → Local Storage: identity/token present | **Yes** |
+| `SEC_PRICE_TAMPER` | D | Checkout **trusts the client-supplied price** instead of recomputing server-side → tampered request pays a manipulated amount. | `/api/checkout` | Edit the price in the checkout request and confirm the order honors it | **Yes** |
 
-### 4.5 UI antipattern — 🔧 per spec — confirm after verification
-
-> Batch 6 was still being built when this runbook was written. Behavior is from the
-> spec; confirm after verification.
+### 4.5 UI antipattern
 
 | Flag key | Diff | What it does (ON) | Where | How to spot | HIPAA |
 |---|---|---|---|---|---|
-| `UI_DESTRUCTIVE_NO_CONFIRM` | — | Destructive action (remove cart item / delete address) executes instantly with **no confirmation**. | `/cart` remove, address delete | Eyeball: irreversible action with no confirm dialog/undo | No |
-| `UI_NO_SUBMIT_FEEDBACK` | — | A form submit gives **no visible feedback** (no spinner/disable/success). | A form | Eyeball: submit and observe nothing changes/confirms | No |
-| `UI_MISLEADING_ICON` | — | A button's **icon doesn't match its action**. | A button | Eyeball: icon vs actual behavior mismatch | No |
-| `UI_FORM_CLEARS_ON_ERROR` | — | A checkout validation error **wipes the entered fields**, forcing full re-entry. | `/checkout` | Edge input: trigger a validation error, watch fields clear | No |
+| `UI_DESTRUCTIVE_NO_CONFIRM` | E | **Cart line Remove** executes instantly with **no confirmation**. (Only the cart — `/account`'s Delete address and Remove insurance keep their `window.confirm` guard and are not part of this flag.) | `/cart` remove | Eyeball: irreversible action with no confirm dialog/undo | No |
+| `UI_NO_SUBMIT_FEEDBACK` | E | A form submit gives **no visible feedback** (no spinner/disable/success). | A form | Eyeball: submit and observe nothing changes/confirms | No |
+| `UI_MISLEADING_ICON` | E | A button's **icon doesn't match its action**. | A button | Eyeball: icon vs actual behavior mismatch | No |
+| `UI_FORM_CLEARS_ON_ERROR` | M | A checkout validation error **wipes the entered fields**, forcing full re-entry. | `/checkout` | Edge input: trigger a validation error, watch fields clear | No |
 
-### 4.6 UX — 🔧 per spec — confirm after verification
-
-> Batch 6 was still being built when this runbook was written. Behavior is from the
-> spec; confirm after verification.
+### 4.6 UX
 
 | Flag key | Diff | What it does (ON) | Where | How to spot | HIPAA |
 |---|---|---|---|---|---|
-| `UX_VAGUE_ERROR` | — | A catch handler shows "Something went wrong" with **no next step / cause**. | A catch handler | Eyeball: trigger the error path, read the unhelpful message | No |
-| `UX_NO_ORDER_CONFIRM` | — | Order confirmation gives **no clear success cue** — unclear the order placed. | Order confirmation | Eyeball: complete an order, look for missing success confirmation | No |
-| `UX_SURPRISE_TAX` | — | Tax is **hidden until the final checkout step** (not shown in cart). | `/cart` vs `/checkout` | Cross-screen: cart total vs final total, tax appears late | No |
-| `UX_LOST_CHECKOUT_PROGRESS` | — | **Back navigation loses entered checkout data.** | `/checkout` (back nav) | Manual: fill checkout, navigate back, data gone | No |
-| `UX_NO_PAGE_TOTAL` | — | No indication of **total pages / total results** in the catalog pager. | `/products` pager | Eyeball: pager shows no "of N pages" / total count | No |
+| `UX_VAGUE_ERROR` | E | A catch handler shows "Something went wrong" with **no next step / cause**. | A catch handler | Eyeball: trigger the error path, read the unhelpful message | No |
+| `UX_NO_ORDER_CONFIRM` | E | Order confirmation gives **no clear success cue** — unclear the order placed. | Order confirmation | Eyeball: complete an order, look for missing success confirmation | No |
+| `UX_SURPRISE_TAX` | M | Tax is **hidden until the final checkout step** (not shown in cart). | `/cart` vs `/checkout` | Cross-screen: cart total vs final total, tax appears late | No |
+| `UX_LOST_CHECKOUT_PROGRESS` | M | **Back navigation loses entered checkout data.** | `/checkout` (back nav) | Manual: fill checkout, navigate back, data gone | No |
+| `UX_NO_PAGE_TOTAL` | E | No indication of **total pages / total results** in the catalog pager. | `/products` pager | Eyeball: pager shows no "of N pages" / total count | No |
+
+### 4.7 Batch 7 — internal-QA defects (always on, not flag-gated)
+
+> ⚠️ **Read this before grading these five.** They were surfaced by the internal QA
+> pass (each independently reported by 2+ reviewers), confirmed against the code, and
+> added to `lib/bug-registry.ts` + `data/bug-flags.json` so the registry↔flags
+> invariant holds. Unlike Batches 1–6 they are **not yet wrapped in an
+> `isBugActive(...)` branch**, so:
+> - they are present for **every** login, **including admin and Steve** — the clean
+>   reference app does *not* show correct behavior for these five;
+> - **toggling their flag has no effect**;
+> - you cannot use the admin side-by-side as the "correct" reference for them.
+>
+> To make them true clean-default toggles, wrap each `location` below with
+> `isBugActive`. Until then, grade them from this table, not from the admin view.
+
+| Flag key | Diff | What it does (always) | Where | How to spot | HIPAA |
+|---|---|---|---|---|---|
+| `NAV_LINKS_SHOWN_PRELOGIN` | E | The global header renders **Browse** and **Cart** links to logged-out visitors, but both routes are behind the storefront auth guard — following one bounces straight back to login. | `/login` (primary nav) | Eyeball: nav links that go nowhere when signed out | No |
+| `HEADER_NAV_NOT_RESPONSIVE` | E | The header packs the logo, 5–7 nav buttons and the user name into one **non-wrapping** flex row with no mobile menu, so it overflows horizontally on narrow screens. | Any page at mobile width | Eyeball / responsive mode: horizontal overflow in the header | No |
+| `RX_DOB_UNVALIDATED` | E | The Rx patient **Date of birth** is required-checked only — no format or future-date validation, so a malformed or clearly-impossible date is accepted. | `/checkout` (Rx item in cart → prescription step) | Edge input: submit a future / malformed DOB | No |
+| `CHECKOUT_NO_SAVED_ADDRESS_PREFILL` | M | Checkout never reads the account's saved addresses: only the name is prefilled and there is no saved-address picker, so a customer with a saved address must retype it in full. | `/account` (saved address) → `/checkout` | Cross-screen: saved address exists, shipping fields blank | No |
+| `CART_SESSION_NOT_USER_BOUND` | M | Logout clears the auth cookie but **not** the `mb_session_id` cart cookie, so the cart (and the header badge) survives sign-out and is inherited by the next account signed in on that browser. | `/cart` → sign out → sign in as the other customer | Cross-screen: dana's cart shows up for omar in the same browser | No |
+
+**Locations (for wrapping them later):**
+
+| Flag key | Location |
+|---|---|
+| `NAV_LINKS_SHOWN_PRELOGIN` | `components/layout/site-header.tsx` (Browse/Cart rendered unconditionally) |
+| `HEADER_NAV_NOT_RESPONSIVE` | `components/layout/site-header.tsx` (single flex nav row, no wrap / mobile collapse) |
+| `RX_DOB_UNVALIDATED` | `lib/orders/checkout.ts` (`validatePrescription` — required-only) |
+| `CHECKOUT_NO_SAVED_ADDRESS_PREFILL` | `app/(storefront)/checkout/page.tsx` (passes only `defaultFullName`) + `components/checkout/checkout-form.tsx` |
+| `CART_SESSION_NOT_USER_BOUND` | `app/api/auth/logout/route.ts` + `lib/data/session-id.ts` + `lib/data/session-store.ts` + `components/layout/site-header.tsx` |
+
+> Note `CART_SESSION_NOT_USER_BOUND` is categorised **security** in the registry but
+> is not tagged HIPAA — it leaks a shopping cart between accounts, not health data.
 
 ---
 
@@ -240,8 +374,17 @@ All flags are listed below, **grouped by category**. Columns:
     DevTools (Network request body/URL, Application → Local Storage) — not visible in
     the UI.
 
-- **Difficulty (`—`) for Batch 5/6 flags** is left blank pending the answer-key
-  entries; assign and confirm difficulty once those bugs are verified.
+- **What `/account` can do now (clean behavior — do NOT grade these as defects).**
+  The account page gained three capabilities that used to be genuine gaps:
+  - **Delete a saved address** and **Remove insurance** — both behind a
+    `window.confirm` guard (`components/account/account-manager.tsx`). A candidate
+    reporting "can't delete an address" is reporting an old build.
+  - **Field-format validation on account edits** (`lib/account/account.ts`): full-name
+    shape, US ZIP / international postal-code shape, and insurance-ID shape, on top of
+    the existing required-field checks. These rules are deliberately **account-only** —
+    checkout keeps its required-only postal behavior so `FN_POSTAL_UNVALIDATED` stays
+    intact. A "checkout accepts a bad postal code but /account doesn't" report is a
+    correct observation of that seeded bug, not an inconsistency defect.
 
 ---
 
@@ -255,6 +398,9 @@ All flags are listed below, **grouped by category**. Columns:
 > `FN_CONCURRENT_DOUBLESPEND`) have no on-screen difference, so their callout boxes the
 > relevant control/screen and the label says "observe in DevTools" with the captured evidence.
 > Files live in `private/bug-shots/<KEY>-buggy.png` / `-clean.png`.
+>
+> **Covers the 45 flag-gated bugs only.** The five §4.7 defects have no clean side to
+> photograph (they are on for admin too), so there are no shots for them.
 
 ### 6.1 Functional
 
@@ -720,6 +866,63 @@ _Where:_ `/products (the pager)`
 
 ---
 
+## 7. Deployment & environment (one-time setup)
+
+The deploy needs a small key–value store so per-candidate state (cart, orders,
+stock, account) survives Vercel's serverless requests and so access links can
+expire. We use **Upstash Redis** (free tier is plenty).
+
+**One-time setup:**
+1. Create a free database at **console.upstash.com** (Redis → create database).
+2. Copy its **REST URL** and **REST token** (the `UPSTASH_REDIS_REST_*` pair — NOT
+   the `redis://…` connection string; the app uses the REST client).
+3. In the Vercel project → **Settings → Environment Variables**, add them with
+   **all environments** ticked (Production + Preview + Development):
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+   - `SESSION_SECRET` — a long random string (signs the auth + access cookies).
+     Generate one with `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`.
+4. **Redeploy** (see the redeploy gotcha below).
+
+> ⚠️ **Two setup gotchas that look like "it's broken":**
+> - **No surrounding quotes.** Upstash's copy snippet shows `KEY="https://…"`. Paste
+>   only the **bare value** into Vercel (`https://…`), never the quotes. Quoted values
+>   pass the "is it set?" check but every Redis call then fails.
+> - **Editing an env var does NOT redeploy.** The running build keeps the old value
+>   until you trigger a **new deployment** (Deployments → ⋯ → Redeploy, or push a commit).
+
+**Verify a deployment picked everything up** — hit **`/api/health`** (public, booleans
+only, no secrets):
+```
+curl https://<your-app>/api/health
+# want: {"ok":true,"redisEnv":true,"sessionSecretSet":true,
+#        "urlStartsWithHttps":true,"urlHasQuotes":false,"redisOk":true,"redisError":null}
+```
+`redisOk:true` means reads/writes actually reach Redis. If `redisEnv` is false the vars
+aren't in that deployment (scope/redeploy); if `urlHasQuotes:true` you pasted the quotes;
+if `redisOk:false` with an error, the URL/token is wrong.
+
+**Behavior by environment:**
+- **Redis env present** (the deploy) → state persists in Redis; the access gate is
+  **on** (candidates need a `/start?code=…` link; admin passes without one).
+- **No Redis env** (local dev, `npm run dev`) → in-memory store; the gate is **off**
+  (open the app directly, no link). Tests always run offline against the in-memory
+  store.
+
+No cron or cleanup job is needed. The small access record is a **persistent
+roster entry** (access is a computed check on its status + window, not a key that
+expires); the heavier per-candidate **state** keys carry a generous fixed TTL as
+an auto-cleanup safety net, and **Remove** is the explicit hard delete. See
+`docs/ACCESS-CONTROL.md`.
+
+**Vercel note:** the deployed app must be publicly reachable (candidates aren't Vercel
+users), so leave **Deployment Protection → Vercel Authentication** off for the public
+instance — the app's own access gate is what secures it.
+
+---
+
 *Source of truth: `lib/bug-registry.ts` (flags) + `docs/ANSWER-KEY.md` (per-bug repro).
-This runbook covers all ~45 flags; Batch 5 (Security) and Batch 6 (UI/UX) rows are
-marked "per spec — confirm after verification" until their bugs are built and verified.*
+This runbook covers all 50 registry entries — the 45 flag-gated bugs (§4.1–4.6, each
+implemented and browser-verified) plus the 5 always-on Batch-7 defects (§4.7). The
+guardrail that keeps them alive is the 26 `*.bugs.test.*` suites (94 tests); run
+`npm test` before any change.*

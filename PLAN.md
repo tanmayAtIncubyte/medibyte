@@ -1,5 +1,28 @@
 # Plan: "MediByte" — A Deliberately-Buggy Pharmacy Store for QA/Dev Candidate Assessment
 
+> **Historical planning doc — kept for the rationale, not the current state.**
+> Where it landed, as of **2026-09-15**:
+> - **50 bugs**, not ~45 — the 45 planned here (all built and browser-verified) plus
+>   5 internal-QA defects promoted in Batch 7. Those 5 are in `lib/bug-registry.ts`
+>   but are **not yet wrapped in `isBugActive`**, so they show for admin too
+>   (`docs/ADMIN-RUNBOOK.md` §4.7).
+> - **No runtime toggle panel.** `/admin` is a read-only bug reference; flags are
+>   edited in `data/bug-flags.json` and redeployed. Deploy profile = all ON.
+> - **State is not in-memory-only on the deploy.** Vercel is serverless, so cart /
+>   orders / stock / accounts sit behind a KV seam — in-memory locally and in tests,
+>   **Upstash Redis** on the deploy (`lib/data/backend.ts`).
+> - **Candidates reach the app through a time-boxed access link**, not a bare URL:
+>   `proxy.ts` → `lib/access/gate.ts`, roster in `lib/access/candidates.ts`, state
+>   scoped per candidate (`docs/ACCESS-CONTROL.md`). Self-registration is hidden.
+> - **A second, automation track** exists (`docs/automation-qa/`): a `qa_automation`
+>   account (Steve) that sees the clean app, plus deliberately hook-free markup so
+>   locators must use accessible names. Access links are bound to one track.
+> - **The clean-app test story** landed as 81 Vitest files / 1001 tests, of which the
+>   26 `*.bugs.test.*` files (94 tests) are the guardrail that keeps every seeded bug
+>   alive — treat a passing bug suite as the definition of "didn't break the spec".
+>
+> Current docs: `docs/ADMIN-RUNBOOK.md`, `docs/ANSWER-KEY.md`, `docs/ACCESS-CONTROL.md`.
+
 ## Context
 
 **Problem with the original assessments.** The two briefs in `References/` (a salary-management build assessment and a test-craftsperson assessment) produce weak signal: candidates submit generic, AI-generated test cases that all look the same. There's no way to tell who can actually *find* problems.

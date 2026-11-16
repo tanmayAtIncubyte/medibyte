@@ -67,10 +67,10 @@ export function CatalogPagination({
           aria-label={`Page ${p}`}
           aria-current={p === page ? "page" : undefined}
           className={cn(
-            "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+            "inline-flex h-10 min-w-10 items-center justify-center rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
             p === page
               ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-background text-foreground hover:bg-muted",
+              : "border-border bg-card text-foreground hover:bg-muted",
           )}
         >
           {p}
@@ -101,7 +101,7 @@ function PageLink({
   children: React.ReactNode;
 }) {
   const className =
-    "inline-flex h-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium transition-colors";
+    "inline-flex h-10 items-center justify-center rounded-full border border-border px-5 text-sm font-medium transition-colors";
   if (disabled) {
     return (
       <span
@@ -118,7 +118,7 @@ function PageLink({
       aria-label={label}
       className={cn(
         className,
-        "bg-background text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+        "bg-card text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
       )}
     >
       {children}

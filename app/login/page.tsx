@@ -22,13 +22,10 @@ export default async function LoginPage() {
 
   return (
     <PageContainer>
-      <AuthCard
-        title="Sign in"
-        subtitle="Welcome back to MediByte."
-        footerPrompt="New to MediByte?"
-        footerLinkLabel="Create an account"
-        footerLinkHref="/register"
-      >
+      {/* The self-registration link is intentionally hidden from the UI. The
+          /register route + registration code are kept intact for future use —
+          just omit the footer props to drop the "Create an account" link. */}
+      <AuthCard title="Sign in" subtitle="Welcome back to MediByte.">
         <CredentialsForm
           mode="login"
           credentialsInUrl={credsInUrl}

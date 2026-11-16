@@ -4,6 +4,8 @@ import {
   setAccountState,
 } from "@/lib/data/account-store";
 import {
+  clearInsurance,
+  removeAddress,
   saveAddress,
   saveInsurance,
   type AddressInput,
@@ -20,7 +22,7 @@ export type AccountUpdateResult =
   | { ok: true; state: AccountState }
   | { ok: false; errors: FieldErrors };
 
-export function readAccount(userId: string): AccountState {
+export async function readAccount(userId: string): Promise<AccountState> {
   return getAccountState(userId);
 }
 
@@ -46,11 +48,11 @@ export type ReadAccountBugs = {
   overfetchPhi?: boolean;
 };
 
-export function readAccountForApi(
+export async function readAccountForApi(
   userId: string,
   bugs: ReadAccountBugs = {},
-): AccountApiPayload {
-  const state = getAccountState(userId);
+): Promise<AccountApiPayload> {
+  const state = await getAccountState(userId);
   if (!bugs.overfetchPhi) {
     return state; // clean: only what the view needs
   }
@@ -71,20 +73,49 @@ export function readAccountForApi(
   };
 }
 
-export function updateAddress(userId: string, input: AddressInput): AccountUpdateResult {
-  const result = saveAddress(getAccountState(userId), input, nextAddressSequence(userId));
+export async function updateAddress(
+  userId: string,
+  input: AddressInput,
+): Promise<AccountUpdateResult> {
+  const result = saveAddress(
+    await getAccountState(userId),
+    input,
+    await nextAddressSequence(userId),
+  );
   if (!result.ok) {
     return result;
   }
-  setAccountState(userId, result.state);
+  await setAccountState(userId, result.state);
   return { ok: true, state: result.state };
 }
 
-export function updateInsurance(userId: string, input: InsuranceInput): AccountUpdateResult {
-  const result = saveInsurance(getAccountState(userId), input);
+export async function updateInsurance(
+  userId: string,
+  input: InsuranceInput,
+): Promise<AccountUpdateResult> {
+  const result = saveInsurance(await getAccountState(userId), input);
   if (!result.ok) {
     return result;
   }
-  setAccountState(userId, result.state);
+  await setAccountState(userId, result.state);
   return { ok: true, state: result.state };
+}
+
+// Delete a saved address (PII). Owner resolved from the session by the caller;
+// the client never supplies a userId, so this can only ever affect the signed-in
+// user's own addresses. Idempotent — deleting an unknown id succeeds as a no-op.
+export async function deleteAddress(
+  userId: string,
+  addressId: string,
+): Promise<AccountUpdateResult> {
+  const state = removeAddress(await getAccountState(userId), addressId);
+  await setAccountState(userId, state);
+  return { ok: true, state };
+}
+
+// Clear insurance (PHI) back to empty. Same own-account-only guarantee as above.
+export async function removeInsurance(userId: string): Promise<AccountUpdateResult> {
+  const state = clearInsurance(await getAccountState(userId));
+  await setAccountState(userId, state);
+  return { ok: true, state };
 }

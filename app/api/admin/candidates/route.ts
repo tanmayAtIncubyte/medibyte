@@ -1,0 +1,98 @@
+import { NextResponse } from "next/server";
+
+import {
+  findCandidateByEmail,
+  listCandidates,
+  mintCandidate,
+} from "@/lib/access/candidates";
+import { DEFAULT_CANDIDATE_WINDOW_DAYS } from "@/lib/access/scope";
+import { getAdminOrNull } from "@/lib/auth/guards";
+
+// Reviewer candidate-access API. This is a GENUINE access-control boundary
+// (not a seeded bug): every method re-checks the real admin guard regardless
+// of any page guard, same as the bug-image route.
+
+const MAX_NAME_LENGTH = 80;
+const MAX_EMAIL_LENGTH = 120;
+const MAX_ROLE_LENGTH = 80;
+const MAX_NOTES_LENGTH = 500;
+const MAX_WINDOW_DAYS = 60;
+// Deliberately lenient — reject the obvious non-emails, not RFC edge cases.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function GET(): Promise<NextResponse> {
+  if (!(await getAdminOrNull())) {
+    return forbidden();
+  }
+  return NextResponse.json({ candidates: await listCandidates() });
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
+  if (!(await getAdminOrNull())) {
+    return forbidden();
+  }
+
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  if (!name || name.length > MAX_NAME_LENGTH) {
+    return badRequest(`Name is required (max ${MAX_NAME_LENGTH} characters)`);
+  }
+
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  if (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_SHAPE.test(email)) {
+    return badRequest("A valid email is required");
+  }
+
+  const role = typeof body.role === "string" ? body.role.trim() : "";
+  if (role.length > MAX_ROLE_LENGTH) {
+    return badRequest(`Role must be at most ${MAX_ROLE_LENGTH} characters`);
+  }
+
+  const notes = typeof body.notes === "string" ? body.notes.trim() : "";
+  if (notes.length > MAX_NOTES_LENGTH) {
+    return badRequest(`Notes must be at most ${MAX_NOTES_LENGTH} characters`);
+  }
+
+  const windowDays =
+    body.windowDays === undefined ? DEFAULT_CANDIDATE_WINDOW_DAYS : body.windowDays;
+  if (typeof windowDays !== "number" || windowDays <= 0 || windowDays > MAX_WINDOW_DAYS) {
+    return badRequest(`windowDays must be a number greater than 0 and at most ${MAX_WINDOW_DAYS}`);
+  }
+
+  // Track: which assessment track the link is for (defaults to manual). Only the
+  // two known values are accepted; the login flow binds the link to the matching
+  // account (manual → customer, automation → Steve).
+  if (body.track !== undefined && body.track !== "manual" && body.track !== "automation") {
+    return badRequest('track must be "manual" or "automation"');
+  }
+  const track = body.track === "automation" ? "automation" : "manual";
+
+  const dup = await findCandidateByEmail(email);
+  if (dup) {
+    return conflict(
+      "A candidate with this email is already on the roster — re-grant or remove them",
+    );
+  }
+
+  const candidate = await mintCandidate({
+    name,
+    email,
+    windowDays,
+    role: role || undefined,
+    notes: notes || undefined,
+    track,
+  });
+  return NextResponse.json({ candidate }, { status: 201 });
+}
+
+function forbidden(): NextResponse {
+  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
+
+function badRequest(message: string): NextResponse {
+  return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function conflict(message: string): NextResponse {
+  return NextResponse.json({ error: message }, { status: 409 });
+}

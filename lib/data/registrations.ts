@@ -1,26 +1,35 @@
 import { randomUUID } from "crypto";
 
 import type { SeedUser } from "@/data/users";
-import { globalSingleton } from "@/lib/data/global-store";
+import { currentScope, scopeTtlSeconds } from "@/lib/access/scope";
+import { backend } from "@/lib/data/backend";
 
-// In-memory store for customers created via /register, kept separate from the
-// seed module so the deterministic seed data is never mutated. Anchored on
-// globalThis (globalSingleton) so a registration created via the /api/auth/register
-// route handler is visible to server-component reads. Writes live for the server
-// process lifetime and reset on restart, consistent with the data layer's
-// in-memory write pattern.
-const registeredCustomers = globalSingleton(
-  "registrations/registeredCustomers",
-  () => new Map<string, SeedUser>(),
-);
+// Store for customers created via /register, kept separate from the seed
+// module so the deterministic seed data is never mutated. Registrations live in
+// the async KV seam (lib/data/backend.ts) under `${scope}:reg:<email>` — scoped
+// so a candidate's registrations are isolated and expire with their access
+// window. Locally the in-memory backend resets on restart, consistent with the
+// data layer's in-memory write pattern; on the deploy (Redis) a registration
+// created via the /api/auth/register route handler is visible to
+// server-component reads on other lambdas.
 
-export function findRegisteredByEmail(email: string): SeedUser | null {
+function regKey(scope: string, normalizedEmail: string): string {
+  return `${scope}:reg:${normalizedEmail}`;
+}
+
+export async function findRegisteredByEmail(email: string): Promise<SeedUser | null> {
+  const scope = await currentScope();
   const normalized = email.trim().toLowerCase();
-  const user = registeredCustomers.get(normalized);
+  const user = await backend().get<SeedUser>(regKey(scope, normalized));
   return user ? { ...user } : null;
 }
 
-export function addRegisteredCustomer(name: string, email: string, password: string): SeedUser {
+export async function addRegisteredCustomer(
+  name: string,
+  email: string,
+  password: string,
+): Promise<SeedUser> {
+  const scope = await currentScope();
   const normalized = email.trim().toLowerCase();
   const customer: SeedUser = {
     id: `user-registered-${randomUUID()}`,
@@ -29,10 +38,14 @@ export function addRegisteredCustomer(name: string, email: string, password: str
     password,
     role: "customer",
   };
-  registeredCustomers.set(normalized, customer);
+  await backend().set(regKey(scope, normalized), customer, scopeTtlSeconds(scope));
   return { ...customer };
 }
 
-export function resetRegistrations(): void {
-  registeredCustomers.clear();
+export async function resetRegistrations(): Promise<void> {
+  const scope = await currentScope();
+  const keys = await backend().listKeys(`${scope}:reg:`);
+  for (const key of keys) {
+    await backend().del(key);
+  }
 }

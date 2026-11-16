@@ -7,9 +7,22 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-lime: var(--lime);
+  --color-lime-foreground: var(--lime-foreground);
+  --color-otc: var(--otc);
+  --color-otc-foreground: var(--otc-foreground);
+  --color-rx: var(--rx);
+  --color-rx-foreground: var(--rx-foreground);
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+  --color-footer: var(--footer);
+  --color-footer-foreground: var(--footer-foreground);
+  --color-door-chartreuse: var(--door-chartreuse);
+  --color-door-teal: var(--door-teal);
+  --color-door-green: var(--door-green);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,73 +61,117 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* MediByte's palette is derived from incubyte.co, measured off the live site:
+   a mint page, deep forest green as the single dominant voice, and lime as the
+   accent that rides beside every primary call to action. Rx and OTC are told
+   apart by Incubyte's own pastels (blush / sage) rather than by the brand
+   green, so a prescription never reads as "more green".
+
+   BUG-CRITICAL — do not darken --muted-foreground. The seeded
+   A11Y_LOW_CONTRAST bug renders the catalog price as `text-muted-foreground/40`
+   on a white card and MUST stay below WCAG AA (it lands ~1.8:1), while plain
+   muted text must stay above it (~5.0:1). See docs/Mods/ui-incubyte-redesign-plan.md §3.3. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.52 0.11 174);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0.01 174);
-  --secondary-foreground: oklch(0.3 0.06 174);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.95 0.03 174);
-  --accent-foreground: oklch(0.3 0.06 174);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* White is incubyte.co's dominant ground (63 uses vs 40 for mint); the mint
+     appears there only as the hero band behind the nav and headline, which the
+     home page reproduces with --secondary. Painting every page mint read as a
+     heavy wash — this is the neat version. */
+  --background: #ffffff;
+  --foreground: #0a0a0d;
+  --card: #ffffff;
+  --card-foreground: #0a0a0d;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0d;
+  --primary: #014d43; /* deep forest green */
+  --primary-foreground: #ffffff;
+  --secondary: #e8f7ed;
+  --secondary-foreground: #014d43;
+  --muted: #e8f7ed;
+  --muted-foreground: #66716d; /* see the bug-critical note above */
+  --accent: #e8f7ed; /* kept soft — drives ghost-button hover */
+  --accent-foreground: #014d43;
+  --destructive: #b3261e;
+  --lime: #d3fe73; /* the ↗ chip beside a primary action */
+  --lime-foreground: #014d43;
+  --otc: #eef2e5; /* sage — over-the-counter */
+  --otc-foreground: #014d43;
+  --rx: #f9e4e8; /* blush — prescription */
+  --rx-foreground: #7a1f3d;
+  --panel: #014d43; /* full-bleed dark promo panel */
+  --panel-foreground: #ffffff;
+  --footer: #060a1e;
+  --footer-foreground: #ebfff6;
+  /* The three home-page doors — incubyte.co's service-card colours, measured
+     off their DOM. Dark text (--foreground) on all three. */
+  --door-chartreuse: #cbdf7a;
+  --door-teal: #5dc6d6;
+  --door-green: #9dde8b;
+  --border: #d5e6dc; /* hairline, tinted toward the mint */
+  --input: #d5e6dc;
+  --ring: #014d43;
+  --chart-1: #014d43;
+  --chart-2: #2f6f63;
+  --chart-3: #5dc6d6;
+  --chart-4: #d3fe73;
+  --chart-5: #eef2e5;
+  --radius: 1rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0d;
+  --sidebar-primary: #014d43;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f7ed;
+  --sidebar-accent-foreground: #014d43;
+  --sidebar-border: #d5e6dc;
+  --sidebar-ring: #014d43;
 }
 
+/* The app never toggles dark mode; this exists so nothing looks broken if it
+   is ever switched on. Deliberately not fine-tuned. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0b2a25;
+  --foreground: #ebfff6;
+  --card: #103a33;
+  --card-foreground: #ebfff6;
+  --popover: #103a33;
+  --popover-foreground: #ebfff6;
+  --primary: #d3fe73;
+  --primary-foreground: #012b25;
+  --secondary: #14463d;
+  --secondary-foreground: #ebfff6;
+  --muted: #14463d;
+  --muted-foreground: #9bb3ab;
+  --accent: #14463d;
+  --accent-foreground: #ebfff6;
+  --destructive: #f2726a;
+  --lime: #d3fe73;
+  --lime-foreground: #012b25;
+  --otc: #22443a;
+  --otc-foreground: #dbe8c9;
+  --rx: #4a2733;
+  --rx-foreground: #f6cdd6;
+  --panel: #012b25;
+  --panel-foreground: #ebfff6;
+  --footer: #060a1e;
+  --footer-foreground: #ebfff6;
+  --door-chartreuse: #cbdf7a;
+  --door-teal: #5dc6d6;
+  --door-green: #9dde8b;
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: #d3fe73;
+  --chart-1: #d3fe73;
+  --chart-2: #5dc6d6;
+  --chart-3: #9bb3ab;
+  --chart-4: #2f6f63;
+  --chart-5: #ebfff6;
+  --sidebar: #103a33;
+  --sidebar-foreground: #ebfff6;
+  --sidebar-primary: #d3fe73;
+  --sidebar-primary-foreground: #012b25;
+  --sidebar-accent: #14463d;
+  --sidebar-accent-foreground: #ebfff6;
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: #d3fe73;
 }
 
 @layer base {
@@ -129,5 +186,22 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Figures are load-bearing in a pharmacy — prices, strengths, counts — so
+     tabulated numerals line up in a column. */
+  th, td {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+}
+
+/* Quality floor: honour a reduced-motion preference everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

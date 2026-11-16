@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "customer";
+export type UserRole = "admin" | "customer" | "qa_automation";
 
 export type SeedUser = {
   id: string;
@@ -12,13 +12,13 @@ export type SeedUser = {
 // acceptable for this assessment app. Auth itself stays clean; security bugs
 // are introduced behind the toggle infrastructure in Phase 4.
 //
-// Fixed admin login for reviewers: admin@medibyte.test / admin1234
+// Fixed admin login for reviewers: admin@medibyte.test / admin.incu123
 export const users: readonly SeedUser[] = [
   {
     id: "user-admin",
     name: "MediByte Admin",
     email: "admin@medibyte.test",
-    password: "admin1234",
+    password: "admin.incu123",
     role: "admin",
   },
   {
@@ -34,5 +34,12 @@ export const users: readonly SeedUser[] = [
     email: "omar@example.test",
     password: "omar1234",
     role: "customer",
+  },
+  {
+    id: "user-qa-steve",
+    name: "Steve QA",
+    email: "steve@example.test",
+    password: "steve1234",
+    role: "qa_automation",
   },
 ];

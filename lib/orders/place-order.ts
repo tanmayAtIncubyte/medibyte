@@ -1,3 +1,4 @@
+import type { UserRole } from "@/data/users";
 import { getCartView } from "@/lib/cart/cart-service";
 import { clearCart } from "@/lib/data/session-store";
 import { appendOrder, nextOrderSequence } from "@/lib/data/orders-store";
@@ -15,8 +16,9 @@ import type { Order } from "@/lib/orders/types";
 // reserve stock atomically (rejecting oversell), create + persist the order, and
 // clear the cart. Thin glue over the pure logic; called by the inspectable
 // /api/checkout route handler. The clock is injected so behaviour is
-// deterministic in tests (mirrors the coupon clock). Async because the
-// concurrency-bug reservation path yields the event loop.
+// deterministic in tests (mirrors the coupon clock). Async because every store
+// read/write goes through the async KV seam (and the concurrency-bug
+// reservation path additionally yields the event loop).
 
 export type PlaceOrderResult =
   | { ok: true; order: Order }
@@ -63,12 +65,12 @@ export type PlaceOrderDeps = {
 
 export async function placeOrder(
   sessionId: string,
-  user: { id: string; role: "admin" | "customer" },
+  user: { id: string; role: UserRole },
   input: CheckoutInput,
   deps: PlaceOrderDeps = {},
 ): Promise<PlaceOrderResult> {
   const bugs = deps.bugs ?? {};
-  const cart = getCartView(sessionId, {
+  const cart = await getCartView(sessionId, {
     taxFloor: bugs.taxFloor,
     ignoreExpiry: bugs.ignoreExpiry,
     taxBeforeDiscount: bugs.taxBeforeDiscount,
@@ -93,10 +95,10 @@ export async function placeOrder(
     quantity: line.quantity,
   }));
   const reservation = bugs.oversell
-    ? reserveStockUnchecked(requestLines) // FN_OVERSELL: no stock check
+    ? await reserveStockUnchecked(requestLines) // FN_OVERSELL: no stock check
     : bugs.concurrentDoubleSpend
       ? await reserveStockRacy(requestLines, deps.raceWindowMs) // FN_CONCURRENT_DOUBLESPEND: racy
-      : reserveStock(requestLines); // clean: atomic, all-or-nothing
+      : await reserveStock(requestLines); // clean: atomic, all-or-nothing
   if (!reservation.ok) {
     return {
       ok: false,
@@ -120,14 +122,14 @@ export async function placeOrder(
     shipping: validation.shipping,
     prescriptions: validation.prescriptions,
     placedAt: deps.now ?? new Date(),
-    sequence: nextOrderSequence(user.id),
+    sequence: await nextOrderSequence(user.id),
   });
 
-  appendOrder(order);
+  await appendOrder(order);
   // FN_PARTIAL_CHECKOUT: skip clearing the cart, leaving the order placed but
   // the cart still full (inconsistent state). Clean path clears it.
   if (!bugs.partialCheckout) {
-    clearCart(sessionId);
+    await clearCart(sessionId);
   }
 
   return { ok: true, order };

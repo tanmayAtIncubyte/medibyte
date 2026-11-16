@@ -1,8 +1,9 @@
 // The canonical list of every bug in MediByte. This file IS the answer key:
 // each entry describes one deliberately-seeded defect and where it lives.
 // `data/bug-flags.json` is seeded from these keys and `lib/bugs.ts` gates every
-// buggy code path through them. The registry holds exactly the 45 seeded
-// assessment bugs (the Phase-1 PROBE_NOOP engine probe was removed in Phase 4).
+// buggy code path through them. The registry holds the 50 seeded assessment
+// bugs: the original 45 plus 5 internal-QA-reported defects promoted in Batch 7
+// (the Phase-1 PROBE_NOOP engine probe was removed in Phase 4).
 
 export type BugCategory =
   | "functional"
@@ -561,6 +562,77 @@ export const bugRegistry: readonly BugDefinition[] = [
     hipaa: false,
     effect: "The 'Page X of Y' indicator is removed, leaving bare page links with no sense of total.",
     where: "/products (the pager)",
+    howToSpot: "eyeball",
+  },
+
+  // --- Batch 7: Internal-QA-reported defects (5) ---
+  // Surfaced by the internal QA pass (each independently reported by 2+
+  // reviewers) and confirmed against the code. Recorded in the answer key with
+  // a flag in data/bug-flags.json (so the registry↔flags invariant holds).
+  // NOTE: unlike Batches 1–6 these are currently ALWAYS-ON defects — they are
+  // not yet wrapped in an isBugActive-gated code path, so admins see them too
+  // and toggling their flag has no effect. Wrap each listed `location` with
+  // isBugActive to make them true clean-default toggles.
+  {
+    key: "CHECKOUT_NO_SAVED_ADDRESS_PREFILL",
+    title: "Checkout ignores the account's saved addresses (no prefill, no picker)",
+    category: "ux",
+    difficulty: "moderate",
+    location:
+      "app/(storefront)/checkout/page.tsx (passes only defaultFullName) + components/checkout/checkout-form.tsx (shipping fields default blank)",
+    hipaa: false,
+    effect:
+      "A customer with a saved address on /account must retype the full shipping address at checkout — the page never reads their saved addresses, so only the name is prefilled and there is no saved-address selector.",
+    where: "/account (saved address) then /checkout (Shipping address is blank)",
+    howToSpot: "cross-screen",
+  },
+  {
+    key: "CART_SESSION_NOT_USER_BOUND",
+    title: "Cart is bound to the browser session cookie, not the signed-in user (persists across sign-out / bleeds between accounts)",
+    category: "security",
+    difficulty: "moderate",
+    location:
+      "app/api/auth/logout/route.ts (clears the auth cookie only) + lib/data/session-id.ts (mb_session_id) + lib/data/session-store.ts + components/layout/site-header.tsx (badge)",
+    hipaa: false,
+    effect:
+      "Logout clears the auth session cookie but not the mb_session_id cart cookie, so the cart (and the header cart badge) survive sign-out and are inherited by the next user who signs in in the same browser.",
+    where: "/cart then sign out and sign in as the other customer (dana ↔ omar) in the same browser",
+    howToSpot: "cross-screen",
+  },
+  {
+    key: "NAV_LINKS_SHOWN_PRELOGIN",
+    title: "Header shows auth-gated Browse/Cart nav links to logged-out visitors",
+    category: "ui",
+    difficulty: "easy",
+    location: "components/layout/site-header.tsx (Browse/Cart links rendered unconditionally in the root-layout header)",
+    hipaa: false,
+    effect:
+      "The global header renders Browse and Cart links even when signed out (e.g. on /login), but those routes are behind the storefront auth guard, so following them just bounces back to login.",
+    where: "/login (primary nav)",
+    howToSpot: "eyeball",
+  },
+  {
+    key: "RX_DOB_UNVALIDATED",
+    title: "Prescription Date of birth is required-checked only (no format / future-date validation)",
+    category: "functional",
+    difficulty: "easy",
+    location: "lib/orders/checkout.ts (validatePrescription — required-only, no date validation)",
+    hipaa: false,
+    effect:
+      "The Rx patient Date of birth field only checks for non-blank, so a malformed or clearly-invalid future date is accepted at checkout.",
+    where: "/checkout (Rx item present → prescription/health step, Date of birth)",
+    howToSpot: "edge input",
+  },
+  {
+    key: "HEADER_NAV_NOT_RESPONSIVE",
+    title: "Primary header nav is a non-wrapping flex row that overflows on small viewports",
+    category: "ui",
+    difficulty: "easy",
+    location: "components/layout/site-header.tsx (single flex nav row, no wrap / mobile collapse)",
+    hipaa: false,
+    effect:
+      "The header packs the logo plus 5–7 nav buttons and the user name into one non-wrapping flex row with no mobile menu, so it overflows horizontally on narrow screens.",
+    where: "Any page on a mobile-width viewport (header)",
     howToSpot: "eyeball",
   },
 ] as const;

@@ -5,8 +5,10 @@ import { cn } from "@/lib/utils";
 
 /**
  * Consistent OTC vs Prescription (Rx) signal used across catalog and detail.
- * Rx is a primary-tinted pill with a prescription icon; OTC is a neutral
- * secondary pill. Color is never the only signal — both carry text + icon.
+ * The two wear Incubyte's own pastels — blush for a prescription, sage for
+ * over-the-counter — rather than the brand green, so a prescription never reads
+ * as just more brand colour. Colour is never the only signal: both carry text
+ * and an icon.
  */
 export function ProductTypeBadge({
   type,
@@ -19,10 +21,8 @@ export function ProductTypeBadge({
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-        isRx
-          ? "bg-primary/10 text-primary"
-          : "bg-secondary text-secondary-foreground",
+        "inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
+        isRx ? "bg-rx text-rx-foreground" : "bg-otc text-otc-foreground",
         className,
       )}
     >

@@ -10,7 +10,28 @@ over-the-counter (OTC) and prescription (Rx) products, search and filter the
 catalog, add items to a cart, apply promo codes, check out with a shipping
 address, and review their past orders and account details.
 
-You will explore the running app at the URL provided to you by your reviewer.
+### Over-the-counter (OTC) vs prescription (Rx)
+
+Pharmacies sell two kinds of product, and the distinction matters as you test:
+
+- **Over-the-counter (OTC)** — everyday medicines and health products anyone can
+  buy without a doctor's authorization: pain relievers, vitamins, antacids,
+  allergy tablets, first-aid supplies, and the like. In a store like this they
+  behave like ordinary retail items — you pick them and buy them.
+- **Prescription (Rx)** — medicines that legally require a valid prescription
+  from a licensed prescriber before they can be dispensed (many antibiotics,
+  cardiac and diabetes medicines, controlled substances, etc.). A pharmacy is
+  expected to treat them differently from OTC items: it should establish that a
+  prescription exists, and it handles the associated patient/health information
+  as sensitive data.
+
+Every product in the catalog is labelled as either OTC or Rx.
+
+Your reviewer will send you a **personal access link** (it looks like
+`https://…/start?code=…`). **Open it before you sign in** — it unlocks the app for a
+limited window (typically 10 days) and is tied to the customer accounts listed under
+*Test data* below. After that the link expires. Use the same browser throughout so
+you keep your access and stay signed in.
 
 ## Your task
 
@@ -33,8 +54,8 @@ can fall into any of these areas — look across all of them:
 - **UX** — confusing or frustrating flows, surprise behavior, lost work, unclear
   errors or confirmations.
 
-Write up **test cases** for the areas you cover and clear **bug reports** for the
-defects you find.
+Write **test cases** for the areas you cover and a clear **bug report** for every
+defect you find. *What to submit*, at the end of this brief, says what to send.
 
 ### The DevTools Network tab is fair game
 
@@ -57,9 +78,6 @@ flows have content to work with.
 | `dana@example.test`  | `dana1234` |
 | `omar@example.test`  | `omar1234` |
 
-You may also **register a brand-new account** at `/register` and test as a fresh
-customer if you prefer.
-
 ### Promo codes
 
 These promo codes can be applied in the cart while you test. They are provided as
@@ -73,21 +91,17 @@ test data — use them to exercise the discount and checkout flows.
 | `MEGA50`     | $50 off your order      | none          |                             |
 | `SPRING2023` | 20% off (spring promo)  | none          | expired on 2023-05-31       |
 
-## How to report a defect
+## What to submit
 
-A good bug report lets your reviewer reproduce the issue without guessing. For
-each defect, include:
+- **Test cases** for the areas you cover, written in both a **traditional** style
+  and a **BDD** (Given / When / Then) style. Include both **positive** and
+  **negative** cases.
+- **Bug reports** for the defects you find.
 
-- **Title** — a short, specific summary.
-- **Area** — functional / accessibility / performance / security / UI / UX.
-- **Steps to reproduce** — numbered, starting from a known state (e.g. "signed in
-  as `dana@example.test`, on `/cart` with 2 items").
-- **Expected result** — what a correct app should do.
-- **Actual result** — what actually happens (include the on-screen value, the
-  Network request/response, the console error, or the a11y finding that shows
-  it).
-- **Evidence** — a screenshot, a copied value, or the relevant Network entry
-  where it helps.
+### How to send it
 
-Quality and clarity matter more than raw count. A few well-documented,
-reproducible reports are worth more than a long list of vague ones.
+Commit everything, including any screenshots or recordings, to a **Git
+repository**. Then reply to your reviewer's email with the repository URL before
+your link expires, and make sure they can open it.
+
+The quality and clarity of your write-up is part of what we assess.
